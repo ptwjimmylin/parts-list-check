@@ -8,7 +8,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- FontAwesome 圖示 -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- SheetJS (Excel 匯入/匯出解析) -->
+  <!-- SheetJS (Excel 解析) -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     @media print {
@@ -52,7 +52,7 @@
 
   <main class="max-w-7xl mx-auto px-4 py-6 space-y-6">
 
-    <!-- 庫房貨架定義卡片 -->
+    <!-- 庫房貨架對照卡片 -->
     <section class="bg-white rounded-lg shadow p-4 border border-slate-200 no-print">
       <h2 class="text-md font-bold text-slate-700 mb-3 flex items-center gap-2 border-b pb-2">
         <i class="fa-solid fa-warehouse text-amber-500"></i> 庫房貨架對照表 (Location Definitions)
@@ -85,14 +85,12 @@
       </div>
     </section>
 
-    <!-- 工作表 Tabs 與主要表格 -->
+    <!-- 工作表 Tab 導覽列與內容 -->
     <div class="bg-white rounded-lg shadow border border-slate-200 overflow-hidden">
       <!-- Tabs -->
-      <div class="flex flex-wrap bg-slate-200/80 p-1 border-b border-slate-300 gap-1 no-print" id="tabsContainer">
-        <!-- JS 動態產生 Tabs -->
-      </div>
+      <div class="flex flex-wrap bg-slate-200/80 p-1 border-b border-slate-300 gap-1 no-print" id="tabsContainer"></div>
 
-      <!-- 操作列 -->
+      <!-- 操作工具列 -->
       <div class="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap justify-between items-center gap-3 no-print">
         <div class="flex items-center gap-2 flex-1 max-w-md">
           <i class="fa-solid fa-magnifying-glass text-slate-400"></i>
@@ -101,7 +99,7 @@
         
         <div class="flex items-center space-x-2">
           <button onclick="openAddModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded text-sm transition flex items-center gap-1 shadow">
-            <i class="fa-solid fa-plus"></i> 新增進出/庫存紀錄
+            <i class="fa-solid fa-plus"></i> 新增紀錄
           </button>
           
           <button id="btnPrintS5" onclick="printS5View()" class="hidden bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded text-sm transition flex items-center gap-1 shadow">
@@ -110,7 +108,7 @@
         </div>
       </div>
 
-      <!-- 表格展示區 -->
+      <!-- 表格區域 -->
       <div class="overflow-x-auto p-4" id="printableArea">
         <div class="hidden print:block mb-4 text-center">
           <h1 class="text-2xl font-bold" id="printReportTitle">S5 Pending to Customer Report</h1>
@@ -118,12 +116,8 @@
         </div>
 
         <table class="w-full text-sm text-left text-slate-700 border-collapse border border-slate-300">
-          <thead class="text-xs text-slate-700 uppercase bg-slate-100" id="tableHeader">
-            <!-- JS 動態生成表頭 -->
-          </thead>
-          <tbody id="tableBody">
-            <!-- JS 動態生成資料列 -->
-          </tbody>
+          <thead class="text-xs text-slate-700 uppercase bg-slate-100" id="tableHeader"></thead>
+          <tbody id="tableBody"></tbody>
         </table>
       </div>
     </div>
@@ -137,9 +131,7 @@
         <button onclick="closeModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
       </div>
       <form id="modalForm" onsubmit="handleFormSubmit(event)" class="p-4 space-y-3">
-        <div id="dynamicFormFields" class="grid grid-cols-2 gap-3 text-sm">
-          <!-- JS 動態生成欄位 -->
-        </div>
+        <div id="dynamicFormFields" class="grid grid-cols-2 gap-3 text-sm"></div>
         <div class="flex justify-end space-x-2 pt-3 border-t">
           <button type="button" onclick="closeModal()" class="px-4 py-1.5 bg-slate-200 text-slate-700 rounded hover:bg-slate-300">取消</button>
           <button type="submit" class="px-4 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700">儲存</button>
@@ -168,23 +160,26 @@
       "Stock in TW", "S2", "S3", "S4", "S5", "S6", "Print S5", "DRY BOX", "Clean room"
     ];
 
+    // 明細類別 Sheet 清單 (S2~S6 + DRY BOX)
+    const LOG_SHEETS = ["S2", "S3", "S4", "S5", "S6", "DRY BOX"];
+
     let currentTab = "Stock in TW";
     let apiUrl = localStorage.getItem("gas_api_url") || "";
 
-    // 資料結構包含 Operator (領料/進出人員) 欄位
+    // 資料初始化
     let db = {
       "Stock in TW": [
         { "Location": "S5", "P/N (If any)": "553-5502", "Parts Name": "EOIF PCB", "QTY": 0, "Unit": "PCS", "Category": "Stage", "Status": "New", "Model": "CG4100", "Remarks": "From SG to UMC 12A" },
         { "Location": "S5", "P/N (If any)": "5517B", "Parts Name": "Laser", "QTY": 1, "Unit": "PCS", "Category": "Main", "Status": "Good", "Model": "Generic", "Remarks": "Ready" }
       ],
-      "S2": [
-        { "Date": "2026-10-20", "Location": "S2", "P/N (If any)": "TOOL-01", "Parts Name": "Torque Wrench", "Model": "TW-100", "IN": 5, "OUT": 0, "Operator": "王小明", "Remark": "工具入庫" }
-      ],
-      "S3": [], "S4": [],
-      "S5": [
-        { "Date": "2026-10-21", "Location": "S5", "P/N (If any)": "553-5502", "Parts Name": "EOIF PCB", "Model": "CG4100", "IN": 0, "OUT": 1, "Operator": "陳工程師", "Remark": "客戶領用" }
-      ],
-      "S6": [], "Print S5": [], "DRY BOX": [], "Clean room": []
+      "S2": [{ "Date": "2026-10-20", "Location": "S2", "P/N (If any)": "TOOL-01", "Parts Name": "Torque Wrench", "Model": "TW-100", "IN": 5, "OUT": 0, "Operator": "王小明", "Remark": "工具進庫" }],
+      "S3": [],
+      "S4": [],
+      "S5": [{ "Date": "2026-10-21", "Location": "S5", "P/N (If any)": "553-5502", "Parts Name": "EOIF PCB", "Model": "CG4100", "IN": 0, "OUT": 1, "Operator": "陳工程師", "Remark": "客戶領用" }],
+      "S6": [{ "Date": "2026-10-21", "Location": "S6", "P/N (If any)": "560-6590", "Parts Name": "CG4100 HV controller", "Model": "CG4100", "IN": 1, "OUT": 0, "Operator": "李工程師", "Remark": "待送修零件" }],
+      "Print S5": [],
+      "DRY BOX": [{ "Date": "2026-10-21", "Location": "DRY BOX", "P/N (If any)": "S/N: 117029630", "Parts Name": "Turbo Molecular Pump (TMP)", "Model": "RS6000", "IN": 2, "OUT": 0, "Operator": "張小華", "Remark": "防潮箱存入" }],
+      "Clean room": []
     };
 
     window.onload = () => {
@@ -228,7 +223,7 @@
 
       if (data.length === 0) {
         header.innerHTML = "";
-        body.innerHTML = `<tr><td colspan="11" class="text-center py-6 text-slate-400">目前尚無資料</td></tr>`;
+        body.innerHTML = `<tr><td colspan="12" class="text-center py-6 text-slate-400">目前尚無資料</td></tr>`;
         return;
       }
 
@@ -253,40 +248,38 @@
               </td>
             `).join('')}
             <td class="p-2 border text-center text-xs no-print">
-              <button onclick="deleteRow(${idx})" class="text-rose-500 hover:text-rose-700 px-1" title="刪除筆資料"><i class="fa-solid fa-trash"></i></button>
+              <button onclick="deleteRow(${idx})" class="text-rose-500 hover:text-rose-700 px-1" title="刪除"><i class="fa-solid fa-trash"></i></button>
             </td>
           </tr>
         `;
       }).join('');
     }
 
-    // 單元格直接編輯
     function updateCell(rowIndex, key, value) {
       let targetTab = currentTab === "Print S5" ? "S5" : currentTab;
       db[targetTab][rowIndex][key] = value;
     }
 
-    // 刪除資料列
     function deleteRow(index) {
-      if(confirm("確定要刪除此筆領料/進出紀錄嗎？")) {
+      if(confirm("確定要刪除這筆資料嗎？")) {
         let targetTab = currentTab === "Print S5" ? "S5" : currentTab;
         db[targetTab].splice(index, 1);
         renderTable();
       }
     }
 
-    // 開啟新增/編輯彈窗
     function openAddModal() {
       const modal = document.getElementById("dataModal");
       const formFields = document.getElementById("dynamicFormFields");
       let targetTab = currentTab === "Print S5" ? "S5" : currentTab;
       let fields = [];
 
-      if (targetTab === "Stock in TW") {
-        fields = ["Location", "P/N (If any)", "Parts Name", "QTY", "Unit", "Category", "Status", "Model", "Remarks"];
-      } else {
-        // 含 Operator 領料人員欄位
+      if (LOG_SHEETS.includes(targetTab)) {
+        // S2, S3, S4, S5, S6, DRY BOX 標準 9 個進出欄位
         fields = ["Date", "Location", "P/N (If any)", "Parts Name", "Model", "IN", "OUT", "Operator", "Remark"];
+      } else {
+        // Stock in TW 或其他視圖欄位
+        fields = ["Location", "P/N (If any)", "Parts Name", "QTY", "Unit", "Category", "Status", "Model", "Remarks"];
       }
 
       formFields.innerHTML = fields.map(f => `
@@ -295,7 +288,7 @@
           <input type="${f === 'Date' ? 'date' : (f === 'QTY' || f === 'IN' || f === 'OUT' ? 'number' : 'text')}" 
                  name="${f}" 
                  value="${f === 'Location' ? targetTab : (f === 'Date' ? new Date().toISOString().split('T')[0] : '')}"
-                 placeholder="${f === 'Operator' ? '請輸入人員姓名' : ''}"
+                 placeholder="${f === 'Operator' ? '請填寫人員姓名' : ''}"
                  class="w-full px-2 py-1.5 border rounded text-xs focus:ring-1 focus:ring-blue-500">
         </div>
       `).join('');
@@ -317,7 +310,6 @@
       renderTable();
     }
 
-    // Excel / CSV 匯入
     function triggerImport() { document.getElementById("fileInput").click(); }
 
     function handleFileImport(e) {
@@ -334,13 +326,12 @@
             db[name] = XLSX.utils.sheet_to_json(workbook.Sheets[name]);
           }
         });
-        alert("匯入完成！");
+        alert("資料匯入成功！");
         renderTable();
       };
       reader.readAsArrayBuffer(file);
     }
 
-    // 匯出 Excel
     function exportToExcel() {
       const wb = XLSX.utils.book_new();
       SHEETS.forEach(s => {
@@ -352,7 +343,6 @@
       XLSX.writeFile(wb, "Factory_Parts_Inventory.xlsx");
     }
 
-    // Google Sheets API
     function openApiConfig() {
       document.getElementById("apiUrlInput").value = apiUrl;
       document.getElementById("apiModal").classList.remove("hidden");
@@ -363,7 +353,7 @@
       apiUrl = document.getElementById("apiUrlInput").value.trim();
       localStorage.setItem("gas_api_url", apiUrl);
       closeApiModal();
-      alert("API URL 已更新！");
+      alert("API URL 設定成功！");
     }
 
     function syncWithGoogleSheet() {
@@ -375,7 +365,7 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "syncAll", data: db })
       })
-      .then(() => alert("資料已成功發送至 Google Sheets！"))
+      .then(() => alert("資料已成功同步至 Google Sheets！"))
       .catch(err => alert("同步失敗：" + err));
     }
 
@@ -389,7 +379,7 @@
           renderTable();
         }
       })
-      .catch(err => console.error("讀取失敗:", err));
+      .catch(err => console.error("同步讀取失敗:", err));
     }
 
     function printS5View() {
