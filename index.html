@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>台灣零件庫存管控系統 PRO v2.6 (Dynamic Sheet)</title>
+  <title>台灣零件庫存管控系統 PRO v2.7 (防重複匯入版)</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- SheetJS (用於讀取 Excel 檔案) -->
+  <!-- SheetJS (用於解析 Excel) -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -18,10 +18,10 @@
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen pb-12">
 
-  <!-- 隱藏的檔案選擇器 (用於匯入) -->
+  <!-- 檔案上傳輸入框 -->
   <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleFileImport(event)">
 
-  <!-- 頂部 Header -->
+  <!-- Header -->
   <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
       <div class="flex items-center gap-3">
@@ -31,24 +31,17 @@
         <div>
           <div class="flex items-center gap-2">
             <h1 class="font-bold text-slate-900 text-lg leading-tight">台灣零件庫存管控系統</h1>
-            <span class="px-2 py-0.5 text-xs font-semibold bg-indigo-50 text-indigo-600 rounded-md border border-indigo-100">PRO v2.6 Dynamic</span>
+            <span class="px-2 py-0.5 text-xs font-semibold bg-indigo-50 text-indigo-600 rounded-md border border-indigo-100">PRO v2.7</span>
           </div>
-          <p class="text-xs text-slate-500">Stock Control • Auto Dynamic Columns • Live Google Sheet Sync</p>
+          <p class="text-xs text-slate-500">Stock Control • Deduplicated Auto Import • Live Sheet Sync</p>
         </div>
       </div>
 
       <div class="flex items-center gap-2.5">
-        <!-- 匯入 Excel 按鈕 -->
+        <!-- 匯入 Excel (覆蓋不重複) -->
         <button onclick="triggerFileInput()" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-semibold transition shadow-sm">
           <i data-lucide="upload" class="w-4 h-4 text-emerald-600"></i>
           <span>匯入 Excel 檔案</span>
-        </button>
-
-        <!-- API 同步設定 -->
-        <button onclick="toggleSyncPanel()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-medium transition">
-          <i data-lucide="cloud" class="w-4 h-4 text-sky-500"></i>
-          <span>Google Sheet 同步</span>
-          <span id="sync-status-dot" class="w-2 h-2 rounded-full bg-slate-300 ml-1"></span>
         </button>
 
         <!-- 匯出 CSV -->
@@ -57,7 +50,7 @@
           <span>匯出 CSV</span>
         </button>
 
-        <!-- 新增按鈕 -->
+        <!-- 新增記錄 -->
         <button onclick="openModal()" class="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg text-xs font-medium shadow-md shadow-indigo-100 transition">
           <i data-lucide="plus-circle" class="w-4 h-4"></i>
           <span>新增庫存/異動</span>
@@ -66,31 +59,14 @@
     </div>
   </header>
 
-  <!-- Google Sheet API 同步面板 -->
-  <div id="sync-panel" class="hidden bg-slate-900 text-white border-b border-slate-800 p-4 transition-all">
-    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-      <div class="flex items-center gap-3">
-        <i data-lucide="key" class="w-5 h-5 text-indigo-400"></i>
-        <div>
-          <p class="text-sm font-semibold">Google Apps Script Web App URL 連結</p>
-          <p class="text-xs text-slate-400">貼上從 Google Sheet 發布的 Web App 部署網址以實現自動連動</p>
-        </div>
-      </div>
-      <div class="flex items-center gap-2 w-full md:w-auto">
-        <input type="text" id="gas-url-input" placeholder="https://script.google.com/macros/s/.../exec" class="w-full md:w-96 px-3 py-1.5 rounded-lg text-xs bg-slate-800 border border-slate-700 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono">
-        <button onclick="saveGasUrl()" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-xs font-medium rounded-lg whitespace-nowrap">儲存設定</button>
-      </div>
-    </div>
-  </div>
-
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
 
-    <!-- 4 大數據指標卡片 -->
+    <!-- 指標統計卡片 -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <div class="glass-card p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
         <div>
           <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">總筆數 (TOTAL ROWS)</p>
-          <h3 id="stat-total-items" class="text-3xl font-extrabold text-slate-800 mt-1">23</h3>
+          <h3 id="stat-total-items" class="text-3xl font-extrabold text-slate-800 mt-1">0</h3>
         </div>
         <div class="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600">
           <i data-lucide="layers" class="w-6 h-6"></i>
@@ -99,8 +75,8 @@
 
       <div class="glass-card p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
         <div>
-          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">總欄位數 (TOTAL COLUMNS)</p>
-          <h3 id="stat-total-cols" class="text-3xl font-extrabold text-indigo-600 mt-1">10</h3>
+          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">總欄位數 (COLUMNS)</p>
+          <h3 id="stat-total-cols" class="text-3xl font-extrabold text-indigo-600 mt-1">0</h3>
         </div>
         <div class="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
           <i data-lucide="columns" class="w-6 h-6"></i>
@@ -110,7 +86,7 @@
       <div class="glass-card p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
         <div>
           <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">在庫總數量 (TOTAL QTY)</p>
-          <h3 id="stat-total-qty" class="text-3xl font-extrabold text-emerald-600 mt-1">20</h3>
+          <h3 id="stat-total-qty" class="text-3xl font-extrabold text-emerald-600 mt-1">0</h3>
         </div>
         <div class="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
           <i data-lucide="package-check" class="w-6 h-6"></i>
@@ -119,8 +95,8 @@
 
       <div class="glass-card p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
         <div>
-          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">目前工作表 (CURRENT SHEET)</p>
-          <h3 id="stat-sheet-name" class="text-xl font-bold text-sky-600 mt-2 truncate">Stock in TW</h3>
+          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">目前頁籤 (SHEET)</p>
+          <h3 id="stat-sheet-name" class="text-xl font-bold text-sky-600 mt-2 truncate">-</h3>
         </div>
         <div class="w-12 h-12 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600">
           <i data-lucide="file-spreadsheet" class="w-6 h-6"></i>
@@ -128,40 +104,36 @@
       </div>
     </div>
 
-    <!-- 動態工作表 Tabs -->
+    <!-- Sheet 頁籤區 -->
     <div class="space-y-4 pt-2">
       <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
         <div class="flex flex-wrap items-center gap-1.5" id="sheet-tabs-container">
-          <button class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white shadow-sm flex items-center gap-1.5">
-            <i data-lucide="table" class="w-3.5 h-3.5"></i> Stock in TW
-          </button>
+          <!-- 動態頁籤按鈕 -->
         </div>
 
         <span id="filtered-count" class="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-xl whitespace-nowrap">
-          顯示: 23 筆
+          顯示: 0 筆
         </span>
       </div>
 
-      <!-- 關鍵字搜尋 Bar -->
+      <!-- 搜尋 Bar -->
       <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between gap-3">
         <div class="relative w-full">
           <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
-          <input type="text" id="search-input" onkeyup="handleSearch()" placeholder="搜尋目前工作表的所有欄位內容..." class="w-full pl-10 pr-4 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+          <input type="text" id="search-input" onkeyup="handleSearch()" placeholder="搜尋目前 Sheet 中的所有關鍵字..." class="w-full pl-10 pr-4 py-2 text-xs rounded-xl bg-slate-50 border border-slate-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
         </div>
       </div>
     </div>
 
-    <!-- 動態數據表格 -->
+    <!-- 表格區 -->
     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse">
           <thead>
             <tr id="dynamic-thead" class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-              <!-- 欄位標題經由 JS 動態生成 -->
             </tr>
           </thead>
           <tbody id="dynamic-tbody" class="divide-y divide-slate-100 text-xs">
-            <!-- 資料內容經由 JS 動態生成 -->
           </tbody>
         </table>
       </div>
@@ -170,22 +142,11 @@
   </main>
 
   <script>
-    // 預設示範欄位與資料
-    let dynamicHeaders = ['LOCATION', 'PARTS NAME', 'MODEL', 'QTY', 'QTY_1', 'IN', 'OUT', 'DATE', 'REMARK'];
-    let allSheetData = {
-      'Stock in TW': [
-        { 'LOCATION': 'S6', 'PARTS NAME': 'Rotation unit Magnetic seal', 'MODEL': '88xx/92xx', 'QTY': 1, 'QTY_1': 1, 'IN': 0, 'OUT': 0, 'DATE': '4月9日', 'REMARK': 'to UMC 12A' },
-        { 'LOCATION': 'S6', 'PARTS NAME': 'SSCNT PCB', 'MODEL': 'CG4100', 'QTY': 1, 'QTY_1': 0, 'IN': 0, 'OUT': 1, 'DATE': '4月9日', 'REMARK': 'to UMC 12A' },
-        { 'LOCATION': 'S6', 'PARTS NAME': 'EOCONT PCB', 'MODEL': 'CG4100', 'QTY': 1, 'QTY_1': 0, 'IN': 0, 'OUT': 1, 'DATE': '4月7日', 'REMARK': 'Repair, Back to SG' },
-        { 'LOCATION': 'S6', 'PARTS NAME': 'Lens-CND', 'MODEL': 'CG4100', 'QTY': 1, 'QTY_1': 0, 'IN': 0, 'OUT': 1, 'DATE': '4月7日', 'REMARK': 'Repair, Back to SG' },
-        { 'LOCATION': 'S6', 'PARTS NAME': 'EOIF PCB', 'MODEL': 'CG4100', 'QTY': 1, 'QTY_1': 0, 'IN': 0, 'OUT': 1, 'DATE': '2026/05/04', 'REMARK': 'Exchange, Back to SG' },
-        { 'LOCATION': 'S6', 'PARTS NAME': 'Rotation unit (92xx)', 'MODEL': '92xx', 'QTY': 0, 'QTY_1': 0, 'IN': 1, 'OUT': 1, 'DATE': '2026/05/18', 'REMARK': 'Back to SG' },
-        { 'LOCATION': 'S1', 'PARTS NAME': 'PE2 gauge cable', 'MODEL': 'All Model', 'QTY': 1, 'QTY_1': 1, 'IN': 0, 'OUT': 0, 'DATE': '4月1日', 'REMARK': 'Engineers repair tools' }
-      ]
-    };
-
-    let currentSheetName = 'Stock in TW';
-    let currentRows = [...allSheetData['Stock in TW']];
+    // 全域資料容器
+    let allSheetData = {};
+    let dynamicHeaders = [];
+    let currentSheetName = '';
+    let currentRows = [];
 
     const locationBadges = {
       'S1': 'bg-teal-50 text-teal-700 border-teal-200',
@@ -198,19 +159,145 @@
       'Clean room': 'bg-emerald-50 text-emerald-700 border-emerald-200'
     };
 
-    // 動態渲染表格
+    function triggerFileInput() {
+      document.getElementById('excel-file-input').click();
+    }
+
+    // 核心匯入函數：強制重置並覆蓋，解決重複計算問題
+    function handleFileImport(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          const data = new Uint8Array(evt.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          
+          // ⚠️ 重置資料容器：每次匯入都清空舊資料，避免重複累加
+          allSheetData = {};
+
+          workbook.SheetNames.forEach(sheetName => {
+            const worksheet = workbook.Sheets[sheetName];
+            const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            if (!json || json.length < 2) return;
+
+            // 自動尋找表頭列
+            let headerIdx = -1;
+            for (let i = 0; i < Math.min(json.length, 15); i++) {
+              if (json[i] && json[i].filter(c => c !== undefined && c !== '').length >= 2) {
+                headerIdx = i;
+                break;
+              }
+            }
+
+            if (headerIdx === -1) return;
+
+            // 清理標題列
+            const rawHeaders = json[headerIdx]
+              .map((h, idx) => h ? String(h).trim() : `COLUMN_${idx + 1}`)
+              .filter(h => h !== '');
+
+            const rowsData = json.slice(headerIdx + 1);
+            let sheetRows = [];
+
+            rowsData.forEach(row => {
+              if (!row || row.length === 0) return;
+              let rowObj = {};
+              let isNonEmpty = false;
+
+              rawHeaders.forEach((header, cIdx) => {
+                let cellVal = row[cIdx];
+                if (cellVal !== undefined && cellVal !== null && String(cellVal).trim() !== '') {
+                  isNonEmpty = true;
+                  cellVal = formatExcelDate(cellVal);
+                } else {
+                  cellVal = '';
+                }
+                rowObj[header] = cellVal;
+              });
+
+              if (isNonEmpty) sheetRows.push(rowObj);
+            });
+
+            if (sheetRows.length > 0) {
+              allSheetData[sheetName] = sheetRows;
+            }
+          });
+
+          const sheetKeys = Object.keys(allSheetData);
+          if (sheetKeys.length > 0) {
+            renderSheetTabs(sheetKeys);
+            switchSheet(sheetKeys[0]);
+            alert(`成功載入！共讀取 ${sheetKeys.length} 個工作表，不重複計算。`);
+          } else {
+            alert('未能辨識到有效的表格資料！');
+          }
+
+        } catch (err) {
+          alert('解析 Excel 檔案失敗：' + err.message);
+        }
+        
+        // 清空 input 讓重複選相同檔案也能觸發 onchange
+        e.target.value = '';
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    // 日期轉換
+    function formatExcelDate(val) {
+      if (typeof val === 'number' && val > 40000 && val < 60000) {
+        const date = new Date((val - 25569) * 86400 * 1000);
+        return `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`;
+      }
+      return String(val);
+    }
+
+    // 渲染 Sheet Tabs
+    function renderSheetTabs(sheetNames) {
+      const container = document.getElementById('sheet-tabs-container');
+      container.innerHTML = sheetNames.map(name => `
+        <button onclick="switchSheet('${name}')" id="sheet-btn-${name}" class="sheet-tab-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-200/60 transition flex items-center gap-1">
+          <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i> ${name}
+        </button>
+      `).join('');
+      lucide.createIcons();
+    }
+
+    // 切換頁籤 Sheet
+    function switchSheet(sheetName) {
+      currentSheetName = sheetName;
+      currentRows = [...(allSheetData[sheetName] || [])];
+
+      if (currentRows.length > 0) {
+        dynamicHeaders = Object.keys(currentRows[0]);
+      } else {
+        dynamicHeaders = [];
+      }
+
+      document.querySelectorAll('.sheet-tab-btn').forEach(btn => {
+        btn.className = 'sheet-tab-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-200/60 transition flex items-center gap-1';
+      });
+
+      const activeBtn = document.getElementById(`sheet-btn-${sheetName}`);
+      if (activeBtn) {
+        activeBtn.className = 'sheet-tab-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white shadow-sm flex items-center gap-1.5';
+      }
+
+      handleSearch();
+    }
+
+    // 渲染動態表格
     function renderDynamicTable(rowsToRender) {
       const thead = document.getElementById('dynamic-thead');
       const tbody = document.getElementById('dynamic-tbody');
 
-      // 1. 生成表頭 Header
       let headerHTML = `<th class="py-3 px-4 w-12 text-center">#</th>`;
       dynamicHeaders.forEach(col => {
         headerHTML += `<th class="py-3 px-4">${col}</th>`;
       });
       thead.innerHTML = headerHTML;
 
-      // 2. 生成內容 Body
       if (rowsToRender.length === 0) {
         tbody.innerHTML = `
           <tr>
@@ -232,12 +319,10 @@
           let val = row[colKey] !== undefined && row[colKey] !== null ? row[colKey] : '-';
           const keyLower = colKey.toLowerCase();
 
-          // 庫位 Style
           if (keyLower.includes('location') || keyLower.includes('位置')) {
             const badgeStyle = locationBadges[val] || 'bg-slate-100 text-slate-700 border-slate-200';
             colsHTML += `<td class="py-3 px-4"><span class="px-2 py-0.5 rounded text-xs font-bold border ${badgeStyle}">${val}</span></td>`;
           }
-          // 數量 Style
           else if (keyLower === 'qty' || keyLower.includes('數量')) {
             const num = Number(val) || 0;
             const qtyBadge = num > 0 
@@ -245,7 +330,6 @@
               : `<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-400 border border-slate-200">${num}</span>`;
             colsHTML += `<td class="py-3 px-4 text-center">${qtyBadge}</td>`;
           }
-          // 進/出貨數量 Style
           else if (keyLower === 'in') {
             const num = Number(val) || 0;
             colsHTML += `<td class="py-3 px-4 text-center ${num > 0 ? 'text-emerald-600 font-bold' : 'text-slate-300'}">${num}</td>`;
@@ -254,7 +338,6 @@
             const num = Number(val) || 0;
             colsHTML += `<td class="py-3 px-4 text-center ${num > 0 ? 'text-amber-600 font-bold' : 'text-slate-300'}">${num}</td>`;
           }
-          // 一般文字
           else {
             colsHTML += `<td class="py-3 px-4 text-slate-700 max-w-xs truncate">${val}</td>`;
           }
@@ -267,11 +350,10 @@
       updateMetrics(rowsToRender.length);
     }
 
-    // 更新指標
     function updateMetrics(renderedCount) {
       document.getElementById('stat-total-items').innerText = currentRows.length;
       document.getElementById('stat-total-cols').innerText = dynamicHeaders.length;
-      document.getElementById('stat-sheet-name').innerText = currentSheetName;
+      document.getElementById('stat-sheet-name').innerText = currentSheetName || '-';
 
       const qtyCol = dynamicHeaders.find(h => h.toLowerCase().includes('qty') || h.toLowerCase().includes('數量'));
       let totalQty = 0;
@@ -282,124 +364,6 @@
       document.getElementById('filtered-count').innerText = `顯示: ${renderedCount} 筆`;
     }
 
-    // 觸發 Excel 選擇檔案
-    function triggerFileInput() {
-      document.getElementById('excel-file-input').click();
-    }
-
-    // 處理 Excel 匯入 (完整動態抓取欄位)
-    function handleFileImport(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = function(evt) {
-        try {
-          const data = new Uint8Array(evt.target.result);
-          const workbook = XLSX.read(data, { type: 'array' });
-          allSheetData = {};
-
-          workbook.SheetNames.forEach(sheetName => {
-            const worksheet = workbook.Sheets[sheetName];
-            const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-            if (json.length < 2) return;
-
-            // 尋找有效欄位標題列
-            let headerIdx = 0;
-            for (let i = 0; i < Math.min(json.length, 15); i++) {
-              if (json[i] && json[i].filter(cell => cell !== undefined && cell !== '').length >= 2) {
-                headerIdx = i;
-                break;
-              }
-            }
-
-            const rawHeaders = json[headerIdx].map(h => String(h || '').trim()).filter(h => h !== '');
-            const rowsData = json.slice(headerIdx + 1);
-
-            let formattedRows = [];
-            rowsData.forEach(row => {
-              if (!row || row.length === 0) return;
-              let rowObj = {};
-              let hasData = false;
-
-              rawHeaders.forEach((header, cIdx) => {
-                let cellVal = row[cIdx];
-                if (cellVal !== undefined && cellVal !== null) {
-                  hasData = true;
-                  cellVal = formatExcelDate(cellVal);
-                } else {
-                  cellVal = '';
-                }
-                rowObj[header] = cellVal;
-              });
-
-              if (hasData) formattedRows.push(rowObj);
-            });
-
-            if (formattedRows.length > 0) {
-              allSheetData[sheetName] = formattedRows;
-            }
-          });
-
-          const sheetKeys = Object.keys(allSheetData);
-          if (sheetKeys.length > 0) {
-            renderSheetTabs(sheetKeys);
-            switchSheet(sheetKeys[0]);
-            alert(`成功匯入 Excel！共讀取 ${sheetKeys.length} 個工作表。`);
-          } else {
-            alert('未能解析出有效資料表！');
-          }
-
-        } catch (err) {
-          alert('讀取 Excel 失敗：' + err.message);
-        }
-      };
-      reader.readAsArrayBuffer(file);
-    }
-
-    // 渲染 Sheet Tabs
-    function renderSheetTabs(sheetNames) {
-      const container = document.getElementById('sheet-tabs-container');
-      container.innerHTML = sheetNames.map(name => `
-        <button onclick="switchSheet('${name}')" id="sheet-btn-${name}" class="sheet-tab-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-200/60 transition flex items-center gap-1">
-          <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i> ${name}
-        </button>
-      `).join('');
-      lucide.createIcons();
-    }
-
-    // 切換工作表 Sheet
-    function switchSheet(sheetName) {
-      currentSheetName = sheetName;
-      currentRows = [...(allSheetData[sheetName] || [])];
-
-      // 自動重新抓取欄位標題
-      if (currentRows.length > 0) {
-        dynamicHeaders = Object.keys(currentRows[0]);
-      }
-
-      // 更新 Tab 樣式
-      document.querySelectorAll('.sheet-tab-btn').forEach(btn => {
-        btn.className = 'sheet-tab-btn px-3 py-1.5 rounded-lg text-xs font-medium text-slate-600 hover:bg-slate-200/60 transition flex items-center gap-1';
-      });
-      const activeBtn = document.getElementById(`sheet-btn-${sheetName}`);
-      if (activeBtn) {
-        activeBtn.className = 'sheet-tab-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white shadow-sm flex items-center gap-1.5';
-      }
-
-      handleSearch();
-    }
-
-    // 日期數值自動轉格式
-    function formatExcelDate(val) {
-      if (typeof val === 'number' && val > 40000 && val < 60000) {
-        const date = new Date((val - 25569) * 86400 * 1000);
-        return `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`;
-      }
-      return String(val);
-    }
-
-    // 關鍵字全欄位搜尋
     function handleSearch() {
       const keyword = document.getElementById('search-input').value.toLowerCase();
       let filtered = currentRows.filter(row => {
@@ -411,6 +375,7 @@
     }
 
     function exportCSV() {
+      if (currentRows.length === 0) { alert('目前無數據可匯出！'); return; }
       let csv = '\uFEFF' + dynamicHeaders.join(',') + '\n';
       currentRows.forEach(row => {
         let line = dynamicHeaders.map(k => `"${String(row[k] || '').replace(/"/g, '""')}"`).join(',');
@@ -427,12 +392,8 @@
       document.body.removeChild(link);
     }
 
-    function toggleSyncPanel() { document.getElementById('sync-panel').classList.toggle('hidden'); }
-
     window.onload = () => {
       lucide.createIcons();
-      renderSheetTabs(Object.keys(allSheetData));
-      switchSheet('Stock in TW');
     };
   </script>
 </body>
