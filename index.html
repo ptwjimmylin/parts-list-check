@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>台灣零件庫存管控系統 PRO v2.7 (防重複匯入版)</title>
+  <title>台灣零件庫存管控系統 PRO v2.8 (Full Feature)</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lucide Icons -->
@@ -18,7 +18,7 @@
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen pb-12">
 
-  <!-- 檔案上傳輸入框 -->
+  <!-- 檔案上傳輸入框 (隱藏) -->
   <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleFileImport(event)">
 
   <!-- Header -->
@@ -31,17 +31,24 @@
         <div>
           <div class="flex items-center gap-2">
             <h1 class="font-bold text-slate-900 text-lg leading-tight">台灣零件庫存管控系統</h1>
-            <span class="px-2 py-0.5 text-xs font-semibold bg-indigo-50 text-indigo-600 rounded-md border border-indigo-100">PRO v2.7</span>
+            <span class="px-2 py-0.5 text-xs font-semibold bg-indigo-50 text-indigo-600 rounded-md border border-indigo-100">PRO v2.8</span>
           </div>
           <p class="text-xs text-slate-500">Stock Control • Deduplicated Auto Import • Live Sheet Sync</p>
         </div>
       </div>
 
       <div class="flex items-center gap-2.5">
-        <!-- 匯入 Excel (覆蓋不重複) -->
+        <!-- 匯入 Excel -->
         <button onclick="triggerFileInput()" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-semibold transition shadow-sm">
           <i data-lucide="upload" class="w-4 h-4 text-emerald-600"></i>
           <span>匯入 Excel 檔案</span>
+        </button>
+
+        <!-- Google Sheet 同步設定按鈕 -->
+        <button onclick="toggleSyncPanel()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-medium transition">
+          <i data-lucide="cloud" class="w-4 h-4 text-sky-500"></i>
+          <span>Google Sheet 同步</span>
+          <span id="sync-status-dot" class="w-2 h-2 rounded-full bg-slate-300 ml-1"></span>
         </button>
 
         <!-- 匯出 CSV -->
@@ -50,14 +57,31 @@
           <span>匯出 CSV</span>
         </button>
 
-        <!-- 新增記錄 -->
+        <!-- 新增記錄按鈕 -->
         <button onclick="openModal()" class="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg text-xs font-medium shadow-md shadow-indigo-100 transition">
           <i data-lucide="plus-circle" class="w-4 h-4"></i>
-          <span>新增庫存/異動</span>
+          <span>手動新增資料</span>
         </button>
       </div>
     </div>
   </header>
+
+  <!-- Google Sheet API 同步面板 -->
+  <div id="sync-panel" class="hidden bg-slate-900 text-white border-b border-slate-800 p-4 transition-all">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <i data-lucide="key" class="w-5 h-5 text-indigo-400"></i>
+        <div>
+          <p class="text-sm font-semibold">Google Apps Script Web App URL 連結設定</p>
+          <p class="text-xs text-slate-400">貼上部署後取得的 Web App URL，新增資料時會自動同步寫入 Google Sheet</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 w-full md:w-auto">
+        <input type="text" id="gas-url-input" placeholder="https://script.google.com/macros/s/.../exec" class="w-full md:w-96 px-3 py-1.5 rounded-lg text-xs bg-slate-800 border border-slate-700 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono">
+        <button onclick="saveGasUrl()" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-xs font-medium rounded-lg whitespace-nowrap">儲存 URL 設定</button>
+      </div>
+    </div>
+  </div>
 
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
 
@@ -85,7 +109,7 @@
 
       <div class="glass-card p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
         <div>
-          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">在庫總數量 (TOTAL QTY)</p>
+          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">在地總數量 (TOTAL QTY)</p>
           <h3 id="stat-total-qty" class="text-3xl font-extrabold text-emerald-600 mt-1">0</h3>
         </div>
         <div class="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
@@ -141,12 +165,77 @@
 
   </main>
 
+  <!-- 手動新增 / 編輯資料 Modal -->
+  <div id="item-modal" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-lg overflow-hidden transition-all">
+      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+          <i data-lucide="edit-3" class="w-4 h-4 text-indigo-600"></i>
+          <span>新增庫存 / 零件資料</span>
+        </h3>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="item-form" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4">
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">庫位 (LOCATION)</label>
+            <input type="text" id="form-location" value="S6" placeholder="例如: S6" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">機型 (MODEL)</label>
+            <input type="text" id="form-model" placeholder="例如: 88xx/92xx" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">零件名稱 (PARTS NAME)</label>
+          <input type="text" id="form-parts-name" required placeholder="例如: Rotation unit Magnetic seal" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">庫存 (QTY)</label>
+            <input type="number" id="form-qty" value="1" min="0" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center font-bold">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-emerald-600 mb-1">進貨 (+IN)</label>
+            <input type="number" id="form-in" value="0" min="0" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-amber-600 mb-1">出貨 (-OUT)</label>
+            <input type="number" id="form-out" value="0" min="0" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">備註 (REMARK)</label>
+          <input type="text" id="form-remark" placeholder="例如: to UMC 12A" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+
+        <div class="pt-2 flex items-center justify-end gap-3 border-t border-slate-100">
+          <button type="button" onclick="closeModal()" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition">取消</button>
+          <button type="submit" class="px-5 py-2 text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md shadow-indigo-100 transition">新增並同步寫入</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
-    // 全域資料容器
-    let allSheetData = {};
-    let dynamicHeaders = [];
-    let currentSheetName = '';
-    let currentRows = [];
+    // 預設預載資料
+    let allSheetData = {
+      'Stock in TW': [
+        { 'LOCATION': 'S6', 'PARTS NAME': 'Rotation unit Magnetic seal', 'MODEL': '88xx/92xx', 'QTY': 1, 'IN': 0, 'OUT': 0, 'DATE': '2026/04/09', 'REMARK': 'to UMC 12A' },
+        { 'LOCATION': 'S6', 'PARTS NAME': 'SSCNT PCB', 'MODEL': 'CG4100', 'QTY': 1, 'IN': 0, 'OUT': 1, 'DATE': '2026/04/09', 'REMARK': 'to UMC 12A' },
+        { 'LOCATION': 'S1', 'PARTS NAME': 'PE2 gauge cable', 'MODEL': 'All Model', 'QTY': 1, 'IN': 0, 'OUT': 0, 'DATE': '2026/04/01', 'REMARK': 'Engineers repair tools' }
+      ]
+    };
+
+    let dynamicHeaders = ['LOCATION', 'PARTS NAME', 'MODEL', 'QTY', 'IN', 'OUT', 'DATE', 'REMARK'];
+    let currentSheetName = 'Stock in TW';
+    let currentRows = [...allSheetData['Stock in TW']];
 
     const locationBadges = {
       'S1': 'bg-teal-50 text-teal-700 border-teal-200',
@@ -163,7 +252,7 @@
       document.getElementById('excel-file-input').click();
     }
 
-    // 核心匯入函數：強制重置並覆蓋，解決重複計算問題
+    // 匯入 Excel 邏輯 (不重複計算)
     function handleFileImport(e) {
       const file = e.target.files[0];
       if (!file) return;
@@ -173,8 +262,6 @@
         try {
           const data = new Uint8Array(evt.target.result);
           const workbook = XLSX.read(data, { type: 'array' });
-          
-          // ⚠️ 重置資料容器：每次匯入都清空舊資料，避免重複累加
           allSheetData = {};
 
           workbook.SheetNames.forEach(sheetName => {
@@ -182,7 +269,6 @@
             const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
             if (!json || json.length < 2) return;
 
-            // 自動尋找表頭列
             let headerIdx = -1;
             for (let i = 0; i < Math.min(json.length, 15); i++) {
               if (json[i] && json[i].filter(c => c !== undefined && c !== '').length >= 2) {
@@ -193,7 +279,6 @@
 
             if (headerIdx === -1) return;
 
-            // 清理標題列
             const rawHeaders = json[headerIdx]
               .map((h, idx) => h ? String(h).trim() : `COLUMN_${idx + 1}`)
               .filter(h => h !== '');
@@ -229,7 +314,7 @@
           if (sheetKeys.length > 0) {
             renderSheetTabs(sheetKeys);
             switchSheet(sheetKeys[0]);
-            alert(`成功載入！共讀取 ${sheetKeys.length} 個工作表，不重複計算。`);
+            alert(`成功載入！共讀取 ${sheetKeys.length} 個工作表。`);
           } else {
             alert('未能辨識到有效的表格資料！');
           }
@@ -237,14 +322,11 @@
         } catch (err) {
           alert('解析 Excel 檔案失敗：' + err.message);
         }
-        
-        // 清空 input 讓重複選相同檔案也能觸發 onchange
         e.target.value = '';
       };
       reader.readAsArrayBuffer(file);
     }
 
-    // 日期轉換
     function formatExcelDate(val) {
       if (typeof val === 'number' && val > 40000 && val < 60000) {
         const date = new Date((val - 25569) * 86400 * 1000);
@@ -253,7 +335,6 @@
       return String(val);
     }
 
-    // 渲染 Sheet Tabs
     function renderSheetTabs(sheetNames) {
       const container = document.getElementById('sheet-tabs-container');
       container.innerHTML = sheetNames.map(name => `
@@ -264,15 +345,12 @@
       lucide.createIcons();
     }
 
-    // 切換頁籤 Sheet
     function switchSheet(sheetName) {
       currentSheetName = sheetName;
       currentRows = [...(allSheetData[sheetName] || [])];
 
       if (currentRows.length > 0) {
         dynamicHeaders = Object.keys(currentRows[0]);
-      } else {
-        dynamicHeaders = [];
       }
 
       document.querySelectorAll('.sheet-tab-btn').forEach(btn => {
@@ -287,7 +365,6 @@
       handleSearch();
     }
 
-    // 渲染動態表格
     function renderDynamicTable(rowsToRender) {
       const thead = document.getElementById('dynamic-thead');
       const tbody = document.getElementById('dynamic-tbody');
@@ -374,6 +451,74 @@
       renderDynamicTable(filtered);
     }
 
+    // Modal 手動新增開關
+    function openModal() { document.getElementById('item-modal').classList.remove('hidden'); }
+    function closeModal() { document.getElementById('item-modal').classList.add('hidden'); }
+
+    // 手動表單提交送出
+    function handleFormSubmit(e) {
+      e.preventDefault();
+      const newRow = {
+        'LOCATION': document.getElementById('form-location').value,
+        'MODEL': document.getElementById('form-model').value,
+        'PARTS NAME': document.getElementById('form-parts-name').value,
+        'QTY': Number(document.getElementById('form-qty').value) || 0,
+        'IN': Number(document.getElementById('form-in').value) || 0,
+        'OUT': Number(document.getElementById('form-out').value) || 0,
+        'DATE': new Date().toLocaleDateString('zh-TW'),
+        'REMARK': document.getElementById('form-remark').value
+      };
+
+      // 寫入當前表格
+      currentRows.unshift(newRow);
+      if (!allSheetData[currentSheetName]) allSheetData[currentSheetName] = [];
+      allSheetData[currentSheetName].unshift(newRow);
+
+      handleSearch();
+      closeModal();
+
+      // 自動同步到 Google Sheet API
+      syncToGAS(newRow);
+    }
+
+    // Google Sheet API 同步設定
+    function toggleSyncPanel() { document.getElementById('sync-panel').classList.toggle('hidden'); }
+
+    function saveGasUrl() {
+      const url = document.getElementById('gas-url-input').value.trim();
+      localStorage.setItem('GAS_WEB_APP_URL', url);
+      alert('Google Apps Script URL 已成功儲存！');
+      checkSyncStatus();
+    }
+
+    function checkSyncStatus() {
+      const savedUrl = localStorage.getItem('GAS_WEB_APP_URL');
+      const dot = document.getElementById('sync-status-dot');
+      if (savedUrl) {
+        document.getElementById('gas-url-input').value = savedUrl;
+        dot.className = 'w-2 h-2 rounded-full bg-emerald-500 ml-1 animate-pulse';
+      } else {
+        dot.className = 'w-2 h-2 rounded-full bg-slate-300 ml-1';
+      }
+    }
+
+    async function syncToGAS(itemData) {
+      const gasUrl = localStorage.getItem('GAS_WEB_APP_URL');
+      if (!gasUrl) return;
+
+      try {
+        await fetch(gasUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...itemData, targetSheet: currentSheetName })
+        });
+        console.log('Synced to Google Sheet successfully.');
+      } catch (err) {
+        console.error('GAS Sync Error:', err);
+      }
+    }
+
     function exportCSV() {
       if (currentRows.length === 0) { alert('目前無數據可匯出！'); return; }
       let csv = '\uFEFF' + dynamicHeaders.join(',') + '\n';
@@ -394,6 +539,9 @@
 
     window.onload = () => {
       lucide.createIcons();
+      checkSyncStatus();
+      renderSheetTabs(Object.keys(allSheetData));
+      switchSheet('Stock in TW');
     };
   </script>
 </body>
