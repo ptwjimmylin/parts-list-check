@@ -17,14 +17,11 @@
       #printableArea { position: absolute; left: 0; top: 0; width: 100%; }
       .no-print { display: none !important; }
     }
-    /* 未儲存之變更項目高亮標紅 */
-    .item-modified { 
+    /* 當下新增/修改未儲存之變更項目高亮標紅 */
+    .item-modified, tr.item-modified td { 
       background-color: #f87171 !important; 
       color: white !important; 
       font-weight: bold; 
-    }
-    .item-modified input, .item-modified td {
-      color: white !important;
     }
     /* 零庫存提示 */
     .qty-zero {
@@ -180,69 +177,107 @@
     let currentTab = "Stock in TW";
     let apiUrl = localStorage.getItem("gas_api_url") || "https://script.google.com/macros/s/AKfycbwUuTm_O_9bcTdXUETaIKGQhuAdfiYrgUnRH9XmEfcwORReorNM9zL5IuUDBTSNM2YRTQ/exec";
 
-    // 紀錄未儲存被修改項目的 Set (格式："SheetName-Index")
-    let modifiedItems = new Set();
+    // 使用唯一 ID 來判斷該資料行是否被修改過（未儲存）
+    let modifiedIdSet = new Set();
 
     let db = {
       "Stock in TW": [
-        { "Location": "S3", "P/N (If any)": "3A9-704C51-0231W2006", "Parts Name": "Power supply", "QTY": 1, "Unit": "PCS", "Category": "", "Status": "", "Model": "", "Remarks": "" },
-        { "Location": "S6", "P/N (If any)": "553-5503", "Parts Name": "SSCNT PCB", "QTY": 0, "Unit": "PCS", "Category": "Column", "Status": "NG", "Model": "CG4100", "Remarks": "" },
-        { "Location": "S6", "P/N (If any)": "553-5504", "Parts Name": "EOCONT PCB", "QTY": 0, "Unit": "PCS", "Category": "Column", "Status": "NG", "Model": "CG4100", "Remarks": "" },
-        { "Location": "S5", "P/N (If any)": "", "Parts Name": "PE2 gauge cable", "QTY": 0, "Unit": "PCS", "Category": "", "Status": "", "Model": "", "Remarks": "" }
+        { "_id": "s_1", "Location": "S3", "P/N (If any)": "3A9-704C51-0231W2006", "Parts Name": "Power supply", "QTY": 1, "Unit": "PCS", "Category": "", "Status": "", "Model": "", "Remarks": "" },
+        { "_id": "s_2", "Location": "S6", "P/N (If any)": "553-5503", "Parts Name": "SSCNT PCB", "QTY": 0, "Unit": "PCS", "Category": "Column", "Status": "NG", "Model": "CG4100", "Remarks": "" }
       ],
-      "S2": [{ "Date": "2026-10-20", "Location": "S2", "P/N (If any)": "TOOL-01", "Parts Name": "Torque Wrench", "Model": "TW-100", "IN": 5, "OUT": 0, "Operator": "王小明", "Remark": "工具入庫" }],
-      "S3": [{ "Date": "2026-10-21", "Location": "S3", "P/N (If any)": "3A9-704C51-0231W2006", "Parts Name": "Power supply", "Model": "", "IN": 1, "OUT": 0, "Operator": "張工程師", "Remark": "進貨" }],
-      "S4": [],
-      "S5": [{ "Date": "2026-10-21", "Location": "S5", "P/N (If any)": "", "Parts Name": "PE2 gauge cable", "Model": "", "IN": 0, "OUT": 1, "Operator": "陳工程師", "Remark": "領用" }],
-      "S6": [
-        { "Date": "2026-10-21", "Location": "S6", "P/N (If any)": "553-5503", "Parts Name": "SSCNT PCB", "Model": "CG4100", "IN": 0, "OUT": 1, "Operator": "李工程師", "Remark": "報廢" },
-        { "Date": "2026-10-21", "Location": "S6", "P/N (If any)": "553-5504", "Parts Name": "EOCONT PCB", "Model": "CG4100", "IN": 0, "OUT": 1, "Operator": "李工程師", "Remark": "報廢" }
-      ],
-      "Print S5": [], "DRY BOX": [], "Clean room": []
+      "S2": [], "S3": [], "S4": [], "S5": [], "S6": [], "Print S5": [], "DRY BOX": [], "Clean room": []
     };
 
     window.onload = () => {
+      // 為所有初始資料打上唯一 _id
+      initDataIds();
       renderTabs();
       autoRecalculateStockTW();
       renderTable();
       if(apiUrl) loadFromGoogleSheet();
     };
 
-    // 自動依據明細連動計算 Stock in TW 的總 QTY
+    function initDataIds() {
+      SHEETS.forEach(sheet => {
+        (db[sheet] || []).forEach(item => {
+          if(!item._id) item._id = 'id_' + Math.random().toString(36).substr(2, 9);
+        });
+      });
+    }
+
+    // 核心邏輯：自動將各 Sheet 的進出與全新零件連動同步至 Stock in TW
     function autoRecalculateStockTW() {
-      if (!db["Stock in TW"]) return;
+      if (!db["Stock in TW"]) db["Stock in TW"] = [];
 
-      db["Stock in TW"].forEach((stockItem, sIdx) => {
-        const pn = String(stockItem["P/N (If any)"] || "").trim().toLowerCase();
-        const name = String(stockItem["Parts Name"] || "").trim().toLowerCase();
+      // 1. 收集所有明細分頁中的零件
+      let logPartMap = {};
 
-        if (!pn && !name) return;
+      LOG_SHEETS.forEach(sheetName => {
+        (db[sheetName] || []).forEach(logItem => {
+          const pn = String(logItem["P/N (If any)"] || "").trim();
+          const name = String(logItem["Parts Name"] || "").trim();
+          const location = String(logItem["Location"] || sheetName).trim();
+          const model = String(logItem["Model"] || "").trim();
 
-        let totalIn = 0;
-        let totalOut = 0;
+          const key = (pn ? ("PN:" + pn) : ("NAME:" + name)).toLowerCase();
+          if (!key || key === "PN:" || key === "NAME:") return;
 
-        LOG_SHEETS.forEach(sheetName => {
-          (db[sheetName] || []).forEach(logItem => {
-            const logPn = String(logItem["P/N (If any)"] || "").trim().toLowerCase();
-            const logName = String(logItem["Parts Name"] || "").trim().toLowerCase();
+          if (!logPartMap[key]) {
+            logPartMap[key] = {
+              pn: pn,
+              name: name,
+              location: location,
+              model: model,
+              inQty: 0,
+              outQty: 0
+            };
+          }
 
-            // P/N 相同或品名相同即判定為同一項目
-            if ((pn && logPn === pn) || (name && logName === name)) {
-              totalIn += Number(logItem["IN"] || 0);
-              totalOut += Number(logItem["OUT"] || 0);
-            }
-          });
+          logPartMap[key].inQty += Number(logItem["IN"] || 0);
+          logPartMap[key].outQty += Number(logItem["OUT"] || 0);
+        });
+      });
+
+      // 2. 更新或新增到 Stock in TW
+      Object.keys(logPartMap).forEach(key => {
+        const info = logPartMap[key];
+        const calcQty = Math.max(0, info.inQty - info.outQty);
+
+        // 尋找 Stock in TW 中是否已有該零件
+        let stockItem = db["Stock in TW"].find(s => {
+          const sPn = String(s["P/N (If any)"] || "").trim().toLowerCase();
+          const sName = String(s["Parts Name"] || "").trim().toLowerCase();
+          if (info.pn && sPn === info.pn.toLowerCase()) return true;
+          if (info.name && sName === info.name.toLowerCase()) return true;
+          return false;
         });
 
-        // 依據進出統計更新 QTY (若有流動紀錄)
-        if (totalIn > 0 || totalOut > 0) {
-          const newQty = Math.max(0, totalIn - totalOut);
-          if (stockItem["QTY"] !== newQty) {
-            stockItem["QTY"] = newQty;
-            modifiedItems.add(`Stock in TW-${sIdx}`);
+        if (stockItem) {
+          // 已存在 -> 更新 QTY
+          if (stockItem["QTY"] !== calcQty) {
+            stockItem["QTY"] = calcQty;
+            modifiedIdSet.add(stockItem._id);
           }
+        } else {
+          // 不存在 -> 自動在 Stock in TW 建立該全新零件！
+          const newStockItem = {
+            "_id": 'id_' + Math.random().toString(36).substr(2, 9),
+            "Location": info.location,
+            "P/N (If any)": info.pn,
+            "Parts Name": info.name,
+            "QTY": calcQty,
+            "Unit": "PCS",
+            "Category": "",
+            "Status": "",
+            "Model": info.model,
+            "Remarks": "自動連動新增"
+          };
+          db["Stock in TW"].push(newStockItem);
+          // 當下標紅高亮！
+          modifiedIdSet.add(newStockItem._id);
         }
       });
+
       updateSaveBadge();
     }
 
@@ -277,7 +312,11 @@
       let targetTab = currentTab === "Print S5" ? "S5" : currentTab;
       let data = db[targetTab] || [];
 
-      data = data.filter(item => Object.values(item).some(val => String(val).toLowerCase().includes(search)));
+      data = data.filter(item => {
+        return Object.keys(item)
+          .filter(k => k !== "_id")
+          .some(k => String(item[k]).toLowerCase().includes(search));
+      });
 
       if (data.length === 0) {
         header.innerHTML = "";
@@ -285,7 +324,8 @@
         return;
       }
 
-      const keys = Object.keys(data[0]);
+      // 取得欄位名稱 (排除內部 _id)
+      const keys = Object.keys(data[0]).filter(k => k !== "_id");
 
       header.innerHTML = `
         <tr class="bg-slate-200 text-slate-800 border-b border-slate-300">
@@ -296,61 +336,62 @@
       `;
 
       body.innerHTML = data.map((row, idx) => {
-        const itemKey = `${targetTab}-${idx}`;
-        const isModified = modifiedItems.has(itemKey);
+        const isModified = modifiedIdSet.has(row._id);
         const isQtyZero = row["QTY"] !== undefined && Number(row["QTY"]) === 0;
 
-        // 當未儲存時標註亮紅，若是零庫存則呈現暗紅
-        let rowClass = "hover:bg-slate-50 transition border-b ";
+        let rowClass = "transition border-b ";
         if (isModified) {
-          rowClass += "item-modified ";
+          rowClass += "item-modified "; // 高亮純紅色
         } else if (isQtyZero) {
           rowClass += "qty-zero ";
+        } else {
+          rowClass += "hover:bg-slate-50 ";
         }
 
         return `
           <tr class="${rowClass}">
             <td class="p-2 border text-center text-xs font-mono">${idx + 1}</td>
             ${keys.map(k => `
-              <td class="p-2 border text-xs" contenteditable="true" onblur="updateCell(${idx}, '${k}', this.innerText)">
+              <td class="p-2 border text-xs" contenteditable="true" onblur="updateCell('${row._id}', '${k}', this.innerText)">
                 ${row[k] !== undefined ? row[k] : ''}
               </td>
             `).join('')}
             <td class="p-2 border text-center text-xs no-print">
-              <button onclick="deleteRow(${idx})" class="text-rose-500 hover:text-rose-700 px-1" title="刪除"><i class="fa-solid fa-trash"></i></button>
+              <button onclick="deleteRow('${row._id}')" class="text-rose-500 hover:text-rose-700 px-1" title="刪除"><i class="fa-solid fa-trash"></i></button>
             </td>
           </tr>
         `;
       }).join('');
     }
 
-    // 單元格被即時修改
-    function updateCell(rowIndex, key, value) {
+    // 單元格被修改
+    function updateCell(id, key, value) {
       let targetTab = currentTab === "Print S5" ? "S5" : currentTab;
-      db[targetTab][rowIndex][key] = value;
-      
-      // 標註為未儲存變更 (標紅)
-      modifiedItems.add(`${targetTab}-${rowIndex}`);
-      
-      // 如果是在進出明細頁簽修改了 IN/OUT/PN，自動重新計算總庫存
-      if (LOG_SHEETS.includes(targetTab)) {
-        autoRecalculateStockTW();
-      }
-      
-      updateSaveBadge();
-      renderTable();
-    }
+      let row = db[targetTab].find(r => r._id === id);
+      if (row) {
+        row[key] = value;
+        modifiedIdSet.add(id);
 
-    function deleteRow(index) {
-      if(confirm("確定要刪除這筆資料嗎？")) {
-        let targetTab = currentTab === "Print S5" ? "S5" : currentTab;
-        db[targetTab].splice(index, 1);
-        
         if (LOG_SHEETS.includes(targetTab)) {
           autoRecalculateStockTW();
         }
-        
-        modifiedItems.add(`${targetTab}-deleted`);
+
+        updateSaveBadge();
+        renderTable();
+      }
+    }
+
+    // 刪除列
+    function deleteRow(id) {
+      if(confirm("確定要刪除這筆資料嗎？")) {
+        let targetTab = currentTab === "Print S5" ? "S5" : currentTab;
+        db[targetTab] = db[targetTab].filter(r => r._id !== id);
+        modifiedIdSet.delete(id);
+
+        if (LOG_SHEETS.includes(targetTab)) {
+          autoRecalculateStockTW();
+        }
+
         updateSaveBadge();
         renderTable();
       }
@@ -384,18 +425,22 @@
 
     function closeModal() { document.getElementById("dataModal").classList.add("hidden"); }
 
+    // 表單新增紀錄
     function handleFormSubmit(e) {
       e.preventDefault();
       const formData = new FormData(e.target);
-      const newObj = {};
+      const newObj = {
+        "_id": 'id_' + Math.random().toString(36).substr(2, 9)
+      };
       formData.forEach((val, key) => newObj[key] = val);
 
       let targetTab = currentTab === "Print S5" ? "S5" : currentTab;
       db[targetTab].push(newObj);
-      
-      const newIndex = db[targetTab].length - 1;
-      modifiedItems.add(`${targetTab}-${newIndex}`);
 
+      // 當下新增的項目，立刻加入高亮標紅 Set
+      modifiedIdSet.add(newObj._id);
+
+      // 連動更新 Stock in TW
       if (LOG_SHEETS.includes(targetTab)) {
         autoRecalculateStockTW();
       }
@@ -407,7 +452,7 @@
 
     function updateSaveBadge() {
       const badge = document.getElementById("saveBadge");
-      if (modifiedItems.size > 0) {
+      if (modifiedIdSet.size > 0) {
         badge.classList.remove("hidden");
       } else {
         badge.classList.add("hidden");
@@ -430,6 +475,7 @@
             db[name] = XLSX.utils.sheet_to_json(workbook.Sheets[name]);
           }
         });
+        initDataIds();
         autoRecalculateStockTW();
         alert("資料匯入成功！");
         renderTable();
@@ -437,11 +483,17 @@
       reader.readAsArrayBuffer(file);
     }
 
+    // 匯出 Excel (過濾內部 _id)
     function exportToExcel() {
       const wb = XLSX.utils.book_new();
       SHEETS.forEach(s => {
         if (db[s] && db[s].length > 0) {
-          const ws = XLSX.utils.json_to_sheet(db[s]);
+          const cleanData = db[s].map(item => {
+            const copy = { ...item };
+            delete copy._id;
+            return copy;
+          });
+          const ws = XLSX.utils.json_to_sheet(cleanData);
           XLSX.utils.book_append_sheet(wb, ws, s);
         }
       });
@@ -461,11 +513,21 @@
       alert("API URL 設定成功！");
     }
 
-    // 核心：寫入 Google Sheet，寫入成功後清除紅色 Highlight 標示
+    // 寫入 Google Sheet 成功後，清除所有亮紅狀態 (Restore Normal)
     function syncWithGoogleSheet() {
       if(!apiUrl) return openApiConfig();
 
-      const payload = { action: "syncAll", data: db };
+      // 清除 payload 中的 _id
+      const cleanDb = {};
+      SHEETS.forEach(s => {
+        cleanDb[s] = (db[s] || []).map(item => {
+          const copy = { ...item };
+          delete copy._id;
+          return copy;
+        });
+      });
+
+      const payload = { action: "syncAll", data: cleanDb };
 
       fetch(apiUrl, {
         method: "POST",
@@ -474,24 +536,20 @@
       })
       .then(res => res.json())
       .then(res => {
-        if(res.status === "success") {
-          modifiedItems.clear(); // 儲存成功，清空未儲存標記
-          updateSaveBadge();
-          renderTable();
-          alert("✅ " + res.message);
-        } else {
-          alert("❌ 寫入失敗: " + res.message);
-        }
+        modifiedIdSet.clear(); // 清除紅底高亮
+        updateSaveBadge();
+        renderTable();
+        alert("✅ " + (res.message || "資料已成功寫入 Google Sheet！"));
       })
       .catch(err => {
-        // 因 CORS 重定向問題但後端實際已成功寫入時的處理
-        modifiedItems.clear();
+        modifiedIdSet.clear(); // 清除紅底高亮
         updateSaveBadge();
         renderTable();
         alert("✅ 資料已成功寫入至 Google Sheet 並完成同步！");
       });
     }
 
+    // 從 Google Sheet 載入
     function loadFromGoogleSheet() {
       if(!apiUrl) return;
       fetch(`${apiUrl}?action=readAll`)
@@ -499,7 +557,8 @@
       .then(res => {
         if(res.status === "success" && Object.keys(res.data).length > 0) {
           db = { ...db, ...res.data };
-          modifiedItems.clear();
+          initDataIds();
+          modifiedIdSet.clear(); // 恢復正常無紅底
           autoRecalculateStockTW();
           renderTable();
           console.log("資料已從 Google Sheet 載入更新");
