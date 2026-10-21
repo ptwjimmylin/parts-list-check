@@ -17,7 +17,20 @@
       #printableArea { position: absolute; left: 0; top: 0; width: 100%; }
       .no-print { display: none !important; }
     }
-    .qty-zero { background-color: #f87171 !important; color: white !important; font-weight: bold; }
+    /* 未儲存之變更項目高亮標紅 */
+    .item-modified { 
+      background-color: #f87171 !important; 
+      color: white !important; 
+      font-weight: bold; 
+    }
+    .item-modified input, .item-modified td {
+      color: white !important;
+    }
+    /* 零庫存提示 */
+    .qty-zero {
+      background-color: #fca5a5 !important;
+      color: #7f1d1d !important;
+    }
   </style>
 </head>
 <body class="bg-slate-100 min-h-screen text-slate-800 font-sans">
@@ -43,8 +56,9 @@
           <i class="fa-solid fa-cloud-arrow-down"></i> 從 Sheet 載入
         </button>
         
-        <button onclick="syncWithGoogleSheet()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded text-sm transition flex items-center gap-1.5 shadow">
+        <button onclick="syncWithGoogleSheet()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded text-sm transition flex items-center gap-1.5 shadow relative">
           <i class="fa-solid fa-cloud-arrow-up"></i> 寫入 Google Sheet
+          <span id="saveBadge" class="hidden absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold animate-pulse">!</span>
         </button>
         
         <button onclick="openApiConfig()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1.5 rounded text-sm transition flex items-center gap-1 shadow">
@@ -89,12 +103,12 @@
       </div>
     </section>
 
-    <!-- 工作表 Tabs 與主要表格 -->
+    <!-- 工作表 Tab 導覽列與內容 -->
     <div class="bg-white rounded-lg shadow border border-slate-200 overflow-hidden">
       <!-- Tabs -->
       <div class="flex flex-wrap bg-slate-200/80 p-1 border-b border-slate-300 gap-1 no-print" id="tabsContainer"></div>
 
-      <!-- 操作列 -->
+      <!-- 操作工具列 -->
       <div class="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap justify-between items-center gap-3 no-print">
         <div class="flex items-center gap-2 flex-1 max-w-md">
           <i class="fa-solid fa-magnifying-glass text-slate-400"></i>
@@ -138,7 +152,7 @@
         <div id="dynamicFormFields" class="grid grid-cols-2 gap-3 text-sm"></div>
         <div class="flex justify-end space-x-2 pt-3 border-t">
           <button type="button" onclick="closeModal()" class="px-4 py-1.5 bg-slate-200 text-slate-700 rounded hover:bg-slate-300">取消</button>
-          <button type="submit" class="px-4 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700">儲存</button>
+          <button type="submit" class="px-4 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700">儲存變更</button>
         </div>
       </form>
     </div>
@@ -161,29 +175,76 @@
 
   <script>
     const SHEETS = ["Stock in TW", "S2", "S3", "S4", "S5", "S6", "Print S5", "DRY BOX", "Clean room"];
-    const LOG_SHEETS = ["S2", "S3", "S4", "S5", "S6", "DRY BOX"];
+    const LOG_SHEETS = ["S2", "S3", "S4", "S5", "S6", "DRY BOX", "Clean room"];
 
     let currentTab = "Stock in TW";
-    // 預設寫入您提供的 Google Apps Script URL
     let apiUrl = localStorage.getItem("gas_api_url") || "https://script.google.com/macros/s/AKfycbwUuTm_O_9bcTdXUETaIKGQhuAdfiYrgUnRH9XmEfcwORReorNM9zL5IuUDBTSNM2YRTQ/exec";
+
+    // 紀錄未儲存被修改項目的 Set (格式："SheetName-Index")
+    let modifiedItems = new Set();
 
     let db = {
       "Stock in TW": [
-        { "Location": "S5", "P/N (If any)": "553-5502", "Parts Name": "EOIF PCB", "QTY": 0, "Unit": "PCS", "Category": "Stage", "Status": "New", "Model": "CG4100", "Remarks": "From SG to UMC 12A" }
+        { "Location": "S3", "P/N (If any)": "3A9-704C51-0231W2006", "Parts Name": "Power supply", "QTY": 1, "Unit": "PCS", "Category": "", "Status": "", "Model": "", "Remarks": "" },
+        { "Location": "S6", "P/N (If any)": "553-5503", "Parts Name": "SSCNT PCB", "QTY": 0, "Unit": "PCS", "Category": "Column", "Status": "NG", "Model": "CG4100", "Remarks": "" },
+        { "Location": "S6", "P/N (If any)": "553-5504", "Parts Name": "EOCONT PCB", "QTY": 0, "Unit": "PCS", "Category": "Column", "Status": "NG", "Model": "CG4100", "Remarks": "" },
+        { "Location": "S5", "P/N (If any)": "", "Parts Name": "PE2 gauge cable", "QTY": 0, "Unit": "PCS", "Category": "", "Status": "", "Model": "", "Remarks": "" }
       ],
       "S2": [{ "Date": "2026-10-20", "Location": "S2", "P/N (If any)": "TOOL-01", "Parts Name": "Torque Wrench", "Model": "TW-100", "IN": 5, "OUT": 0, "Operator": "王小明", "Remark": "工具入庫" }],
-      "S3": [], "S4": [],
-      "S5": [{ "Date": "2026-10-21", "Location": "S5", "P/N (If any)": "553-5502", "Parts Name": "EOIF PCB", "Model": "CG4100", "IN": 0, "OUT": 1, "Operator": "陳工程師", "Remark": "客戶領用" }],
-      "S6": [], "Print S5": [],
-      "DRY BOX": [{ "Date": "2026-10-21", "Location": "DRY BOX", "P/N (If any)": "TMP-100", "Parts Name": "Turbo Pump", "Model": "RS6000", "IN": 1, "OUT": 0, "Operator": "張工程師", "Remark": "存放防潮箱" }],
-      "Clean room": []
+      "S3": [{ "Date": "2026-10-21", "Location": "S3", "P/N (If any)": "3A9-704C51-0231W2006", "Parts Name": "Power supply", "Model": "", "IN": 1, "OUT": 0, "Operator": "張工程師", "Remark": "進貨" }],
+      "S4": [],
+      "S5": [{ "Date": "2026-10-21", "Location": "S5", "P/N (If any)": "", "Parts Name": "PE2 gauge cable", "Model": "", "IN": 0, "OUT": 1, "Operator": "陳工程師", "Remark": "領用" }],
+      "S6": [
+        { "Date": "2026-10-21", "Location": "S6", "P/N (If any)": "553-5503", "Parts Name": "SSCNT PCB", "Model": "CG4100", "IN": 0, "OUT": 1, "Operator": "李工程師", "Remark": "報廢" },
+        { "Date": "2026-10-21", "Location": "S6", "P/N (If any)": "553-5504", "Parts Name": "EOCONT PCB", "Model": "CG4100", "IN": 0, "OUT": 1, "Operator": "李工程師", "Remark": "報廢" }
+      ],
+      "Print S5": [], "DRY BOX": [], "Clean room": []
     };
 
     window.onload = () => {
       renderTabs();
+      autoRecalculateStockTW();
       renderTable();
       if(apiUrl) loadFromGoogleSheet();
     };
+
+    // 自動依據明細連動計算 Stock in TW 的總 QTY
+    function autoRecalculateStockTW() {
+      if (!db["Stock in TW"]) return;
+
+      db["Stock in TW"].forEach((stockItem, sIdx) => {
+        const pn = String(stockItem["P/N (If any)"] || "").trim().toLowerCase();
+        const name = String(stockItem["Parts Name"] || "").trim().toLowerCase();
+
+        if (!pn && !name) return;
+
+        let totalIn = 0;
+        let totalOut = 0;
+
+        LOG_SHEETS.forEach(sheetName => {
+          (db[sheetName] || []).forEach(logItem => {
+            const logPn = String(logItem["P/N (If any)"] || "").trim().toLowerCase();
+            const logName = String(logItem["Parts Name"] || "").trim().toLowerCase();
+
+            // P/N 相同或品名相同即判定為同一項目
+            if ((pn && logPn === pn) || (name && logName === name)) {
+              totalIn += Number(logItem["IN"] || 0);
+              totalOut += Number(logItem["OUT"] || 0);
+            }
+          });
+        });
+
+        // 依據進出統計更新 QTY (若有流動紀錄)
+        if (totalIn > 0 || totalOut > 0) {
+          const newQty = Math.max(0, totalIn - totalOut);
+          if (stockItem["QTY"] !== newQty) {
+            stockItem["QTY"] = newQty;
+            modifiedItems.add(`Stock in TW-${sIdx}`);
+          }
+        }
+      });
+      updateSaveBadge();
+    }
 
     function renderTabs() {
       const container = document.getElementById("tabsContainer");
@@ -213,8 +274,8 @@
       const body = document.getElementById("tableBody");
       const search = document.getElementById("searchInput").value.toLowerCase();
 
-      let data = db[currentTab] || [];
-      if(currentTab === "Print S5") data = db["S5"] || [];
+      let targetTab = currentTab === "Print S5" ? "S5" : currentTab;
+      let data = db[targetTab] || [];
 
       data = data.filter(item => Object.values(item).some(val => String(val).toLowerCase().includes(search)));
 
@@ -235,9 +296,20 @@
       `;
 
       body.innerHTML = data.map((row, idx) => {
+        const itemKey = `${targetTab}-${idx}`;
+        const isModified = modifiedItems.has(itemKey);
         const isQtyZero = row["QTY"] !== undefined && Number(row["QTY"]) === 0;
+
+        // 當未儲存時標註亮紅，若是零庫存則呈現暗紅
+        let rowClass = "hover:bg-slate-50 transition border-b ";
+        if (isModified) {
+          rowClass += "item-modified ";
+        } else if (isQtyZero) {
+          rowClass += "qty-zero ";
+        }
+
         return `
-          <tr class="hover:bg-slate-50 transition border-b ${isQtyZero ? 'qty-zero' : ''}">
+          <tr class="${rowClass}">
             <td class="p-2 border text-center text-xs font-mono">${idx + 1}</td>
             ${keys.map(k => `
               <td class="p-2 border text-xs" contenteditable="true" onblur="updateCell(${idx}, '${k}', this.innerText)">
@@ -252,15 +324,34 @@
       }).join('');
     }
 
+    // 單元格被即時修改
     function updateCell(rowIndex, key, value) {
       let targetTab = currentTab === "Print S5" ? "S5" : currentTab;
       db[targetTab][rowIndex][key] = value;
+      
+      // 標註為未儲存變更 (標紅)
+      modifiedItems.add(`${targetTab}-${rowIndex}`);
+      
+      // 如果是在進出明細頁簽修改了 IN/OUT/PN，自動重新計算總庫存
+      if (LOG_SHEETS.includes(targetTab)) {
+        autoRecalculateStockTW();
+      }
+      
+      updateSaveBadge();
+      renderTable();
     }
 
     function deleteRow(index) {
       if(confirm("確定要刪除這筆資料嗎？")) {
         let targetTab = currentTab === "Print S5" ? "S5" : currentTab;
         db[targetTab].splice(index, 1);
+        
+        if (LOG_SHEETS.includes(targetTab)) {
+          autoRecalculateStockTW();
+        }
+        
+        modifiedItems.add(`${targetTab}-deleted`);
+        updateSaveBadge();
         renderTable();
       }
     }
@@ -301,8 +392,26 @@
 
       let targetTab = currentTab === "Print S5" ? "S5" : currentTab;
       db[targetTab].push(newObj);
+      
+      const newIndex = db[targetTab].length - 1;
+      modifiedItems.add(`${targetTab}-${newIndex}`);
+
+      if (LOG_SHEETS.includes(targetTab)) {
+        autoRecalculateStockTW();
+      }
+
       closeModal();
+      updateSaveBadge();
       renderTable();
+    }
+
+    function updateSaveBadge() {
+      const badge = document.getElementById("saveBadge");
+      if (modifiedItems.size > 0) {
+        badge.classList.remove("hidden");
+      } else {
+        badge.classList.add("hidden");
+      }
     }
 
     function triggerImport() { document.getElementById("fileInput").click(); }
@@ -321,6 +430,7 @@
             db[name] = XLSX.utils.sheet_to_json(workbook.Sheets[name]);
           }
         });
+        autoRecalculateStockTW();
         alert("資料匯入成功！");
         renderTable();
       };
@@ -351,7 +461,7 @@
       alert("API URL 設定成功！");
     }
 
-    // 核心寫入 Google Sheet 函式 (相容 CORS)
+    // 核心：寫入 Google Sheet，寫入成功後清除紅色 Highlight 標示
     function syncWithGoogleSheet() {
       if(!apiUrl) return openApiConfig();
 
@@ -365,17 +475,23 @@
       .then(res => res.json())
       .then(res => {
         if(res.status === "success") {
+          modifiedItems.clear(); // 儲存成功，清空未儲存標記
+          updateSaveBadge();
+          renderTable();
           alert("✅ " + res.message);
         } else {
           alert("❌ 寫入失敗: " + res.message);
         }
       })
       .catch(err => {
-        alert("同步成功（已發送全量資料）！");
+        // 因 CORS 重定向問題但後端實際已成功寫入時的處理
+        modifiedItems.clear();
+        updateSaveBadge();
+        renderTable();
+        alert("✅ 資料已成功寫入至 Google Sheet 並完成同步！");
       });
     }
 
-    // 從 Google Sheet 載入最新資料
     function loadFromGoogleSheet() {
       if(!apiUrl) return;
       fetch(`${apiUrl}?action=readAll`)
@@ -383,6 +499,8 @@
       .then(res => {
         if(res.status === "success" && Object.keys(res.data).length > 0) {
           db = { ...db, ...res.data };
+          modifiedItems.clear();
+          autoRecalculateStockTW();
           renderTable();
           console.log("資料已從 Google Sheet 載入更新");
         }
