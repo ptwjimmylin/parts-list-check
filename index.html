@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>台灣零件庫存多貨架管控系統 PRO v3.2</title>
+  <title>台灣零件庫存多貨架管控系統 PRO v3.3 (Direct Sheet Write)</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lucide Icons -->
@@ -30,23 +30,23 @@
         <div>
           <div class="flex items-center gap-2">
             <h1 class="font-bold text-slate-900 text-lg leading-tight">台灣零件庫存管控系統</h1>
-            <span class="px-2 py-0.5 text-xs font-semibold bg-indigo-50 text-indigo-600 rounded-md border border-indigo-100">PRO v3.2 Live</span>
+            <span class="px-2 py-0.5 text-xs font-semibold bg-indigo-50 text-indigo-600 rounded-md border border-indigo-100">PRO v3.3 Live Sheet</span>
           </div>
-          <p class="text-xs text-slate-500">Auto Fetch from Google Sheet API • Public Shared Sync</p>
+          <p class="text-xs text-slate-500">Direct Write to Google Sheet • Global Sync on Reload</p>
         </div>
       </div>
 
       <div class="flex items-center gap-2.5">
-        <!-- 手動刷舊 Google Sheet 資料 -->
+        <!-- 重新從 Google Sheet 抓取 -->
         <button onclick="fetchDataFromGAS()" title="從 Google Sheet 重新整理數據" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-medium transition">
           <i data-lucide="refresh-cw" class="w-4 h-4 text-indigo-600"></i>
-          <span>從 Sheet 同步</span>
+          <span>從 Sheet 刷新</span>
         </button>
 
-        <!-- 匯入 Excel -->
+        <!-- 匯入 Excel 並直接寫入 Google Sheet -->
         <button onclick="triggerFileInput()" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-semibold transition shadow-sm">
           <i data-lucide="upload" class="w-4 h-4 text-emerald-600"></i>
-          <span>匯入 Excel 檔案</span>
+          <span>匯入 Excel 寫入 Sheet</span>
         </button>
 
         <!-- Google Sheet API 設定 -->
@@ -78,26 +78,26 @@
         <i data-lucide="key" class="w-5 h-5 text-indigo-400"></i>
         <div>
           <p class="text-sm font-semibold">Google Apps Script Web App URL 連結設定</p>
-          <p class="text-xs text-slate-400">貼上部署後取得的 Web App URL，網頁開啟時會自動讀取 Google Sheet 裡的所有庫存數據</p>
+          <p class="text-xs text-slate-400">貼上部署後取得的 Web App URL，匯入的 Excel 資料將直接寫入至這張 Google Sheet</p>
         </div>
       </div>
       <div class="flex items-center gap-2 w-full md:w-auto">
         <input type="text" id="gas-url-input" placeholder="https://script.google.com/macros/s/.../exec" class="w-full md:w-96 px-3 py-1.5 rounded-lg text-xs bg-slate-800 border border-slate-700 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono">
-        <button onclick="saveGasUrl()" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-xs font-medium rounded-lg whitespace-nowrap">儲存並立即連線</button>
+        <button onclick="saveGasUrl()" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-xs font-medium rounded-lg whitespace-nowrap">儲存並即時連線</button>
       </div>
     </div>
   </div>
 
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
 
-    <!-- 載入中狀態提示 Bar -->
+    <!-- 狀態通知 Bar -->
     <div id="loading-bar" class="hidden bg-indigo-50 border border-indigo-200 rounded-xl p-3 flex items-center justify-between text-indigo-700 text-xs font-semibold">
-      <span class="flex items-center gap-2">
-        <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> 正在從 Google Sheet 自動載入最新庫存數據...
+      <span class="flex items-center gap-2" id="loading-text">
+        <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> 正在處理中...
       </span>
     </div>
 
-    <!-- 統計數據 -->
+    <!-- 統計卡片 -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <div class="glass-card p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
         <div>
@@ -140,7 +140,7 @@
       </div>
     </div>
 
-    <!-- Tabs 切換區 -->
+    <!-- Sheet Tabs -->
     <div class="space-y-4 pt-2">
       <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
         <div class="flex flex-wrap items-center gap-1.5" id="sheet-tabs-container">
@@ -160,7 +160,7 @@
       </div>
     </div>
 
-    <!-- 數據表格 -->
+    <!-- 表格區 -->
     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse">
@@ -176,7 +176,7 @@
 
   </main>
 
-  <!-- 新增/編輯 Modal -->
+  <!-- Modal -->
   <div id="item-modal" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-lg overflow-hidden transition-all">
       <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
@@ -254,7 +254,7 @@
 
         <div class="pt-2 flex items-center justify-end gap-3 border-t border-slate-100">
           <button type="button" onclick="closeModal()" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition">取消</button>
-          <button type="submit" class="px-5 py-2 text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md shadow-indigo-100 transition">儲存並寫入 API</button>
+          <button type="submit" class="px-5 py-2 text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md shadow-indigo-100 transition">儲存並同步至 Google Sheet</button>
         </div>
       </form>
     </div>
@@ -284,12 +284,16 @@
       return false;
     }
 
-    // 自動向 Google Apps Script 抓取資料
+    // 從 Google Apps Script 讀取全套試算表
     async function fetchDataFromGAS() {
       const gasUrl = localStorage.getItem('GAS_WEB_APP_URL');
       if (!gasUrl) return;
 
-      document.getElementById('loading-bar').classList.remove('hidden');
+      const loadingBar = document.getElementById('loading-bar');
+      const loadingText = document.getElementById('loading-text');
+      loadingText.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> 正在從 Google Sheet 自動載入數據...`;
+      loadingBar.classList.remove('hidden');
+      lucide.createIcons();
 
       try {
         const res = await fetch(gasUrl);
@@ -306,34 +310,28 @@
       } catch (err) {
         console.error('Fetch Google Sheet Error:', err);
       } finally {
-        document.getElementById('loading-bar').classList.add('hidden');
+        loadingBar.classList.add('hidden');
       }
     }
 
-    function reaggregateMasterSheet() {
-      let aggregated = [];
-      Object.keys(allSheetData).forEach(sheetName => {
-        if (sheetName === 'Stock in TW' || sheetName.toLowerCase().startsWith('print')) return;
-        const rows = allSheetData[sheetName] || [];
-        rows.forEach(r => {
-          aggregated.push({ ...r, 'LOCATION': r['LOCATION'] || r['貨架'] || sheetName });
-        });
-      });
-      allSheetData['Stock in TW'] = aggregated;
-    }
-
-    function triggerFileInput() { document.getElementById('excel-file-input').click(); }
-
-    function handleFileImport(e) {
+    // 匯入 Excel 後直接【批次上傳 (Bulk Import)】寫入 Google Sheet
+    async function handleFileImport(e) {
       const file = e.target.files[0];
       if (!file) return;
 
+      const gasUrl = localStorage.getItem('GAS_WEB_APP_URL');
+      if (!gasUrl) {
+        alert('請先在右上角「API 網址設定」貼上您的 Google Apps Script URL！');
+        toggleSyncPanel();
+        return;
+      }
+
       const reader = new FileReader();
-      reader.onload = function(evt) {
+      reader.onload = async function(evt) {
         try {
           const data = new Uint8Array(evt.target.result);
           const workbook = XLSX.read(data, { type: 'array' });
-          allSheetData = {};
+          let importedData = {};
 
           workbook.SheetNames.forEach(sheetName => {
             if (sheetName.toLowerCase().startsWith('print')) return;
@@ -376,24 +374,57 @@
             });
 
             if (sheetRows.length > 0) {
-              allSheetData[sheetName] = sheetRows;
+              importedData[sheetName] = sheetRows;
             }
           });
 
+          // 提示開始寫入 Google Sheet
+          const loadingBar = document.getElementById('loading-bar');
+          const loadingText = document.getElementById('loading-text');
+          loadingText.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> 正在將整本 Excel 資料同步寫入至 Google Sheet，請稍候...`;
+          loadingBar.classList.remove('hidden');
+          lucide.createIcons();
+
+          // 發送 POST 請求批次寫入 Google Sheet
+          await fetch(gasUrl, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'BULK_IMPORT', allData: importedData })
+          });
+
+          allSheetData = importedData;
           reaggregateMasterSheet();
           saveToStorage();
 
           renderSheetTabs(getValidSheetKeys());
           switchSheet('Stock in TW');
-          alert(`匯入成功！資料已本地保存。請點擊「API 網址設定」連接 Google Sheet。`);
+
+          loadingBar.classList.add('hidden');
+          alert('🎉 匯入成功！全套資料已成功寫入 Google Sheet，按 F5 重新整理或其他人開啟網址都能看到最新資料！');
 
         } catch (err) {
-          alert('解析 Excel 檔案失敗：' + err.message);
+          alert('解析/寫入 Excel 失敗：' + err.message);
+          document.getElementById('loading-bar').classList.add('hidden');
         }
         e.target.value = '';
       };
       reader.readAsArrayBuffer(file);
     }
+
+    function reaggregateMasterSheet() {
+      let aggregated = [];
+      Object.keys(allSheetData).forEach(sheetName => {
+        if (sheetName === 'Stock in TW' || sheetName.toLowerCase().startsWith('print')) return;
+        const rows = allSheetData[sheetName] || [];
+        rows.forEach(r => {
+          aggregated.push({ ...r, 'LOCATION': r['LOCATION'] || r['貨架'] || sheetName });
+        });
+      });
+      allSheetData['Stock in TW'] = aggregated;
+    }
+
+    function triggerFileInput() { document.getElementById('excel-file-input').click(); }
 
     function formatExcelDate(val) {
       if (typeof val === 'number' && val > 40000 && val < 60000) {
@@ -567,6 +598,7 @@
           allSheetData[currentSheetName] = [...currentRows];
         }
         reaggregateMasterSheet();
+        saveToStorage();
         handleSearch();
       }
     }
@@ -599,6 +631,7 @@
       if (editIdx < 0) allSheetData[targetRack].unshift(rowObj);
 
       reaggregateMasterSheet();
+      saveToStorage();
       handleSearch();
       closeModal();
       syncToGAS(rowObj);
@@ -611,7 +644,7 @@
       localStorage.setItem('GAS_WEB_APP_URL', url);
       alert('Google Apps Script URL 設定已成功儲存！');
       checkSyncStatus();
-      fetchDataFromGAS(); // 儲存後立即抓取
+      fetchDataFromGAS();
     }
 
     function checkSyncStatus() {
@@ -670,7 +703,6 @@
         switchSheet('Stock in TW');
       }
 
-      // 自動從 Google Sheet 抓取最新數據
       fetchDataFromGAS();
     };
   </script>
