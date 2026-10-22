@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>台灣零件庫存多貨架管控系統 PRO v3.1</title>
+  <title>台灣零件庫存多貨架管控系統 PRO v3.2</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- SheetJS (解析 Excel) -->
+  <!-- SheetJS -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -18,7 +18,6 @@
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen pb-12">
 
-  <!-- 檔案上傳輸入框 (隱藏) -->
   <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleFileImport(event)">
 
   <!-- 頂部 Header -->
@@ -31,29 +30,30 @@
         <div>
           <div class="flex items-center gap-2">
             <h1 class="font-bold text-slate-900 text-lg leading-tight">台灣零件庫存管控系統</h1>
-            <span class="px-2 py-0.5 text-xs font-semibold bg-indigo-50 text-indigo-600 rounded-md border border-indigo-100">PRO v3.1 Persistent</span>
+            <span class="px-2 py-0.5 text-xs font-semibold bg-indigo-50 text-indigo-600 rounded-md border border-indigo-100">PRO v3.2 Live</span>
           </div>
-          <p class="text-xs text-slate-500">Auto Storage Persistent • Print Sheets Filtered • Live Sheet Sync</p>
+          <p class="text-xs text-slate-500">Auto Fetch from Google Sheet API • Public Shared Sync</p>
         </div>
       </div>
 
       <div class="flex items-center gap-2.5">
+        <!-- 手動刷舊 Google Sheet 資料 -->
+        <button onclick="fetchDataFromGAS()" title="從 Google Sheet 重新整理數據" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-medium transition">
+          <i data-lucide="refresh-cw" class="w-4 h-4 text-indigo-600"></i>
+          <span>從 Sheet 同步</span>
+        </button>
+
         <!-- 匯入 Excel -->
         <button onclick="triggerFileInput()" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-semibold transition shadow-sm">
           <i data-lucide="upload" class="w-4 h-4 text-emerald-600"></i>
           <span>匯入 Excel 檔案</span>
         </button>
 
-        <!-- Google Sheet 同步按鈕 -->
+        <!-- Google Sheet API 設定 -->
         <button onclick="toggleSyncPanel()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-medium transition">
           <i data-lucide="cloud" class="w-4 h-4 text-sky-500"></i>
-          <span>Google Sheet 同步</span>
+          <span>API 網址設定</span>
           <span id="sync-status-dot" class="w-2 h-2 rounded-full bg-slate-300 ml-1"></span>
-        </button>
-
-        <!-- 清除本機暫存 -->
-        <button onclick="resetData()" title="清空快取資料" class="p-1.5 text-slate-400 hover:text-rose-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition">
-          <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
         </button>
 
         <!-- 匯出 CSV -->
@@ -71,26 +71,33 @@
     </div>
   </header>
 
-  <!-- Google Sheet API 面板 -->
+  <!-- Google Sheet API 設定面板 -->
   <div id="sync-panel" class="hidden bg-slate-900 text-white border-b border-slate-800 p-4 transition-all">
     <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
       <div class="flex items-center gap-3">
         <i data-lucide="key" class="w-5 h-5 text-indigo-400"></i>
         <div>
           <p class="text-sm font-semibold">Google Apps Script Web App URL 連結設定</p>
-          <p class="text-xs text-slate-400">貼上從 Google Sheet 發布的 Web App 部署網址以實現自動連動</p>
+          <p class="text-xs text-slate-400">貼上部署後取得的 Web App URL，網頁開啟時會自動讀取 Google Sheet 裡的所有庫存數據</p>
         </div>
       </div>
       <div class="flex items-center gap-2 w-full md:w-auto">
         <input type="text" id="gas-url-input" placeholder="https://script.google.com/macros/s/.../exec" class="w-full md:w-96 px-3 py-1.5 rounded-lg text-xs bg-slate-800 border border-slate-700 text-slate-200 focus:outline-none focus:border-indigo-500 font-mono">
-        <button onclick="saveGasUrl()" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-xs font-medium rounded-lg whitespace-nowrap">儲存設定</button>
+        <button onclick="saveGasUrl()" class="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-xs font-medium rounded-lg whitespace-nowrap">儲存並立即連線</button>
       </div>
     </div>
   </div>
 
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-6">
 
-    <!-- 四大核心統計數據 -->
+    <!-- 載入中狀態提示 Bar -->
+    <div id="loading-bar" class="hidden bg-indigo-50 border border-indigo-200 rounded-xl p-3 flex items-center justify-between text-indigo-700 text-xs font-semibold">
+      <span class="flex items-center gap-2">
+        <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> 正在從 Google Sheet 自動載入最新庫存數據...
+      </span>
+    </div>
+
+    <!-- 統計數據 -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <div class="glass-card p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
         <div>
@@ -133,11 +140,10 @@
       </div>
     </div>
 
-    <!-- 工作表 Tabs 切換區域 -->
+    <!-- Tabs 切換區 -->
     <div class="space-y-4 pt-2">
       <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
         <div class="flex flex-wrap items-center gap-1.5" id="sheet-tabs-container">
-          <!-- 自動動態生成的 Valid Tab 按鈕 (排除 Print 分頁) -->
         </div>
 
         <span id="filtered-count" class="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-xl whitespace-nowrap">
@@ -145,7 +151,7 @@
         </span>
       </div>
 
-      <!-- 關鍵字全域搜尋 Bar -->
+      <!-- 搜尋 Bar -->
       <div class="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between gap-3">
         <div class="relative w-full">
           <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
@@ -170,7 +176,7 @@
 
   </main>
 
-  <!-- 手動新增 / 編輯資料 Modal -->
+  <!-- 新增/編輯 Modal -->
   <div id="item-modal" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl border border-slate-200 shadow-2xl w-full max-w-lg overflow-hidden transition-all">
       <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
@@ -248,16 +254,13 @@
 
         <div class="pt-2 flex items-center justify-end gap-3 border-t border-slate-100">
           <button type="button" onclick="closeModal()" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition">取消</button>
-          <button type="submit" class="px-5 py-2 text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md shadow-indigo-100 transition">儲存並寫入快取/API</button>
+          <button type="submit" class="px-5 py-2 text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md shadow-indigo-100 transition">儲存並寫入 API</button>
         </div>
       </form>
     </div>
   </div>
 
   <script>
-    // 定義有效分頁清單 (自動過濾掉 Print S4, Print S2 等列印用頁籤)
-    const validSheetNames = ['Stock in TW', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'DRY BOX', 'Clean room'];
-
     let allSheetData = {};
     let dynamicHeaders = ['LOCATION', 'P/N (IF ANY)', 'PARTS NAME', 'MODEL', 'QTY', 'IN', 'OUT', 'REMARK'];
     let currentSheetName = 'Stock in TW';
@@ -274,41 +277,53 @@
       'Clean room': 'bg-emerald-50 text-emerald-700 border-emerald-200'
     };
 
-    // 儲存至瀏覽器 localStorage
-    function saveToStorage() {
-      localStorage.setItem('PARTS_DB_CACHE', JSON.stringify(allSheetData));
-    }
-
-    // 載入 localStorage
+    function saveToStorage() { localStorage.setItem('PARTS_DB_CACHE', JSON.stringify(allSheetData)); }
     function loadFromStorage() {
       const cached = localStorage.getItem('PARTS_DB_CACHE');
-      if (cached) {
-        try {
-          allSheetData = JSON.parse(cached);
-          return true;
-        } catch (e) {
-          console.error('Storage load failed:', e);
-        }
-      }
+      if (cached) { try { allSheetData = JSON.parse(cached); return true; } catch (e) {} }
       return false;
+    }
+
+    // 自動向 Google Apps Script 抓取資料
+    async function fetchDataFromGAS() {
+      const gasUrl = localStorage.getItem('GAS_WEB_APP_URL');
+      if (!gasUrl) return;
+
+      document.getElementById('loading-bar').classList.remove('hidden');
+
+      try {
+        const res = await fetch(gasUrl);
+        const json = await res.json();
+
+        if (json.status === 'success' && json.data) {
+          allSheetData = json.data;
+          reaggregateMasterSheet();
+          saveToStorage();
+
+          renderSheetTabs(getValidSheetKeys());
+          switchSheet('Stock in TW');
+        }
+      } catch (err) {
+        console.error('Fetch Google Sheet Error:', err);
+      } finally {
+        document.getElementById('loading-bar').classList.add('hidden');
+      }
     }
 
     function reaggregateMasterSheet() {
       let aggregated = [];
       Object.keys(allSheetData).forEach(sheetName => {
-        if (sheetName === 'Stock in TW' || sheetName.startsWith('Print')) return;
+        if (sheetName === 'Stock in TW' || sheetName.toLowerCase().startsWith('print')) return;
         const rows = allSheetData[sheetName] || [];
         rows.forEach(r => {
           aggregated.push({ ...r, 'LOCATION': r['LOCATION'] || r['貨架'] || sheetName });
         });
       });
       allSheetData['Stock in TW'] = aggregated;
-      saveToStorage();
     }
 
     function triggerFileInput() { document.getElementById('excel-file-input').click(); }
 
-    // 匯入 Excel 邏輯 (包含防重複 + 自動避開 Print 頁籤 + 自動存快取)
     function handleFileImport(e) {
       const file = e.target.files[0];
       if (!file) return;
@@ -321,7 +336,6 @@
           allSheetData = {};
 
           workbook.SheetNames.forEach(sheetName => {
-            // 🚫 過濾隱藏的 Print 頁籤
             if (sheetName.toLowerCase().startsWith('print')) return;
 
             const worksheet = workbook.Sheets[sheetName];
@@ -367,12 +381,11 @@
           });
 
           reaggregateMasterSheet();
-          saveToStorage(); // 💾 存入 LocalStorage
+          saveToStorage();
 
-          const activeKeys = getValidSheetKeys();
-          renderSheetTabs(activeKeys);
+          renderSheetTabs(getValidSheetKeys());
           switchSheet('Stock in TW');
-          alert(`匯入成功！資料已儲存至系統中，重新整理 (F5) 不會遺失。`);
+          alert(`匯入成功！資料已本地保存。請點擊「API 網址設定」連接 Google Sheet。`);
 
         } catch (err) {
           alert('解析 Excel 檔案失敗：' + err.message);
@@ -469,10 +482,6 @@
               ? `<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-200">${num}</span>`
               : `<span class="px-2.5 py-1 rounded-md text-xs font-bold bg-slate-100 text-slate-400 border border-slate-200">${num}</span>`;
             colsHTML += `<td class="py-3 px-4 text-center">${qtyBadge}</td>`;
-          }
-          else if (keyLower.includes('status') || keyLower.includes('狀態')) {
-            const style = val === 'New' ? 'bg-emerald-50 text-emerald-700' : val === 'NG' ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-600';
-            colsHTML += `<td class="py-3 px-4"><span class="px-2 py-0.5 rounded text-[11px] font-semibold ${style}">${val}</span></td>`;
           }
           else {
             colsHTML += `<td class="py-3 px-4 text-slate-700 max-w-xs truncate">${val}</td>`;
@@ -595,20 +604,14 @@
       syncToGAS(rowObj);
     }
 
-    function resetData() {
-      if (confirm('確定要清空快取的資料庫嗎？清空後可重新匯入 Excel。')) {
-        localStorage.removeItem('PARTS_DB_CACHE');
-        location.reload();
-      }
-    }
-
     function toggleSyncPanel() { document.getElementById('sync-panel').classList.toggle('hidden'); }
 
     function saveGasUrl() {
       const url = document.getElementById('gas-url-input').value.trim();
       localStorage.setItem('GAS_WEB_APP_URL', url);
-      alert('Google Apps Script URL 設定已儲存！');
+      alert('Google Apps Script URL 設定已成功儲存！');
       checkSyncStatus();
+      fetchDataFromGAS(); // 儲存後立即抓取
     }
 
     function checkSyncStatus() {
@@ -660,14 +663,15 @@
       lucide.createIcons();
       checkSyncStatus();
 
-      // 優先載入歷史快取
       const hasCache = loadFromStorage();
       if (hasCache) {
         reaggregateMasterSheet();
+        renderSheetTabs(getValidSheetKeys());
+        switchSheet('Stock in TW');
       }
 
-      renderSheetTabs(getValidSheetKeys());
-      switchSheet('Stock in TW');
+      // 自動從 Google Sheet 抓取最新數據
+      fetchDataFromGAS();
     };
   </script>
 </body>
