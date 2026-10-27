@@ -32,13 +32,13 @@
         <div class="min-w-0">
           <div class="flex items-center gap-1.5">
             <h1 class="font-bold text-slate-900 text-base leading-tight truncate">PTW Taiwan Inventory System</h1>
-            <span class="px-1.5 py-0.5 text-[10px] font-semibold bg-sky-100 text-sky-700 rounded border border-sky-200 flex-shrink-0">PRO v4.0 Fixed</span>
+            <span class="px-1.5 py-0.5 text-[10px] font-semibold bg-sky-100 text-sky-700 rounded border border-sky-200 flex-shrink-0">PRO v4.1 Master Sync</span>
           </div>
           <p class="text-[11px] text-sky-600/80 truncate">Strict Multi-Rack Linked • Real-Time Stock in TW Sync</p>
         </div>
       </div>
 
-      <!-- 桌面端按鈕 -->
+      <!-- 桌面端操作按鈕 -->
       <div class="hidden lg:flex items-center gap-2.5">
         <button onclick="fetchDataFromGAS()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-sky-200 text-slate-700 bg-white hover:bg-sky-50 text-xs font-medium transition shadow-xs">
           <i data-lucide="refresh-cw" class="w-4 h-4 text-sky-600"></i>
@@ -126,7 +126,7 @@
             <span class="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
           </span>
           <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-500"></i>
-          <span>送修未回帳警告 (最新紀錄 OUT > 0 且超過 3 天未歸還)</span>
+          <span>送修未回帳警告 (送修超過 3 天尚未歸還入帳)</span>
           <span id="alert-count-badge" class="px-2 py-0.5 rounded-full text-xs font-extrabold bg-rose-500 text-white ml-1">0 項</span>
         </div>
         <button onclick="toggleAlertDetails()" class="text-xs text-amber-800 hover:text-amber-950 font-semibold flex items-center gap-1">
@@ -150,7 +150,7 @@
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
       <div class="glass-card p-4 rounded-xl border border-sky-100 shadow-sm flex items-center justify-between">
         <div>
-          <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">總品項數 (PARTS)</p>
+          <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">總零件品項 (PARTS)</p>
           <h3 id="stat-total-items" class="text-xl font-extrabold text-slate-800 mt-0.5">0</h3>
         </div>
         <div class="w-9 h-9 rounded-lg bg-sky-50 flex items-center justify-center text-sky-600">
@@ -189,7 +189,7 @@
       </div>
     </div>
 
-    <!-- 依序分頁按鈕：Stock in TW, S2, S3, S4, S5, S6, DRY BOX, Clean room -->
+    <!-- 分頁按鈕列：Stock in TW, S2, S3, S4, S5, S6, DRY BOX, Clean room -->
     <div class="space-y-3 pt-1">
       <div class="flex items-center justify-between gap-2 border-b border-sky-200/80 pb-2 overflow-x-auto no-scrollbar">
         <div class="flex items-center gap-1.5 flex-nowrap" id="sheet-tabs-container">
@@ -199,14 +199,15 @@
         </span>
       </div>
 
-      <!-- 搜尋列 + Location 篩選 + QTY 篩選 + 欄位調整 -->
+      <!-- 搜尋列 + Location 篩選 + QTY 篩選 + 調整欄位選單 -->
       <div class="bg-white/95 backdrop-blur p-2.5 rounded-xl border border-sky-100 shadow-xs flex flex-col md:flex-row items-center gap-2.5">
         <div class="relative w-full md:flex-1">
           <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-          <input type="text" id="search-input" onkeyup="handleSearch()" placeholder="搜尋關鍵字 (料號, 品名, 機型, 備註...)" class="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg bg-sky-50/50 border border-sky-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition">
+          <input type="text" id="search-input" onkeyup="handleSearch()" placeholder="搜尋關鍵字 (料號, 品名, 規格, 備註...)" class="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg bg-sky-50/50 border border-sky-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition">
         </div>
 
         <div class="flex items-center gap-2 w-full md:w-auto flex-wrap">
+          <!-- Location 篩選 -->
           <select id="filter-location" onchange="handleSearch()" class="flex-1 md:w-32 px-2.5 py-1.5 text-xs rounded-lg border border-sky-200 bg-sky-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium text-slate-700">
             <option value="ALL">全部 Location</option>
             <option value="S2">S2</option>
@@ -218,12 +219,14 @@
             <option value="Clean room">Clean room</option>
           </select>
 
+          <!-- QTY 篩選 -->
           <select id="filter-qty" onchange="handleSearch()" class="flex-1 md:w-32 px-2.5 py-1.5 text-xs rounded-lg border border-sky-200 bg-sky-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium text-slate-700">
             <option value="ALL">全部 QTY</option>
             <option value="IN_STOCK">有庫存 (>0)</option>
             <option value="ZERO">零庫存/缺貨 (=0)</option>
           </select>
 
+          <!-- 欄位調整下拉 -->
           <div class="relative">
             <button onclick="toggleColumnMenu()" class="px-2.5 py-1.5 text-xs rounded-lg border border-sky-200 bg-sky-50/50 hover:bg-sky-100 text-slate-700 flex items-center gap-1 font-medium transition">
               <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5 text-sky-600"></i>
@@ -236,6 +239,7 @@
             </div>
           </div>
 
+          <!-- 每頁筆數 -->
           <select id="page-size" onchange="changePageSize()" class="px-2 py-1.5 text-xs rounded-lg border border-sky-200 bg-sky-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-600 font-medium">
             <option value="25">25 筆/頁</option>
             <option value="50" selected>50 筆/頁</option>
@@ -249,7 +253,7 @@
     <!-- 表格容器 -->
     <div class="bg-white rounded-xl border border-sky-100 shadow-sm overflow-hidden flex flex-col">
       <div class="overflow-x-auto max-h-[62vh] overflow-y-auto relative">
-        <table class="w-full text-left border-collapse min-w-[750px]">
+        <table class="w-full text-left border-collapse min-w-[700px]">
           <thead class="sticky top-0 z-20 bg-sky-100/90 backdrop-blur shadow-xs">
             <tr id="dynamic-thead" class="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
             </tr>
@@ -302,33 +306,33 @@
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-600 mb-1">料號 (P/N)</label>
-            <input type="text" id="form-pn" placeholder="例如: 132000135" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500">
+            <input type="text" id="form-pn" placeholder="例如: S/N:251204" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500">
           </div>
         </div>
 
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1">零件名稱 (Parts Name)</label>
-          <input type="text" id="form-parts-name" required placeholder="例如: Rotation unit magnetic seal" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500">
+          <input type="text" id="form-parts-name" required placeholder="例如: DVP conductive pins" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500">
         </div>
 
         <div class="grid grid-cols-3 gap-3">
           <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">進貨 (IN)</label>
-            <input type="number" id="form-in" value="0" min="0" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500 text-center">
+            <label class="block text-xs font-semibold text-emerald-600 mb-1">進貨 (IN)</label>
+            <input type="number" id="form-in" value="0" min="0" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500 text-center font-bold">
           </div>
           <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">出貨 (OUT)</label>
-            <input type="number" id="form-out" value="0" min="0" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500 text-center">
+            <label class="block text-xs font-semibold text-amber-600 mb-1">出貨 (OUT)</label>
+            <input type="number" id="form-out" value="0" min="0" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500 text-center font-bold">
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-600 mb-1">機型 (Model)</label>
-            <input type="text" id="form-model" placeholder="例如: 9260 / 9380" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500">
+            <input type="text" id="form-model" placeholder="例如: SEZ" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500">
           </div>
         </div>
 
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1">備註 (Remarks)</label>
-          <input type="text" id="form-remarks" placeholder="例如: Stock in S4 / to UMC 8F" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500">
+          <input type="text" id="form-remarks" placeholder="例如: Stock for UMC12A / to UMC 12A" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500">
         </div>
 
         <div class="pt-2 flex items-center justify-end gap-3 border-t border-slate-100">
@@ -345,7 +349,7 @@
     // 規定固定順序
     const orderedSheetNames = ['Stock in TW', 'S2', 'S3', 'S4', 'S5', 'S6', 'DRY BOX', 'Clean room'];
 
-    // 順序：LOCATION ➔ P/N (IF ANY) ➔ QTY ➔ PARTS NAME ➔ MODEL ➔ IN ➔ OUT ➔ DATE ➔ REMARK
+    // 規定欄位順序：LOCATION ➔ P/N (IF ANY) ➔ QTY ➔ PARTS NAME ➔ MODEL ➔ IN ➔ OUT ➔ DATE ➔ REMARK
     const fixedHeaders = ['LOCATION', 'P/N (IF ANY)', 'QTY', 'PARTS NAME', 'MODEL', 'IN', 'OUT', 'DATE', 'REMARK'];
 
     let allSheetData = {};
@@ -378,16 +382,14 @@
       return localStorage.getItem('GAS_WEB_APP_URL') || DEFAULT_GAS_URL;
     }
 
-    // 🌟 關鍵修正：萬用屬性提取器（模糊匹配大小寫）
+    // 萬用值提取函數（模糊匹配大小寫）
     function getVal(row, keys) {
       if (!row) return '';
       const rowKeys = Object.keys(row);
       for (const target of keys) {
-        // 先精確匹配
         if (row[target] !== undefined && row[target] !== null && String(row[target]).trim() !== '') {
           return String(row[target]).trim();
         }
-        // 再忽略大小寫模糊匹配
         const found = rowKeys.find(k => k.trim().toLowerCase() === target.trim().toLowerCase());
         if (found && row[found] !== undefined && row[found] !== null && String(row[found]).trim() !== '') {
           return String(row[found]).trim();
@@ -396,7 +398,7 @@
       return '';
     }
 
-    // 標準化每一列物件，保證所有欄位資訊不丟失
+    // 標準化分頁明細（單筆明細計算其當次進出）
     function normalizeRow(r, fallbackLocation) {
       const loc = getVal(r, ['LOCATION', 'Location', '貨架', 'Rack']) || fallbackLocation;
       const pn = getVal(r, ['P/N (If any)', 'P/N (IF ANY)', 'P/N', 'PN', 'Part Number', '料號']);
@@ -406,8 +408,7 @@
       const outVal = Number(getVal(r, ['OUT', 'Out', '出貨']) || 0);
       const dateVal = getVal(r, ['Date', 'DATE', '日期', 'Last Audit']);
       const remarkVal = getVal(r, ['Remark', 'Remarks', 'REMARK', 'REMARKS', '備註']);
-      
-      // 若原檔有 QTY 則用原檔，若無則依 IN - OUT 計算
+
       let rawQty = getVal(r, ['QTY', 'Qty', '數量', '數量 (QTY)']);
       let qtyVal = 0;
       if (rawQty !== '') {
@@ -429,64 +430,83 @@
       };
     }
 
-    // 核心連動：Stock in TW 嚴格來自 S2, S3, S4, S5, S6, DRY BOX, Clean room 明細聚合
+    // 🌟 核心關聯演算法：Stock in TW 嚴格將同零件彙總（Total IN - Total OUT = 24）
     function reaggregateMasterSheet() {
       const subSheets = ['S2', 'S3', 'S4', 'S5', 'S6', 'DRY BOX', 'Clean room'];
-      const partsAggregation = new Map();
+      const partsMap = new Map();
 
+      // 第一步：收集所有記錄並進行零件統一分組
       subSheets.forEach(sheetName => {
         const rows = allSheetData[sheetName] || [];
         rows.forEach(rawR => {
           const item = normalizeRow(rawR, sheetName);
-          const pn = item['P/N (IF ANY)'];
           const name = item['PARTS NAME'];
-          if (!name && !pn) return; // 跳過全空列
+          const pn = item['P/N (IF ANY)'];
+          if (!name && !pn) return;
 
-          const groupKey = `${pn}____${name}`;
-          const currentQty = item['QTY'];
-          const currentIn = item['IN'];
-          const currentOut = item['OUT'];
+          // 使用品名作為基礎鍵（忽略大小寫），若品名相同則歸入同一零件
+          const nameKey = name.toLowerCase().trim();
+          let matchedKey = null;
 
-          if (!partsAggregation.has(groupKey)) {
-            partsAggregation.set(groupKey, {
-              'LOCATION': new Set([item['LOCATION'] || sheetName]),
-              'P/N (IF ANY)': pn,
-              'QTY': currentQty,
-              'PARTS NAME': name,
-              'MODEL': item['MODEL'],
-              'IN': currentIn,
-              'OUT': currentOut,
-              'DATE': item['DATE'],
-              'REMARK': item['REMARK'],
-              '_history': [item]
-            });
-          } else {
-            const existing = partsAggregation.get(groupKey);
-            existing['LOCATION'].add(item['LOCATION'] || sheetName);
-            existing['QTY'] += currentQty; // 跨貨架自動累加
-            existing['IN'] += currentIn;
-            existing['OUT'] += currentOut;
-            if (item['MODEL'] && !existing['MODEL']) existing['MODEL'] = item['MODEL'];
-            if (item['DATE']) existing['DATE'] = item['DATE'];
-            if (item['REMARK'] && !existing['REMARK']) existing['REMARK'] = item['REMARK'];
-            existing['_history'].push(item);
+          for (const [key, obj] of partsMap.entries()) {
+            // 若品名相同，或料號相同且非空，視為同一零件
+            const sameName = nameKey !== '' && obj.name.toLowerCase().trim() === nameKey;
+            const samePn = pn !== '' && obj.pn !== '' && obj.pn.toLowerCase().trim() === pn.toLowerCase().trim();
+            if (sameName || samePn) {
+              matchedKey = key;
+              break;
+            }
           }
+
+          if (!matchedKey) {
+            matchedKey = pn ? `${pn}__${name}` : `NAME__${name}`;
+            partsMap.set(matchedKey, {
+              pn: pn,
+              name: name,
+              model: item['MODEL'],
+              locations: new Set([item['LOCATION'] || sheetName]),
+              totalIn: 0,
+              totalOut: 0,
+              latestDate: item['DATE'],
+              latestRemark: item['REMARK'],
+              history: []
+            });
+          }
+
+          const targetObj = partsMap.get(matchedKey);
+          // 若有補上更完整的料號或機型，自動更新
+          if (!targetObj.pn && pn) targetObj.pn = pn;
+          if (!targetObj.name && name) targetObj.name = name;
+          if (!targetObj.model && item['MODEL']) targetObj.model = item['MODEL'];
+
+          targetObj.locations.add(item['LOCATION'] || sheetName);
+          targetObj.totalIn += item['IN'];
+          targetObj.totalOut += item['OUT'];
+
+          if (item['DATE']) targetObj.latestDate = item['DATE'];
+          if (item['REMARK']) targetObj.latestRemark = item['REMARK'];
+
+          targetObj.history.push(item);
         });
       });
 
+      // 第二步：計算最終庫存 (Total IN - Total OUT)，產生 Stock in TW 唯一總表
       let masterRows = [];
-      partsAggregation.forEach(val => {
+      partsMap.forEach(item => {
+        // 嚴格依照：現有庫存 = 總進貨 - 總出貨 (例: 114 - 30 - 60 = 24)
+        const finalQty = item.totalIn - item.totalOut;
+
         masterRows.push({
-          'LOCATION': Array.from(val['LOCATION']).join(', '),
-          'P/N (IF ANY)': val['P/N (IF ANY)'],
-          'QTY': val['QTY'],
-          'PARTS NAME': val['PARTS NAME'],
-          'MODEL': val['MODEL'],
-          'IN': val['IN'],
-          'OUT': val['OUT'],
-          'DATE': val['DATE'],
-          'REMARK': val['REMARK'],
-          '_history': val['_history']
+          'LOCATION': Array.from(item.locations).join(', '),
+          'P/N (IF ANY)': item.pn || '-',
+          'QTY': finalQty,
+          'PARTS NAME': item.name || '-',
+          'MODEL': item.model || '-',
+          'IN': item.totalIn > 0 ? item.totalIn : '',
+          'OUT': item.totalOut > 0 ? item.totalOut : '',
+          'DATE': item.latestDate || '',
+          'REMARK': item.latestRemark || '',
+          '_history': item.history
         });
       });
 
@@ -494,7 +514,7 @@
       checkRepairAlerts();
     }
 
-    // 警告機制：只有送修未歸還且超過 3 天才警告
+    // 警告機制：只有送修未歸還且超過 3 天才警示
     function checkRepairAlerts() {
       const allMaster = allSheetData['Stock in TW'] || [];
       const overdueItems = [];
@@ -510,13 +530,12 @@
 
         const latest = history[0];
         const outQty = Number(latest['OUT'] || 0);
-        const inQty = Number(latest['IN'] || 0);
-        const remark = String(latest['REMARK'] || '');
+        const remark = String(latest['REMARK'] || '').toLowerCase();
 
-        // 判定送修出庫：OUT > 0 且備註有包含 repair / 維修 / 送修，或單純 OUT > 0 且尚未補回
-        const isRepair = remark.toLowerCase().includes('repair') || remark.includes('修') || (outQty > 0 && inQty === 0);
+        // 必須符合：備註明確提到 repair / 維修 / 送修，且最新一筆是出庫 OUT > 0
+        const isRepairOut = outQty > 0 && (remark.includes('repair') || remark.includes('修') || remark.includes('sg'));
 
-        if (isRepair && outQty > 0) {
+        if (isRepairOut) {
           const outDate = parseDate(latest['DATE'] || '');
           if (outDate && !isNaN(outDate.getTime())) {
             const diffDays = Math.floor((today.getTime() - outDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -612,7 +631,6 @@
         if (json.status === 'success' && json.data) {
           allSheetData = json.data;
 
-          // 重新標準化所有工作表
           Object.keys(allSheetData).forEach(s => {
             if (Array.isArray(allSheetData[s])) {
               allSheetData[s] = allSheetData[s].map(r => normalizeRow(r, s));
@@ -679,7 +697,9 @@
                 } else {
                   cellVal = '';
                 }
-                rowObj[header] = cellVal;
+                if (header !== '_id' && header !== 'id') {
+                  rowObj[header] = cellVal;
+                }
               });
 
               if (isNonEmpty) {
@@ -715,7 +735,7 @@
           switchSheet('Stock in TW');
 
           loadingBar.classList.add('hidden');
-          alert('🎉 成功！全套資料已精準對齊並同步至 Google Sheet！');
+          alert('🎉 成功！全套資料已依各貨架進出總帳連動計算完成！');
 
         } catch (err) {
           alert('匯入失敗：' + err.message);
@@ -824,7 +844,6 @@
       renderCurrentPageTable();
     }
 
-    // 表格渲染：固定欄位順序與內容完整提取
     function renderCurrentPageTable() {
       const thead = document.getElementById('dynamic-thead');
       const tbody = document.getElementById('dynamic-tbody');
@@ -981,11 +1000,11 @@
       document.getElementById('form-edit-index').value = index;
       document.getElementById('modal-title').innerText = "編輯零件記錄";
       document.getElementById('form-rack').value = (row['LOCATION'] || 'S2').split(',')[0].trim();
-      document.getElementById('form-pn').value = row['P/N (IF ANY)'] || '';
+      document.getElementById('form-pn').value = row['P/N (IF ANY)'] !== '-' ? row['P/N (IF ANY)'] : '';
       document.getElementById('form-parts-name').value = row['PARTS NAME'] || '';
       document.getElementById('form-in').value = row['IN'] !== undefined ? row['IN'] : 0;
       document.getElementById('form-out').value = row['OUT'] !== undefined ? row['OUT'] : 0;
-      document.getElementById('form-model').value = row['MODEL'] || '';
+      document.getElementById('form-model').value = row['MODEL'] !== '-' ? row['MODEL'] : '';
       document.getElementById('form-remarks').value = row['REMARK'] || '';
 
       document.getElementById('item-modal').classList.remove('hidden');
