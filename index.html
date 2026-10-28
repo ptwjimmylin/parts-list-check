@@ -265,4 +265,866 @@
         <span id="page-info">第 1 頁，共 1 頁</span>
         <div class="flex items-center gap-2">
           <button onclick="prevPage()" id="btn-prev" class="px-3.5 py-1.5 rounded-lg border border-sky-200 bg-white hover:bg-sky-50 disabled:opacity-40 font-medium transition">上一頁</button>
-          <button onclick="nextPage()" id="btn-next" class="px-3.5 py-1.5 rounded-lg border border-sky-200 bg-white hover:bg-sky-50 disabled:opacity
+          <button onclick="nextPage()" id="btn-next" class="px-3.5 py-1.5 rounded-lg border border-sky-200 bg-white hover:bg-sky-50 disabled:opacity-40 font-medium transition">下一頁</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Modal -->
+  <div id="item-modal" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl border border-sky-200 shadow-2xl w-full max-w-lg overflow-hidden transition-all">
+      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+        <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+          <i data-lucide="edit-3" class="w-4 h-4 text-sky-600"></i>
+          <span id="modal-title">新增/編輯零件記錄</span>
+        </h3>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="item-form" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4">
+        <input type="hidden" id="form-edit-index" value="-1">
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">貨架號 (Location)</label>
+            <select id="form-rack" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500">
+              <option value="S2">S2</option>
+              <option value="S3">S3</option>
+              <option value="S4">S4</option>
+              <option value="S5">S5</option>
+              <option value="S6" selected>S6</option>
+              <option value="DRY BOX">DRY BOX</option>
+              <option value="Clean room">Clean room</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">料號 (P/N)</label>
+            <input type="text" id="form-pn" placeholder="例如: S/N:251204" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">零件名稱 (Parts Name)</label>
+          <input type="text" id="form-parts-name" required placeholder="例如: DVP conductive pins" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500">
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-emerald-600 mb-1">進貨 (IN)</label>
+            <input type="number" id="form-in" value="0" min="0" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500 text-center font-bold">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-amber-600 mb-1">出貨 (OUT)</label>
+            <input type="number" id="form-out" value="0" min="0" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500 text-center font-bold">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">機型 (Model)</label>
+            <input type="text" id="form-model" placeholder="例如: SEZ" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">備註 (Remarks)</label>
+          <input type="text" id="form-remarks" placeholder="例如: Stock for UMC12A / to UMC 12A" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500">
+        </div>
+
+        <div class="pt-2 flex items-center justify-end gap-3 border-t border-slate-100">
+          <button type="button" onclick="closeModal()" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition">取消</button>
+          <button type="submit" class="px-5 py-2 text-xs font-medium bg-sky-600 hover:bg-sky-700 text-white rounded-xl shadow-md shadow-sky-200 transition">儲存並同步至 Google Sheet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbxm8arB97z2ZS_iwuC5M9RDWAjDYvVckHkHSb3DHlzyxU1ya0stvNcpEvyWWz55QQK-UA/exec";
+
+    const orderedSheetNames = ['Stock in TW', 'S2', 'S3', 'S4', 'S5', 'S6', 'DRY BOX', 'Clean room'];
+    const fixedHeaders = ['LOCATION', 'P/N (IF ANY)', 'QTY', 'PARTS NAME', 'MODEL', 'IN', 'OUT', 'DATE', 'REMARK'];
+
+    let allSheetData = {};
+    let visibleColumns = new Set(fixedHeaders);
+    let currentSheetName = 'Stock in TW';
+    let currentRows = [];
+    let filteredRows = [];
+
+    let currentPage = 1;
+    let pageSize = 50;
+
+    const locationBadges = {
+      'S2': 'bg-amber-50 text-amber-700 border-amber-200',
+      'S3': 'bg-sky-50 text-sky-700 border-sky-200',
+      'S4': 'bg-cyan-50 text-cyan-700 border-cyan-200',
+      'S5': 'bg-indigo-50 text-indigo-700 border-indigo-200',
+      'S6': 'bg-rose-50 text-rose-700 border-rose-200',
+      'DRY BOX': 'bg-purple-50 text-purple-700 border-purple-200',
+      'Clean room': 'bg-emerald-50 text-emerald-700 border-emerald-200'
+    };
+
+    function saveToStorage() { localStorage.setItem('PARTS_DB_CACHE', JSON.stringify(allSheetData)); }
+    function loadFromStorage() {
+      const cached = localStorage.getItem('PARTS_DB_CACHE');
+      if (cached) { try { allSheetData = JSON.parse(cached); return true; } catch (e) {} }
+      return false;
+    }
+
+    function getGasUrl() {
+      return localStorage.getItem('GAS_WEB_APP_URL') || DEFAULT_GAS_URL;
+    }
+
+    function getVal(row, keys) {
+      if (!row) return '';
+      const rowKeys = Object.keys(row);
+      for (const target of keys) {
+        if (row[target] !== undefined && row[target] !== null && String(row[target]).trim() !== '') {
+          return String(row[target]).trim();
+        }
+        const found = rowKeys.find(k => k.trim().toLowerCase() === target.trim().toLowerCase());
+        if (found && row[found] !== undefined && row[found] !== null && String(row[found]).trim() !== '') {
+          return String(row[found]).trim();
+        }
+      }
+      return '';
+    }
+
+    function normalizeRow(r, fallbackLocation) {
+      const loc = getVal(r, ['LOCATION', 'Location', '貨架', 'Rack']) || fallbackLocation;
+      let pn = getVal(r, ['P/N (If any)', 'P/N (IF ANY)', 'P/N', 'PN', 'Part Number', '料號']);
+      let name = getVal(r, ['Parts Name', 'PARTS NAME', 'Part Name', '品名', '零件名稱']);
+      const model = getVal(r, ['Model', 'MODEL', '適用機型', '機型']);
+      const inVal = Number(getVal(r, ['IN', 'In', '進貨']) || 0);
+      const outVal = Number(getVal(r, ['OUT', 'Out', '出貨']) || 0);
+      const dateVal = getVal(r, ['Date', 'DATE', '日期', 'Last Audit']);
+      const remarkVal = getVal(r, ['Remark', 'Remarks', 'REMARK', 'REMARKS', '備註']);
+
+      let rawQty = getVal(r, ['QTY', 'Qty', '數量', '數量 (QTY)']);
+      let qtyVal = 0;
+      if (rawQty !== '') {
+        qtyVal = Number(rawQty) || 0;
+      } else {
+        qtyVal = inVal - outVal;
+      }
+
+      pn = pn ? pn.trim() : '';
+      name = name ? name.trim() : '';
+
+      return {
+        'LOCATION': loc,
+        'P/N (IF ANY)': pn,
+        'QTY': qtyVal,
+        'PARTS NAME': name,
+        'MODEL': model,
+        'IN': inVal,
+        'OUT': outVal,
+        'DATE': dateVal,
+        'REMARK': remarkVal
+      };
+    }
+
+    function reaggregateMasterSheet() {
+      const subSheets = ['S2', 'S3', 'S4', 'S5', 'S6', 'DRY BOX', 'Clean room'];
+      const partsMap = new Map();
+
+      subSheets.forEach(sheetName => {
+        const rows = allSheetData[sheetName] || [];
+        rows.forEach(rawR => {
+          const item = normalizeRow(rawR, sheetName);
+          const pn = item['P/N (IF ANY)'];
+          const name = item['PARTS NAME'];
+
+          if (!name && !pn) return;
+
+          const strictKey = `${pn.toLowerCase()}___|||___${name.toLowerCase()}`;
+
+          if (!partsMap.has(strictKey)) {
+            partsMap.set(strictKey, {
+              pn: pn,
+              name: name,
+              model: item['MODEL'],
+              locations: new Set([item['LOCATION'] || sheetName]),
+              totalIn: 0,
+              totalOut: 0,
+              latestDate: item['DATE'],
+              latestRemark: item['REMARK'],
+              history: []
+            });
+          }
+
+          const targetObj = partsMap.get(strictKey);
+          targetObj.locations.add(item['LOCATION'] || sheetName);
+          targetObj.totalIn += item['IN'];
+          targetObj.totalOut += item['OUT'];
+
+          if (item['MODEL'] && !targetObj.model) targetObj.model = item['MODEL'];
+          if (item['DATE']) targetObj.latestDate = item['DATE'];
+          if (item['REMARK']) targetObj.latestRemark = item['REMARK'];
+
+          targetObj.history.push(item);
+        });
+      });
+
+      let masterRows = [];
+      partsMap.forEach(item => {
+        const finalQty = item.totalIn - item.totalOut;
+
+        masterRows.push({
+          'LOCATION': Array.from(item.locations).join(', '),
+          'P/N (IF ANY)': item.pn || '-',
+          'QTY': finalQty,
+          'PARTS NAME': item.name || '-',
+          'MODEL': item.model || '-',
+          'IN': item.totalIn > 0 ? item.totalIn : '',
+          'OUT': item.totalOut > 0 ? item.totalOut : '',
+          'DATE': item.latestDate || '',
+          'REMARK': item.latestRemark || '',
+          '_history': item.history
+        });
+      });
+
+      allSheetData['Stock in TW'] = masterRows;
+      checkRepairAlerts();
+    }
+
+    function checkRepairAlerts() {
+      const allMaster = allSheetData['Stock in TW'] || [];
+      const overdueItems = [];
+      const today = new Date();
+
+      allMaster.forEach(row => {
+        const history = row['_history'] || [row];
+        history.sort((a, b) => {
+          const dateA = parseDate(a['DATE'] || '');
+          const dateB = parseDate(b['DATE'] || '');
+          return (dateB || 0) - (dateA || 0);
+        });
+
+        const latest = history[0];
+        const outQty = Number(latest['OUT'] || 0);
+        const remark = String(latest['REMARK'] || '').toLowerCase();
+
+        const isRepairOut = outQty > 0 && (remark.includes('repair') || remark.includes('修') || remark.includes('sg'));
+
+        if (isRepairOut) {
+          const outDate = parseDate(latest['DATE'] || '');
+          if (outDate && !isNaN(outDate.getTime())) {
+            const diffDays = Math.floor((today.getTime() - outDate.getTime()) / (1000 * 60 * 60 * 24));
+            if (diffDays >= 3) {
+              overdueItems.push({
+                location: latest['LOCATION'] || row['LOCATION'],
+                pn: row['P/N (IF ANY)'] || '-',
+                partsName: row['PARTS NAME'] || '未具名零件',
+                outDate: formatDate(outDate),
+                overdueDays: diffDays,
+                remark: latest['REMARK'] || '送修待返'
+              });
+            }
+          }
+        }
+      });
+
+      renderAlertBox(overdueItems);
+    }
+
+    function renderAlertBox(overdueItems) {
+      const container = document.getElementById('alert-container');
+      const countBadge = document.getElementById('alert-count-badge');
+      const listWrapper = document.getElementById('alert-list-wrapper');
+
+      if (overdueItems.length === 0) {
+        container.classList.add('hidden');
+        return;
+      }
+
+      container.classList.remove('hidden');
+      countBadge.innerText = `${overdueItems.length} 項零件`;
+
+      listWrapper.innerHTML = overdueItems.map(item => `
+        <div class="bg-white/95 p-3 rounded-xl border border-amber-200 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="px-2 py-0.5 rounded font-bold bg-rose-50 text-rose-700 border border-rose-200">${item.location}</span>
+            <span class="font-mono font-semibold text-slate-700">${item.pn}</span>
+            <span class="font-bold text-slate-900">${item.partsName}</span>
+            <span class="text-slate-400">|</span>
+            <span class="text-slate-500">出庫日期：${item.outDate}</span>
+            <span class="text-slate-400">(${item.remark})</span>
+          </div>
+          <div class="flex items-center gap-1.5 flex-shrink-0">
+            <span class="px-2.5 py-1 rounded-md text-[11px] font-extrabold bg-rose-100 text-rose-800 border border-rose-300 animate-pulse">
+              已逾期 ${item.overdueDays} 天未回帳
+            </span>
+          </div>
+        </div>
+      `).join('');
+      lucide.createIcons();
+    }
+
+    function toggleAlertDetails() {
+      const list = document.getElementById('alert-list-wrapper');
+      const text = document.getElementById('toggle-alert-text');
+      const icon = document.getElementById('alert-chevron');
+
+      if (list.classList.contains('hidden')) {
+        list.classList.remove('hidden');
+        text.innerText = '收合明細';
+        icon.classList.remove('rotate-180');
+      } else {
+        list.classList.add('hidden');
+        text.innerText = '展開明細';
+        icon.classList.add('rotate-180');
+      }
+    }
+
+    function parseDate(dateStr) {
+      if (!dateStr) return null;
+      if (dateStr instanceof Date) return dateStr;
+      const cnMatch = String(dateStr).match(/(\d+)月(\d+)日/);
+      if (cnMatch) return new Date(2026, parseInt(cnMatch[1]) - 1, parseInt(cnMatch[2]));
+      const d = new Date(dateStr);
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    async function fetchDataFromGAS() {
+      const gasUrl = getGasUrl();
+      if (!gasUrl) return;
+
+      const loadingBar = document.getElementById('loading-bar');
+      const loadingText = document.getElementById('loading-text');
+      loadingText.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> 正在向 Google Sheet 自動抓取最新數據...`;
+      loadingBar.classList.remove('hidden');
+      lucide.createIcons();
+
+      try {
+        const res = await fetch(gasUrl);
+        const json = await res.json();
+
+        if (json.status === 'success' && json.data) {
+          allSheetData = json.data;
+
+          Object.keys(allSheetData).forEach(s => {
+            if (Array.isArray(allSheetData[s])) {
+              allSheetData[s] = allSheetData[s].map(r => normalizeRow(r, s));
+            }
+          });
+
+          reaggregateMasterSheet();
+          saveToStorage();
+
+          renderSheetTabs();
+          switchSheet('Stock in TW');
+        }
+      } catch (err) {
+        console.error('Fetch Google Sheet Error:', err);
+      } finally {
+        loadingBar.classList.add('hidden');
+      }
+    }
+
+    async function handleFileImport(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const gasUrl = getGasUrl();
+      const reader = new FileReader();
+
+      reader.onload = async function(evt) {
+        try {
+          const data = new Uint8Array(evt.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          let importedData = {};
+
+          workbook.SheetNames.forEach(sheetName => {
+            if (sheetName.toLowerCase().startsWith('print') || sheetName.toUpperCase() === 'S1') return;
+
+            const worksheet = workbook.Sheets[sheetName];
+            const json = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            if (!json || json.length < 2) return;
+
+            let headerIdx = -1;
+            for (let i = 0; i < Math.min(json.length, 15); i++) {
+              if (json[i] && json[i].filter(c => c !== undefined && c !== '').length >= 2) {
+                headerIdx = i;
+                break;
+              }
+            }
+
+            if (headerIdx === -1) return;
+
+            const rawHeaders = json[headerIdx].map((h, idx) => h ? String(h).trim() : `COL_${idx + 1}`);
+            const rowsData = json.slice(headerIdx + 1);
+            let sheetRows = [];
+
+            rowsData.forEach(row => {
+              if (!row || row.length === 0) return;
+              let rowObj = {};
+              let isNonEmpty = false;
+
+              rawHeaders.forEach((header, cIdx) => {
+                let cellVal = row[cIdx];
+                if (cellVal !== undefined && cellVal !== null && String(cellVal).trim() !== '') {
+                  isNonEmpty = true;
+                  cellVal = formatExcelDate(cellVal);
+                } else {
+                  cellVal = '';
+                }
+                if (header !== '_id' && header !== 'id') {
+                  rowObj[header] = cellVal;
+                }
+              });
+
+              if (isNonEmpty) {
+                sheetRows.push(normalizeRow(rowObj, sheetName));
+              }
+            });
+
+            if (sheetRows.length > 0) {
+              importedData[sheetName] = sheetRows;
+            }
+          });
+
+          const loadingBar = document.getElementById('loading-bar');
+          const loadingText = document.getElementById('loading-text');
+          loadingText.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> 正在將資料寫入至 Google Sheet，請稍候...`;
+          loadingBar.classList.remove('hidden');
+          lucide.createIcons();
+
+          if (gasUrl) {
+            await fetch(gasUrl, {
+              method: 'POST',
+              mode: 'no-cors',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'BULK_IMPORT', allData: importedData })
+            });
+          }
+
+          allSheetData = importedData;
+          reaggregateMasterSheet();
+          saveToStorage();
+
+          renderSheetTabs();
+          switchSheet('Stock in TW');
+
+          loadingBar.classList.add('hidden');
+          alert('🎉 成功！全套資料已依 (P/N + Parts Name) 嚴格吻合總帳連動計算完成！');
+
+        } catch (err) {
+          alert('匯入失敗：' + err.message);
+          document.getElementById('loading-bar').classList.add('hidden');
+        }
+        e.target.value = '';
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function triggerFileInput() { document.getElementById('excel-file-input').click(); }
+
+    function formatExcelDate(val) {
+      if (typeof val === 'number' && val > 40000 && val < 60000) {
+        const date = new Date((val - 25569) * 86400 * 1000);
+        return formatDate(date);
+      }
+      return String(val);
+    }
+
+    function formatDate(d) {
+      return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function renderSheetTabs() {
+      const container = document.getElementById('sheet-tabs-container');
+      container.innerHTML = orderedSheetNames.map(name => `
+        <button onclick="switchSheet('${name}')" id="sheet-btn-${name}" class="sheet-tab-btn px-4 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-600 bg-white/80 border border-sky-100 hover:bg-sky-100 hover:text-sky-900 transition flex items-center gap-1.5 flex-shrink-0 shadow-2xs">
+          <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> ${name}
+        </button>
+      `).join('');
+      lucide.createIcons();
+    }
+
+    function switchSheet(sheetName) {
+      currentSheetName = sheetName;
+      if (sheetName === 'Stock in TW') {
+        reaggregateMasterSheet();
+      }
+      currentRows = [...(allSheetData[sheetName] || [])];
+
+      renderColumnCheckboxes();
+
+      document.querySelectorAll('.sheet-tab-btn').forEach(btn => {
+        btn.className = 'sheet-tab-btn px-4 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-600 bg-white/80 border border-sky-100 hover:bg-sky-100 hover:text-sky-900 transition flex items-center gap-1.5 flex-shrink-0 shadow-2xs';
+      });
+
+      const activeBtn = document.getElementById(`sheet-btn-${sheetName}`);
+      if (activeBtn) {
+        activeBtn.className = 'sheet-tab-btn px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-sky-600 text-white shadow-sm flex items-center gap-1.5 flex-shrink-0';
+      }
+
+      currentPage = 1;
+      handleSearch();
+    }
+
+    function toggleColumnMenu() {
+      document.getElementById('column-dropdown').classList.toggle('hidden');
+    }
+
+    function renderColumnCheckboxes() {
+      const box = document.getElementById('column-checkboxes');
+      box.innerHTML = fixedHeaders.map(col => `
+        <label class="flex items-center gap-2 p-1.5 hover:bg-sky-50 rounded cursor-pointer text-xs">
+          <input type="checkbox" onchange="toggleColumnVisibility('${col}')" ${visibleColumns.has(col) ? 'checked' : ''} class="rounded text-sky-600 focus:ring-sky-500">
+          <span class="truncate">${col}</span>
+        </label>
+      `).join('');
+    }
+
+    function toggleColumnVisibility(col) {
+      if (visibleColumns.has(col)) {
+        if (visibleColumns.size > 1) visibleColumns.delete(col);
+      } else {
+        visibleColumns.add(col);
+      }
+      renderCurrentPageTable();
+    }
+
+    function handleSearch() {
+      const keyword = document.getElementById('search-input').value.toLowerCase();
+      const locFilter = document.getElementById('filter-location').value;
+      const qtyFilter = document.getElementById('filter-qty').value;
+
+      filteredRows = currentRows.filter(row => {
+        if (locFilter !== 'ALL') {
+          const rowLoc = String(row['LOCATION'] || currentSheetName);
+          if (!rowLoc.includes(locFilter)) return false;
+        }
+
+        const num = Number(row['QTY'] !== undefined ? row['QTY'] : 0);
+        if (qtyFilter === 'IN_STOCK' && num <= 0) return false;
+        if (qtyFilter === 'ZERO' && num > 0) return false;
+
+        if (keyword) {
+          const match = fixedHeaders.some(key => {
+            return String(row[key] || '').toLowerCase().includes(keyword);
+          });
+          if (!match) return false;
+        }
+
+        return true;
+      });
+
+      currentPage = 1;
+      renderCurrentPageTable();
+    }
+
+    function renderCurrentPageTable() {
+      const thead = document.getElementById('dynamic-thead');
+      const tbody = document.getElementById('dynamic-tbody');
+
+      const activeColumns = fixedHeaders.filter(col => visibleColumns.has(col));
+
+      let headerHTML = `<th class="py-3.5 px-4 w-12 text-center bg-sky-100/90 text-sky-950 font-bold">#</th>`;
+      activeColumns.forEach(col => {
+        headerHTML += `<th class="py-3.5 px-4 bg-sky-100/90 text-sky-950 font-bold whitespace-nowrap">${col}</th>`;
+      });
+      headerHTML += `<th class="py-3.5 px-4 text-center w-24 bg-sky-100/90 text-sky-950 font-bold">操作</th>`;
+      thead.innerHTML = headerHTML;
+
+      if (filteredRows.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="${activeColumns.length + 2}" class="text-center py-12 text-slate-400">
+              <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 text-slate-300"></i>
+              無符合條件的數據
+            </td>
+          </tr>
+        `;
+        lucide.createIcons();
+        updateMetrics(0);
+        updatePaginationInfo(0);
+        return;
+      }
+
+      const startIdx = (currentPage - 1) * pageSize;
+      const endIdx = startIdx + pageSize;
+      const pageData = filteredRows.slice(startIdx, endIdx);
+
+      tbody.innerHTML = pageData.map((row, index) => {
+        const actualIndex = startIdx + index + 1;
+        let colsHTML = `<td class="py-3 px-4 text-center font-mono text-slate-400">${actualIndex}</td>`;
+
+        activeColumns.forEach(colKey => {
+          let val = row[colKey] !== undefined && row[colKey] !== null ? row[colKey] : '';
+
+          if (colKey === 'LOCATION') {
+            const locStr = String(val);
+            const badges = locStr.split(',').map(s => s.trim()).map(loc => {
+              const badgeStyle = locationBadges[loc] || 'bg-slate-100 text-slate-700 border-slate-200';
+              return `<span class="px-2.5 py-0.5 rounded text-xs font-bold border ${badgeStyle}">${loc}</span>`;
+            }).join(' ');
+            colsHTML += `<td class="py-3 px-4">${badges}</td>`;
+          }
+          else if (colKey === 'P/N (IF ANY)') {
+            colsHTML += `<td class="py-3 px-4 font-mono font-semibold text-slate-800">${val || '-'}</td>`;
+          }
+          else if (colKey === 'QTY') {
+            const num = Number(val) || 0;
+            const qtyBadge = num > 0 
+              ? `<span class="px-3 py-1 rounded-md text-xs sm:text-sm font-bold bg-emerald-50 text-emerald-700 border border-emerald-300 shadow-2xs">${num}</span>`
+              : `<span class="px-3 py-1 rounded-md text-xs sm:text-sm font-bold bg-slate-100 text-slate-400 border border-slate-200">${num}</span>`;
+            colsHTML += `<td class="py-3 px-4 text-center">${qtyBadge}</td>`;
+          }
+          else if (colKey === 'PARTS NAME') {
+            colsHTML += `<td class="py-3 px-4 font-bold text-slate-900">${val || '-'}</td>`;
+          }
+          else if (colKey === 'MODEL') {
+            colsHTML += `<td class="py-3 px-4 font-medium text-slate-600">${val || '-'}</td>`;
+          }
+          else if (colKey === 'IN') {
+            const num = Number(val) || 0;
+            colsHTML += `<td class="py-3 px-4 text-center font-semibold ${num > 0 ? 'text-emerald-600' : 'text-slate-300'}">${num > 0 ? num : ''}</td>`;
+          }
+          else if (colKey === 'OUT') {
+            const num = Number(val) || 0;
+            colsHTML += `<td class="py-3 px-4 text-center font-semibold ${num > 0 ? 'text-amber-600' : 'text-slate-300'}">${num > 0 ? num : ''}</td>`;
+          }
+          else {
+            colsHTML += `<td class="py-3 px-4 text-slate-700 max-w-sm truncate">${val}</td>`;
+          }
+        });
+
+        colsHTML += `
+          <td class="py-3 px-4 text-center">
+            <div class="flex items-center justify-center gap-1.5">
+              <button onclick="editRow(${startIdx + index})" class="p-1.5 text-slate-400 hover:text-sky-600 rounded transition">
+                <i data-lucide="edit-2" class="w-4 h-4"></i>
+              </button>
+              <button onclick="deleteRow(${startIdx + index})" class="p-1.5 text-slate-400 hover:text-rose-600 rounded transition">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </td>
+        `;
+
+        return `<tr class="hover:bg-sky-50/50 transition">${colsHTML}</tr>`;
+      }).join('');
+
+      lucide.createIcons();
+      updateMetrics(filteredRows.length);
+      updatePaginationInfo(filteredRows.length);
+    }
+
+    function updatePaginationInfo(totalCount) {
+      const maxPage = Math.max(1, Math.ceil(totalCount / pageSize));
+      document.getElementById('page-info').innerText = `第 ${currentPage} 頁 / 共 ${maxPage} 頁 (共 ${totalCount} 筆)`;
+      document.getElementById('btn-prev').disabled = currentPage <= 1;
+      document.getElementById('btn-next').disabled = currentPage >= maxPage;
+    }
+
+    function prevPage() {
+      if (currentPage > 1) {
+        currentPage--;
+        renderCurrentPageTable();
+      }
+    }
+
+    function nextPage() {
+      const maxPage = Math.ceil(filteredRows.length / pageSize);
+      if (currentPage < maxPage) {
+        currentPage++;
+        renderCurrentPageTable();
+      }
+    }
+
+    function changePageSize() {
+      pageSize = parseInt(document.getElementById('page-size').value) || 50;
+      currentPage = 1;
+      renderCurrentPageTable();
+    }
+
+    function updateMetrics(renderedCount) {
+      document.getElementById('stat-total-items').innerText = currentRows.length;
+      document.getElementById('stat-sheet-name').innerText = currentSheetName;
+
+      let totalQty = 0;
+      let zeroCount = 0;
+      currentRows.forEach(r => {
+        const num = Number(r['QTY'] !== undefined ? r['QTY'] : 0);
+        totalQty += num;
+        if (num === 0) zeroCount++;
+      });
+
+      document.getElementById('stat-total-qty').innerText = totalQty;
+      document.getElementById('stat-zero-qty').innerText = zeroCount;
+      document.getElementById('filtered-count').innerText = `顯示: ${renderedCount} 筆`;
+    }
+
+    function openModal() {
+      document.getElementById('form-edit-index').value = "-1";
+      document.getElementById('modal-title').innerText = "新增零件記錄";
+      document.getElementById('item-modal').classList.remove('hidden');
+    }
+    function closeModal() { document.getElementById('item-modal').classList.add('hidden'); }
+
+    function editRow(index) {
+      const row = filteredRows[index];
+      if (!row) return;
+
+      document.getElementById('form-edit-index').value = index;
+      document.getElementById('modal-title').innerText = "編輯零件記錄";
+      document.getElementById('form-rack').value = (row['LOCATION'] || 'S2').split(',')[0].trim();
+      document.getElementById('form-pn').value = row['P/N (IF ANY)'] !== '-' ? row['P/N (IF ANY)'] : '';
+      document.getElementById('form-parts-name').value = row['PARTS NAME'] || '';
+      document.getElementById('form-in').value = row['IN'] !== undefined ? row['IN'] : 0;
+      document.getElementById('form-out').value = row['OUT'] !== undefined ? row['OUT'] : 0;
+      document.getElementById('form-model').value = row['MODEL'] !== '-' ? row['MODEL'] : '';
+      document.getElementById('form-remarks').value = row['REMARK'] || '';
+
+      document.getElementById('item-modal').classList.remove('hidden');
+    }
+
+    function deleteRow(index) {
+      if (confirm('確定要刪除這筆記錄嗎？')) {
+        const itemToDelete = filteredRows[index];
+        currentRows = currentRows.filter(r => r !== itemToDelete);
+
+        if (currentSheetName !== 'Stock in TW') {
+          allSheetData[currentSheetName] = [...currentRows];
+        } else {
+          const pn = itemToDelete['P/N (IF ANY)'];
+          const name = itemToDelete['PARTS NAME'];
+          orderedSheetNames.forEach(s => {
+            if (s === 'Stock in TW') return;
+            if (allSheetData[s]) {
+              allSheetData[s] = allSheetData[s].filter(r => {
+                const rPn = (r['P/N (IF ANY)'] || r['P/N (If any)'] || '').trim();
+                const rName = (r['PARTS NAME'] || r['Parts Name'] || '').trim();
+                return !(rPn.toLowerCase() === pn.toLowerCase() && rName.toLowerCase() === name.toLowerCase());
+              });
+            }
+          });
+        }
+        reaggregateMasterSheet();
+        saveToStorage();
+        handleSearch();
+      }
+    }
+
+    function handleFormSubmit(e) {
+      e.preventDefault();
+      const editIdx = parseInt(document.getElementById('form-edit-index').value);
+
+      const inVal = Number(document.getElementById('form-in').value) || 0;
+      const outVal = Number(document.getElementById('form-out').value) || 0;
+
+      const rowObj = {
+        'LOCATION': document.getElementById('form-rack').value,
+        'P/N (IF ANY)': document.getElementById('form-pn').value.trim(),
+        'QTY': inVal - outVal,
+        'PARTS NAME': document.getElementById('form-parts-name').value.trim(),
+        'IN': inVal,
+        'OUT': outVal,
+        'DATE': formatDate(new Date()),
+        'MODEL': document.getElementById('form-model').value.trim(),
+        'REMARK': document.getElementById('form-remarks').value.trim()
+      };
+
+      const targetRack = rowObj['LOCATION'];
+      if (!allSheetData[targetRack]) allSheetData[targetRack] = [];
+
+      if (editIdx >= 0) {
+        if (currentSheetName === 'Stock in TW') {
+          allSheetData[targetRack].unshift(rowObj);
+        } else {
+          currentRows[editIdx] = rowObj;
+          allSheetData[currentSheetName] = [...currentRows];
+        }
+      } else {
+        allSheetData[targetRack].unshift(rowObj);
+      }
+
+      reaggregateMasterSheet();
+      saveToStorage();
+      handleSearch();
+      closeModal();
+      syncToGAS(rowObj);
+    }
+
+    function toggleSyncPanel() { document.getElementById('sync-panel').classList.toggle('hidden'); }
+    function toggleMobileMenu() { document.getElementById('mobile-menu').classList.toggle('hidden'); }
+
+    function saveGasUrl() {
+      const url = document.getElementById('gas-url-input').value.trim();
+      localStorage.setItem('GAS_WEB_APP_URL', url);
+      alert('Google Apps Script URL 已成功儲存！');
+      checkSyncStatus();
+      fetchDataFromGAS();
+    }
+
+    function checkSyncStatus() {
+      const gasUrl = getGasUrl();
+      const dot = document.getElementById('sync-status-dot');
+      if (gasUrl) {
+        document.getElementById('gas-url-input').value = gasUrl;
+        dot.className = 'w-2 h-2 rounded-full bg-emerald-500 ml-1 animate-pulse';
+      }
+    }
+
+    async function syncToGAS(itemData) {
+      const gasUrl = getGasUrl();
+      if (!gasUrl) return;
+
+      try {
+        await fetch(gasUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...itemData, targetSheet: itemData['LOCATION'] || currentSheetName })
+        });
+      } catch (err) {
+        console.error('GAS Sync Error:', err);
+      }
+    }
+
+    function exportCSV() {
+      if (filteredRows.length === 0) { alert('無數據可匯出！'); return; }
+      const activeColumns = fixedHeaders.filter(h => visibleColumns.has(h));
+      let csv = '\uFEFF' + activeColumns.join(',') + '\n';
+      filteredRows.forEach(row => {
+        let line = activeColumns.map(k => `"${String(row[k] || '').replace(/"/g, '""')}"`).join(',');
+        csv += line + '\n';
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${currentSheetName}_${new Date().toISOString().slice(0,10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    window.addEventListener('click', function(e) {
+      const dropdown = document.getElementById('column-dropdown');
+      if (!dropdown.contains(e.target) && !e.target.closest('button[onclick="toggleColumnMenu()"]')) {
+        dropdown.classList.add('hidden');
+      }
+    });
+
+    window.onload = () => {
+      lucide.createIcons();
+      checkSyncStatus();
+
+      const hasCache = loadFromStorage();
+      if (hasCache) {
+        reaggregateMasterSheet();
+        renderSheetTabs();
+        switchSheet('Stock in TW');
+      }
+
+      fetchDataFromGAS();
+    };
+  </script>
+</body>
+</html>
