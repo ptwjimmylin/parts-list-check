@@ -32,13 +32,13 @@
         <div class="min-w-0">
           <div class="flex items-center gap-1.5">
             <h1 class="font-bold text-slate-900 text-base leading-tight truncate">PTW Taiwan Inventory System</h1>
-            <span class="px-1.5 py-0.5 text-[10px] font-semibold bg-sky-100 text-sky-700 rounded border border-sky-200 flex-shrink-0">PRO v4.1 Master Sync</span>
+            <span class="px-1.5 py-0.5 text-[10px] font-semibold bg-sky-100 text-sky-700 rounded border border-sky-200 flex-shrink-0">PRO v4.2</span>
           </div>
-          <p class="text-[11px] text-sky-600/80 truncate">Strict Multi-Rack Linked • Real-Time Stock in TW Sync</p>
+          <p class="text-[11px] text-sky-600/80 truncate">Strict (P/N + Parts Name) Match • Total IN - Total OUT</p>
         </div>
       </div>
 
-      <!-- 桌面端操作按鈕 -->
+      <!-- 桌面端按鈕 -->
       <div class="hidden lg:flex items-center gap-2.5">
         <button onclick="fetchDataFromGAS()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-sky-200 text-slate-700 bg-white hover:bg-sky-50 text-xs font-medium transition shadow-xs">
           <i data-lucide="refresh-cw" class="w-4 h-4 text-sky-600"></i>
@@ -150,7 +150,7 @@
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
       <div class="glass-card p-4 rounded-xl border border-sky-100 shadow-sm flex items-center justify-between">
         <div>
-          <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">總零件品項 (PARTS)</p>
+          <p class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">總品項數 (PARTS)</p>
           <h3 id="stat-total-items" class="text-xl font-extrabold text-slate-800 mt-0.5">0</h3>
         </div>
         <div class="w-9 h-9 rounded-lg bg-sky-50 flex items-center justify-center text-sky-600">
@@ -207,7 +207,6 @@
         </div>
 
         <div class="flex items-center gap-2 w-full md:w-auto flex-wrap">
-          <!-- Location 篩選 -->
           <select id="filter-location" onchange="handleSearch()" class="flex-1 md:w-32 px-2.5 py-1.5 text-xs rounded-lg border border-sky-200 bg-sky-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium text-slate-700">
             <option value="ALL">全部 Location</option>
             <option value="S2">S2</option>
@@ -219,14 +218,12 @@
             <option value="Clean room">Clean room</option>
           </select>
 
-          <!-- QTY 篩選 -->
           <select id="filter-qty" onchange="handleSearch()" class="flex-1 md:w-32 px-2.5 py-1.5 text-xs rounded-lg border border-sky-200 bg-sky-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium text-slate-700">
             <option value="ALL">全部 QTY</option>
             <option value="IN_STOCK">有庫存 (>0)</option>
             <option value="ZERO">零庫存/缺貨 (=0)</option>
           </select>
 
-          <!-- 欄位調整下拉 -->
           <div class="relative">
             <button onclick="toggleColumnMenu()" class="px-2.5 py-1.5 text-xs rounded-lg border border-sky-200 bg-sky-50/50 hover:bg-sky-100 text-slate-700 flex items-center gap-1 font-medium transition">
               <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5 text-sky-600"></i>
@@ -239,7 +236,6 @@
             </div>
           </div>
 
-          <!-- 每頁筆數 -->
           <select id="page-size" onchange="changePageSize()" class="px-2 py-1.5 text-xs rounded-lg border border-sky-200 bg-sky-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 text-slate-600 font-medium">
             <option value="25">25 筆/頁</option>
             <option value="50" selected>50 筆/頁</option>
@@ -346,7 +342,7 @@
   <script>
     const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbxm8arB97z2ZS_iwuC5M9RDWAjDYvVckHkHSb3DHlzyxU1ya0stvNcpEvyWWz55QQK-UA/exec";
 
-    // 規定固定順序
+    // 規定固定順序 (完全排除 S1 與所有 Print 頁籤)
     const orderedSheetNames = ['Stock in TW', 'S2', 'S3', 'S4', 'S5', 'S6', 'DRY BOX', 'Clean room'];
 
     // 規定欄位順序：LOCATION ➔ P/N (IF ANY) ➔ QTY ➔ PARTS NAME ➔ MODEL ➔ IN ➔ OUT ➔ DATE ➔ REMARK
@@ -382,7 +378,7 @@
       return localStorage.getItem('GAS_WEB_APP_URL') || DEFAULT_GAS_URL;
     }
 
-    // 萬用值提取函數（模糊匹配大小寫）
+    // 模糊提取欄位值（不區分大小寫、自動去除前後空白）
     function getVal(row, keys) {
       if (!row) return '';
       const rowKeys = Object.keys(row);
@@ -401,8 +397,8 @@
     // 標準化分頁明細（單筆明細計算其當次進出）
     function normalizeRow(r, fallbackLocation) {
       const loc = getVal(r, ['LOCATION', 'Location', '貨架', 'Rack']) || fallbackLocation;
-      const pn = getVal(r, ['P/N (If any)', 'P/N (IF ANY)', 'P/N', 'PN', 'Part Number', '料號']);
-      const name = getVal(r, ['Parts Name', 'PARTS NAME', 'Part Name', '品名', '零件名稱']);
+      let pn = getVal(r, ['P/N (If any)', 'P/N (IF ANY)', 'P/N', 'PN', 'Part Number', '料號']);
+      let name = getVal(r, ['Parts Name', 'PARTS NAME', 'Part Name', '品名', '零件名稱']);
       const model = getVal(r, ['Model', 'MODEL', '適用機型', '機型']);
       const inVal = Number(getVal(r, ['IN', 'In', '進貨']) || 0);
       const outVal = Number(getVal(r, ['OUT', 'Out', '出貨']) || 0);
@@ -417,6 +413,10 @@
         qtyVal = inVal - outVal;
       }
 
+      // 標準化乾淨料號與品名
+      pn = pn ? pn.trim() : '';
+      name = name ? name.trim() : '';
+
       return {
         'LOCATION': loc,
         'P/N (IF ANY)': pn,
@@ -430,37 +430,27 @@
       };
     }
 
-    // 🌟 核心關聯演算法：Stock in TW 嚴格將同零件彙總（Total IN - Total OUT = 24）
+    // 🌟 嚴格核心演算法：P/N 與 Parts Name 必須兩者「完全一致」才符合計算，並執行 Total IN - Total OUT
     function reaggregateMasterSheet() {
       const subSheets = ['S2', 'S3', 'S4', 'S5', 'S6', 'DRY BOX', 'Clean room'];
       const partsMap = new Map();
 
-      // 第一步：收集所有記錄並進行零件統一分組
       subSheets.forEach(sheetName => {
         const rows = allSheetData[sheetName] || [];
         rows.forEach(rawR => {
           const item = normalizeRow(rawR, sheetName);
-          const name = item['PARTS NAME'];
           const pn = item['P/N (IF ANY)'];
+          const name = item['PARTS NAME'];
+
+          // 必須至少有名稱或料號
           if (!name && !pn) return;
 
-          // 使用品名作為基礎鍵（忽略大小寫），若品名相同則歸入同一零件
-          const nameKey = name.toLowerCase().trim();
-          let matchedKey = null;
+          // 嚴格組合唯一鍵：P/N + Parts Name 必須完全吻合！
+          // 將空白標準化為空字串，嚴格區分大小寫與字元
+          const strictKey = `${pn.toLowerCase()}___|||___${name.toLowerCase()}`;
 
-          for (const [key, obj] of partsMap.entries()) {
-            // 若品名相同，或料號相同且非空，視為同一零件
-            const sameName = nameKey !== '' && obj.name.toLowerCase().trim() === nameKey;
-            const samePn = pn !== '' && obj.pn !== '' && obj.pn.toLowerCase().trim() === pn.toLowerCase().trim();
-            if (sameName || samePn) {
-              matchedKey = key;
-              break;
-            }
-          }
-
-          if (!matchedKey) {
-            matchedKey = pn ? `${pn}__${name}` : `NAME__${name}`;
-            partsMap.set(matchedKey, {
+          if (!partsMap.has(strictKey)) {
+            partsMap.set(strictKey, {
               pn: pn,
               name: name,
               model: item['MODEL'],
@@ -473,16 +463,12 @@
             });
           }
 
-          const targetObj = partsMap.get(matchedKey);
-          // 若有補上更完整的料號或機型，自動更新
-          if (!targetObj.pn && pn) targetObj.pn = pn;
-          if (!targetObj.name && name) targetObj.name = name;
-          if (!targetObj.model && item['MODEL']) targetObj.model = item['MODEL'];
-
+          const targetObj = partsMap.get(strictKey);
           targetObj.locations.add(item['LOCATION'] || sheetName);
           targetObj.totalIn += item['IN'];
           targetObj.totalOut += item['OUT'];
 
+          if (item['MODEL'] && !targetObj.model) targetObj.model = item['MODEL'];
           if (item['DATE']) targetObj.latestDate = item['DATE'];
           if (item['REMARK']) targetObj.latestRemark = item['REMARK'];
 
@@ -490,10 +476,9 @@
         });
       });
 
-      // 第二步：計算最終庫存 (Total IN - Total OUT)，產生 Stock in TW 唯一總表
+      // 產生 Stock in TW 唯一總表 (每一項 P/N + Parts Name 只有一列，QTY = Total IN - Total OUT)
       let masterRows = [];
       partsMap.forEach(item => {
-        // 嚴格依照：現有庫存 = 總進貨 - 總出貨 (例: 114 - 30 - 60 = 24)
         const finalQty = item.totalIn - item.totalOut;
 
         masterRows.push({
@@ -514,7 +499,7 @@
       checkRepairAlerts();
     }
 
-    // 警告機制：只有送修未歸還且超過 3 天才警示
+    // 警告機制：最新紀錄送修超過 3 天未歸還
     function checkRepairAlerts() {
       const allMaster = allSheetData['Stock in TW'] || [];
       const overdueItems = [];
@@ -532,7 +517,7 @@
         const outQty = Number(latest['OUT'] || 0);
         const remark = String(latest['REMARK'] || '').toLowerCase();
 
-        // 必須符合：備註明確提到 repair / 維修 / 送修，且最新一筆是出庫 OUT > 0
+        // 判定為送修出庫：OUT > 0 且備註包含 repair / 維修 / 送修
         const isRepairOut = outQty > 0 && (remark.includes('repair') || remark.includes('修') || remark.includes('sg'));
 
         if (isRepairOut) {
@@ -735,7 +720,7 @@
           switchSheet('Stock in TW');
 
           loadingBar.classList.add('hidden');
-          alert('🎉 成功！全套資料已依各貨架進出總帳連動計算完成！');
+          alert('🎉 成功！全套資料已依 (P/N + Parts Name) 嚴格吻合總帳連動計算完成！');
 
         } catch (err) {
           alert('匯入失敗：' + err.message);
@@ -1018,12 +1003,17 @@
         if (currentSheetName !== 'Stock in TW') {
           allSheetData[currentSheetName] = [...currentRows];
         } else {
+          // 若在主頁刪除，嚴格依照 P/N + Parts Name 刪除各分頁對應項目
           const pn = itemToDelete['P/N (IF ANY)'];
           const name = itemToDelete['PARTS NAME'];
           orderedSheetNames.forEach(s => {
             if (s === 'Stock in TW') return;
             if (allSheetData[s]) {
-              allSheetData[s] = allSheetData[s].filter(r => !(r['P/N (IF ANY)'] === pn && r['PARTS NAME'] === name));
+              allSheetData[s] = allSheetData[s].filter(r => {
+                const rPn = (r['P/N (IF ANY)'] || r['P/N (If any)'] || '').trim();
+                const rName = (r['PARTS NAME'] || r['Parts Name'] || '').trim();
+                return !(rPn.toLowerCase() === pn.toLowerCase() && rName.toLowerCase() === name.toLowerCase());
+              });
             }
           });
         }
@@ -1042,14 +1032,14 @@
 
       const rowObj = {
         'LOCATION': document.getElementById('form-rack').value,
-        'P/N (IF ANY)': document.getElementById('form-pn').value,
+        'P/N (IF ANY)': document.getElementById('form-pn').value.trim(),
         'QTY': inVal - outVal,
-        'PARTS NAME': document.getElementById('form-parts-name').value,
+        'PARTS NAME': document.getElementById('form-parts-name').value.trim(),
         'IN': inVal,
         'OUT': outVal,
         'DATE': formatDate(new Date()),
-        'MODEL': document.getElementById('form-model').value,
-        'REMARK': document.getElementById('form-remarks').value
+        'MODEL': document.getElementById('form-model').value.trim(),
+        'REMARK': document.getElementById('form-remarks').value.trim()
       };
 
       const targetRack = rowObj['LOCATION'];
