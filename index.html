@@ -22,7 +22,7 @@
 
   <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleFileImport(event)">
 
-  <!-- 頂部 Header (滿版寬螢幕佈局) -->
+  <!-- 頂部 Header -->
   <header class="bg-white/95 backdrop-blur border-b border-sky-100 sticky top-0 z-30 shadow-xs">
     <div class="w-full max-w-[97%] mx-auto px-2 sm:px-4 h-16 flex items-center justify-between">
       <div class="flex items-center gap-3">
@@ -32,9 +32,9 @@
         <div class="min-w-0">
           <div class="flex items-center gap-2">
             <h1 class="font-bold text-slate-900 text-lg leading-tight truncate">PTW Taiwan Inventory System</h1>
-            <span class="px-2 py-0.5 text-xs font-semibold bg-sky-100 text-sky-700 rounded-md border border-sky-200 flex-shrink-0">PRO v4.3 Wide</span>
+            <span class="px-2 py-0.5 text-xs font-semibold bg-sky-100 text-sky-700 rounded-md border border-sky-200 flex-shrink-0">PRO v4.5</span>
           </div>
-          <p class="text-xs text-sky-600/80 truncate">Strict Multi-Rack Linked • Real-Time Stock in TW Sync</p>
+          <p class="text-xs text-sky-600/80 truncate">Strict Alignment • Real-Time Stock in TW Sync</p>
         </div>
       </div>
 
@@ -81,7 +81,7 @@
       </div>
     </div>
 
-    <!-- 手機端選單 -->
+    <!-- 手機端展開選單 -->
     <div id="mobile-menu" class="hidden lg:hidden bg-slate-900 text-white p-4 border-b border-slate-800 space-y-3">
       <button onclick="fetchDataFromGAS(); toggleMobileMenu();" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 text-slate-200 text-xs font-medium">
         <i data-lucide="refresh-cw" class="w-4 h-4 text-sky-400"></i> 從 Google Sheet 刷新數據
@@ -98,7 +98,7 @@
     </div>
   </header>
 
-  <!-- Google Sheet API 面板 (滿版) -->
+  <!-- Google Sheet API 面板 -->
   <div id="sync-panel" class="hidden bg-slate-900 text-white border-b border-slate-800 p-4 transition-all">
     <div class="w-full max-w-[97%] mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
       <div class="flex items-center gap-3">
@@ -115,7 +115,7 @@
     </div>
   </div>
 
-  <!-- 主內容容器 (寬度改為滿版 97%) -->
+  <!-- 主內容容器 -->
   <main class="w-full max-w-[97%] mx-auto px-2 sm:px-4 pt-4 space-y-4">
 
     <!-- 🚨 送修超過 3 天未回帳警告區 -->
@@ -147,7 +147,7 @@
       </span>
     </div>
 
-    <!-- 統計卡片 (滿版展開) -->
+    <!-- 統計卡片 -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <div class="glass-card p-4 sm:p-5 rounded-xl border border-sky-100 shadow-sm flex items-center justify-between">
         <div>
@@ -190,7 +190,7 @@
       </div>
     </div>
 
-    <!-- 分頁按鈕列 (滿版橫向滑動) -->
+    <!-- 分頁按鈕列 -->
     <div class="space-y-3 pt-1">
       <div class="flex items-center justify-between gap-2 border-b border-sky-200/80 pb-2 overflow-x-auto no-scrollbar">
         <div class="flex items-center gap-2 flex-nowrap" id="sheet-tabs-container">
@@ -200,7 +200,7 @@
         </span>
       </div>
 
-      <!-- 搜尋列 + Location 篩選 + QTY 篩選 + 欄位調整 (滿版寬鬆) -->
+      <!-- 搜尋列 + Location 篩選 + QTY 篩選 + 欄位調整 -->
       <div class="bg-white/95 backdrop-blur p-3 rounded-xl border border-sky-100 shadow-xs flex flex-col md:flex-row items-center gap-3">
         <div class="relative w-full md:flex-1">
           <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
@@ -247,7 +247,7 @@
       </div>
     </div>
 
-    <!-- 表格容器 (大版面寬敞展示) -->
+    <!-- 表格容器 -->
     <div class="bg-white rounded-xl border border-sky-100 shadow-sm overflow-hidden flex flex-col">
       <div class="overflow-x-auto max-h-[66vh] overflow-y-auto relative">
         <table class="w-full text-left border-collapse min-w-[850px]">
@@ -272,13 +272,13 @@
 
   </main>
 
-  <!-- Modal -->
+  <!-- Modal 新增/編輯視窗 -->
   <div id="item-modal" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl border border-sky-200 shadow-2xl w-full max-w-lg overflow-hidden transition-all">
       <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
         <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
           <i data-lucide="edit-3" class="w-4 h-4 text-sky-600"></i>
-          <span id="modal-title">新增/編輯零件記錄</span>
+          <span id="modal-title">新增零件記錄</span>
         </h3>
         <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
           <i data-lucide="x" class="w-5 h-5"></i>
@@ -290,26 +290,26 @@
 
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">貨架號 (Location)</label>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">目標分頁/貨架 (Location)</label>
             <select id="form-rack" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500">
               <option value="S2">S2</option>
               <option value="S3">S3</option>
-              <option value="S4">S4</option>
+              <option value="S4" selected>S4</option>
               <option value="S5">S5</option>
-              <option value="S6" selected>S6</option>
+              <option value="S6">S6</option>
               <option value="DRY BOX">DRY BOX</option>
               <option value="Clean room">Clean room</option>
             </select>
           </div>
           <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">料號 (P/N)</label>
-            <input type="text" id="form-pn" placeholder="例如: S/N:251204" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500">
+            <label class="block text-xs font-semibold text-slate-600 mb-1">料號 (P/N (If any))</label>
+            <input type="text" id="form-pn" placeholder="例如: VQ1301-5B1" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500">
           </div>
         </div>
 
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1">零件名稱 (Parts Name)</label>
-          <input type="text" id="form-parts-name" required placeholder="例如: DVP conductive pins" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500">
+          <input type="text" id="form-parts-name" required placeholder="例如: Solenoid" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500">
         </div>
 
         <div class="grid grid-cols-3 gap-3">
@@ -323,13 +323,13 @@
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-600 mb-1">機型 (Model)</label>
-            <input type="text" id="form-model" placeholder="例如: SEZ" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500">
+            <input type="text" id="form-model" placeholder="例如: 93xx" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500">
           </div>
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">備註 (Remarks)</label>
-          <input type="text" id="form-remarks" placeholder="例如: Stock for UMC12A / to UMC 12A" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500">
+          <label class="block text-xs font-semibold text-slate-600 mb-1">備註 (Remark)</label>
+          <input type="text" id="form-remarks" placeholder="例如: to TSMC 3" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500">
         </div>
 
         <div class="pt-2 flex items-center justify-end gap-3 border-t border-slate-100">
@@ -376,6 +376,7 @@
       return localStorage.getItem('GAS_WEB_APP_URL') || DEFAULT_GAS_URL;
     }
 
+    // 模糊提取屬性值
     function getVal(row, keys) {
       if (!row) return '';
       const rowKeys = Object.keys(row);
@@ -391,6 +392,7 @@
       return '';
     }
 
+    // 標準化分頁明細 (對齊 Date, P/N (If any), Parts Name, Model, QTY, IN, OUT, Remark)
     function normalizeRow(r, fallbackLocation) {
       const loc = getVal(r, ['LOCATION', 'Location', '貨架', 'Rack']) || fallbackLocation;
       let pn = getVal(r, ['P/N (If any)', 'P/N (IF ANY)', 'P/N', 'PN', 'Part Number', '料號']);
@@ -425,6 +427,7 @@
       };
     }
 
+    // 嚴格聚合：P/N + Parts Name 必須吻合才計算 Total IN - Total OUT
     function reaggregateMasterSheet() {
       const subSheets = ['S2', 'S3', 'S4', 'S5', 'S6', 'DRY BOX', 'Clean room'];
       const partsMap = new Map();
@@ -972,7 +975,7 @@
 
       document.getElementById('form-edit-index').value = index;
       document.getElementById('modal-title').innerText = "編輯零件記錄";
-      document.getElementById('form-rack').value = (row['LOCATION'] || 'S2').split(',')[0].trim();
+      document.getElementById('form-rack').value = (row['LOCATION'] || 'S4').split(',')[0].trim();
       document.getElementById('form-pn').value = row['P/N (IF ANY)'] !== '-' ? row['P/N (IF ANY)'] : '';
       document.getElementById('form-parts-name').value = row['PARTS NAME'] || '';
       document.getElementById('form-in').value = row['IN'] !== undefined ? row['IN'] : 0;
@@ -1010,44 +1013,61 @@
       }
     }
 
+    // 表單送出：精準對齊 Date, P/N (If any), Parts Name, Model, QTY, IN, OUT, Remark
     function handleFormSubmit(e) {
       e.preventDefault();
       const editIdx = parseInt(document.getElementById('form-edit-index').value);
 
       const inVal = Number(document.getElementById('form-in').value) || 0;
       const outVal = Number(document.getElementById('form-out').value) || 0;
+      const targetLoc = document.getElementById('form-rack').value;
+      const pnVal = document.getElementById('form-pn').value.trim();
+      const nameVal = document.getElementById('form-parts-name').value.trim();
+      const modelVal = document.getElementById('form-model').value.trim();
+      const remarkVal = document.getElementById('form-remarks').value.trim();
+      const dateVal = formatDate(new Date());
 
       const rowObj = {
-        'LOCATION': document.getElementById('form-rack').value,
-        'P/N (IF ANY)': document.getElementById('form-pn').value.trim(),
+        'LOCATION': targetLoc,
+        'P/N (IF ANY)': pnVal,
         'QTY': inVal - outVal,
-        'PARTS NAME': document.getElementById('form-parts-name').value.trim(),
+        'PARTS NAME': nameVal,
         'IN': inVal,
         'OUT': outVal,
-        'DATE': formatDate(new Date()),
-        'MODEL': document.getElementById('form-model').value.trim(),
-        'REMARK': document.getElementById('form-remarks').value.trim()
+        'DATE': dateVal,
+        'MODEL': modelVal,
+        'REMARK': remarkVal
       };
 
-      const targetRack = rowObj['LOCATION'];
-      if (!allSheetData[targetRack]) allSheetData[targetRack] = [];
+      if (!allSheetData[targetLoc]) allSheetData[targetLoc] = [];
 
       if (editIdx >= 0) {
         if (currentSheetName === 'Stock in TW') {
-          allSheetData[targetRack].unshift(rowObj);
+          allSheetData[targetLoc].unshift(rowObj);
         } else {
           currentRows[editIdx] = rowObj;
           allSheetData[currentSheetName] = [...currentRows];
         }
       } else {
-        allSheetData[targetRack].unshift(rowObj);
+        allSheetData[targetLoc].unshift(rowObj);
       }
 
       reaggregateMasterSheet();
       saveToStorage();
       handleSearch();
       closeModal();
-      syncToGAS(rowObj);
+
+      // 同步到 Google Sheet
+      syncToGAS({
+        'LOCATION': targetLoc,
+        'P/N (If any)': pnVal,
+        'Parts Name': nameVal,
+        'Model': modelVal,
+        'IN': inVal,
+        'OUT': outVal,
+        'Remark': remarkVal,
+        'Date': dateVal
+      });
     }
 
     function toggleSyncPanel() { document.getElementById('sync-panel').classList.toggle('hidden'); }
