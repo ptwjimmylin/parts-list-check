@@ -2,6 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>零件進出庫房管理系統</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 20px; background: #f5f6f8; color: #333; }
@@ -133,7 +134,7 @@
       <input type="file" id="csvFile" accept=".csv">
       <button class="btn btn-import" onclick="handleCSVUpload()">開始匯入</button>
     </div>
-    <small>CSV 欄位順序：Date, P/N, Parts Name, Model, IN, OUT, Remark</small>
+    <small>系統將自動截取前 7 欄：Date, P/N, Parts Name, Model, IN, OUT, Remark</small>
   </div>
 </div>
 
@@ -178,7 +179,6 @@
 </div>
 
 <script>
-  // 已帶入你的 Google Apps Script Web App 網址
   const GAS_URL = "https://script.google.com/macros/s/AKfycbyIklqSEpYdKMYN_f16rgAc2--Jm37AEHlIcjWRSAHj06XPIZ50sOv_sYBPb9J4ILMQ3g/exec";
   let currentHistoryData = [];
 
@@ -252,7 +252,6 @@
     }
   }
 
-  // 渲染歷史表格
   function renderHistoryTable(dataList) {
     const tbody = document.querySelector("#historyTable tbody");
     tbody.innerHTML = "";
@@ -277,7 +276,6 @@
     });
   }
 
-  // 本地即時關鍵字過濾
   function filterHistoryTable() {
     const query = document.getElementById("histSearchInput").value.trim().toLowerCase();
     if (!query) {
@@ -292,7 +290,6 @@
     renderHistoryTable(filtered);
   }
 
-  // 打開編輯視窗
   function openEditModal(rowId) {
     const record = currentHistoryData.find(r => r.rowId === rowId);
     if (!record) return;
@@ -313,7 +310,6 @@
     document.getElementById("editModal").classList.remove("show");
   }
 
-  // 儲存編輯回 Google Sheets
   async function saveEditedRecord() {
     const sheetName = document.getElementById("histSheetSelect").value;
     const payload = {
@@ -378,33 +374,55 @@
     }
   }
 
-  // 4. CSV 批次匯入
+  // 4. CSV 批次匯入（精準截取前 7 欄）
   function handleCSVUpload() {
     const file = document.getElementById("csvFile").files[0];
     const sheetName = document.getElementById("importSheet").value;
-    if(!file) return alert("請先選擇 CSV 檔案");
+    if (!file) return alert("請先選擇 CSV 檔案");
 
     const reader = new FileReader();
     reader.onload = async function(e) {
       const text = e.target.result;
-      const rows = text.split("\n").filter(r => r.trim() !== "").map(r => r.split(",").map(c => c.trim()));
-      if (rows[0][0].toLowerCase().includes("date")) rows.shift();
+      const lines = text.split(/\r?\n/).filter(line => line.trim() !== "");
+      
+      if (lines.length === 0) return alert("檔案內容為空！");
 
-      const res = await fetch(GAS_URL, {
-        method: "POST",
-        body: JSON.stringify({ action: "batchImport", sheet: sheetName, rows: rows })
+      if (lines[0].toLowerCase().includes("date")) {
+        lines.shift();
+      }
+
+      const cleanRows = lines.map(line => {
+        const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.trim().replace(/^"|"$/g, ''));
+        return [
+          cols[0] || "",
+          cols[1] || "",
+          cols[2] || "",
+          cols[3] || "",
+          Number(cols[4]) || 0,
+          Number(cols[5]) || 0,
+          cols[6] || ""
+        ];
       });
-      const result = await res.json();
-      if(result.status === "success") {
-        alert(`成功匯入 ${result.count} 筆資料！`);
-      } else {
-        alert("匯入失敗: " + result.message);
+
+      try {
+        const res = await fetch(GAS_URL, {
+          method: "POST",
+          body: JSON.stringify({ action: "batchImport", sheet: sheetName, rows: cleanRows })
+        });
+        const result = await res.json();
+        if (result.status === "success") {
+          alert(`成功匯入 ${result.count} 筆資料！`);
+          document.getElementById("csvFile").value = "";
+        } else {
+          alert("匯入失敗: " + result.message);
+        }
+      } catch (err) {
+        alert("傳送失敗，請確認網路連線。");
       }
     };
     reader.readAsText(file);
   }
 
-  // 初始化今日日期與預設載入庫存
   document.getElementById("recDate").value = new Date().toISOString().split('T')[0];
   loadStock();
 </script>
