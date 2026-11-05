@@ -218,7 +218,7 @@
     }
   }
 
-  // 1. 讀取總庫存
+  // 1. 讀取總庫存（附帶除錯回應）
   async function loadStock() {
     const tbody = document.querySelector("#stockTable tbody");
     tbody.innerHTML = "<tr><td colspan='6'>即時加總各庫房庫存中...</td></tr>";
@@ -229,14 +229,14 @@
         currentStockData = result.data || [];
         filterStockTable();
       } else {
-        tbody.innerHTML = `<tr><td colspan='6' style='color:red;'>計算失敗：${result.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan='6' style='color:red; font-weight:bold;'>後端回報錯誤：${result.message}</td></tr>`;
       }
     } catch(err) {
-      tbody.innerHTML = `<tr><td colspan='6' style='color:red;'>連線失敗：${err.toString()}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan='6' style='color:red; font-weight:bold;'>API 連線失敗：${err.toString()}</td></tr>`;
     }
   }
 
-  // 完全忽略大小寫與前後空白進行篩選
+  // 庫存過濾邏輯（不分大小寫）
   function filterStockTable() {
     const selectedLoc = document.getElementById("stockLocationSelect").value.trim().toLowerCase();
     const query = document.getElementById("stockSearchInput").value.trim().toLowerCase();
@@ -255,7 +255,7 @@
 
     tbody.innerHTML = "";
     if (filtered.length === 0) {
-      tbody.innerHTML = "<tr><td colspan='6'>查無符合條件的庫存資料</td></tr>";
+      tbody.innerHTML = "<tr><td colspan='6'>查無符合條件的庫存資料 (目前資料筆數: " + currentStockData.length + ")</td></tr>";
       return;
     }
 
