@@ -47,7 +47,7 @@
   <h2>零件進出庫房管理系統</h2>
   
   <div class="tabs">
-    <button class="tab-btn active" onclick="switchTab('stock', event)">庫存總覽 (stock in TW)</button>
+    <button class="tab-btn active" onclick="switchTab('stock', event)">庫存總覽</button>
     <button class="tab-btn" onclick="switchTab('history', event)">歷史紀錄查詢與編輯</button>
     <button class="tab-btn" onclick="switchTab('entry', event)">進出庫登記</button>
     <button class="tab-btn" onclick="switchTab('import', event)">批次匯入資料 (覆寫)</button>
@@ -68,7 +68,7 @@
         <option value="clean room">clean room</option>
       </select>
       <input type="text" id="stockSearchInput" placeholder="搜尋料號 P/N 或品名..." oninput="filterStockTable()">
-      <button class="btn btn-blue" onclick="loadStock()">即時計算並重新整理</button>
+      <button class="btn btn-blue" onclick="loadStockFrontend()">前端直接計算並重新整理</button>
     </div>
 
     <table id="stockTable">
@@ -194,6 +194,8 @@
 
 <script>
   const GAS_URL = "https://script.google.com/macros/s/AKfycbyIklqSEpYdKMYN_f16rgAc2--Jm37AEHlIcjWRSAHj06XPIZ50sOv_sYBPb9J4ILMQ3g/exec";
+  const WAREHOUSES = ["S2", "S3", "S4", "S5", "S6", "DRY BOX", "clean room"];
+  
   let currentStockData = [];
   let currentHistoryData = [];
 
@@ -204,7 +206,7 @@
     if (tab === 'stock') {
       document.getElementById('stockPanel').classList.add('active');
       evt.target.classList.add('active');
-      loadStock();
+      loadStockFrontend();
     } else if (tab === 'history') {
       document.getElementById('historyPanel').classList.add('active');
       evt.target.classList.add('active');
@@ -218,25 +220,74 @@
     }
   }
 
-  // 1. 讀取總庫存（附帶除錯回應）
-  async function loadStock() {
+  // 【核心功能】：前端非同步並行抓取 7 個分頁，在瀏覽器端直接計算 IN - OUT
+  async function loadStockFrontend() {
     const tbody = document.querySelector("#stockTable tbody");
-    tbody.innerHTML = "<tr><td colspan='6'>即時加總各庫房庫存中...</td></tr>";
+    tbody.innerHTML = "<tr><td colspan='6'>正在抓取各庫房資料並進行前端運算...</td></tr>";
+
     try {
-      const res = await fetch(`${GAS_URL}?action=getStock`);
-      const result = await res.json();
-      if (result.status === "success") {
-        currentStockData = result.data || [];
-        filterStockTable();
-      } else {
-        tbody.innerHTML = `<tr><td colspan='6' style='color:red; font-weight:bold;'>後端回報錯誤：${result.message}</td></tr>`;
-      }
-    } catch(err) {
-      tbody.innerHTML = `<tr><td colspan='6' style='color:red; font-weight:bold;'>API 連線失敗：${err.toString()}</td></tr>`;
+      // 同時向後端發出 7 個分頁的請求
+      const fetchPromises = WAREHOUSES.map(sheetName =>
+        fetch(`${GAS_URL}?action=getHistory&sheet=${encodeURIComponent(sheetName)}`)
+          .then(res => res.json())
+          .then(res => ({ sheetName, data: res.status === 'success' ? res.data : [] }))
+          .catch(() => ({ sheetName, data: [] }))
+      );
+
+      const results = await Promise.all(fetchPromises);
+      const inventoryMap = {};
+
+      // 遍歷所有庫房回傳的明細並進行加總
+      results.forEach(({ sheetName, data }) => {
+        data.forEach(item => {
+          const pn = String(item.pn || "").trim();
+          const partsName = String(item.partsName || "").trim();
+          const model = String(item.model || "").trim();
+          const inQty = Number(item.inQty) || 0;
+          const outQty = Number(item.outQty) || 0;
+          const remark = String(item.remark || "").trim();
+
+          if (!pn && !partsName) return;
+
+          // 以 (庫房 + 料號/品名) 作為唯一鍵值，忽略大小寫
+          const keyIdentifier = (pn !== "" ? pn : partsName).toLowerCase();
+          const mapKey = sheetName.toLowerCase() + "____" + keyIdentifier;
+
+          if (!inventoryMap[mapKey]) {
+            inventoryMap[mapKey] = {
+              location: sheetName,
+              pn: pn,
+              partsName: partsName,
+              model: model,
+              qty: 0,
+              remark: remark
+            };
+          }
+
+          // 核心相差數量計算：IN - OUT
+          inventoryMap[mapKey].qty += (inQty - outQty);
+          if (partsName && !inventoryMap[mapKey].partsName) inventoryMap[mapKey].partsName = partsName;
+          if (model && !inventoryMap[mapKey].model) inventoryMap[mapKey].model = model;
+        });
+      });
+
+      // 整理成陣列
+      currentStockData = Object.values(inventoryMap).map(item => ({
+        location: item.location,
+        "P/N": item.pn,
+        "parts name": item.partsName,
+        QTY: item.qty,
+        model: item.model,
+        remark: item.remark
+      }));
+
+      filterStockTable();
+    } catch (err) {
+      tbody.innerHTML = `<tr><td colspan='6' style='color:red;'>計算失敗：${err.toString()}</td></tr>`;
     }
   }
 
-  // 庫存過濾邏輯（不分大小寫）
+  // 庫存過濾邏輯（忽略大小寫與前後空白）
   function filterStockTable() {
     const selectedLoc = document.getElementById("stockLocationSelect").value.trim().toLowerCase();
     const query = document.getElementById("stockSearchInput").value.trim().toLowerCase();
@@ -255,7 +306,7 @@
 
     tbody.innerHTML = "";
     if (filtered.length === 0) {
-      tbody.innerHTML = "<tr><td colspan='6'>查無符合條件的庫存資料 (目前資料筆數: " + currentStockData.length + ")</td></tr>";
+      tbody.innerHTML = `<tr><td colspan='6'>查無符合條件的庫存資料 (總庫存項目數: ${currentStockData.length})</td></tr>`;
       return;
     }
 
@@ -273,7 +324,7 @@
     });
   }
 
-  // 2. 讀取歷史資料
+  // 2. 讀取指定分頁歷史資料
   async function loadHistory() {
     const sheetName = document.getElementById("histSheetSelect").value;
     const tbody = document.querySelector("#historyTable tbody");
@@ -374,7 +425,7 @@
       });
       const result = await res.json();
       if (result.status === "success") {
-        alert("資料修改成功！庫存已自動重新計算。");
+        alert("資料修改成功！");
         closeModal();
         loadHistory();
       } else {
@@ -385,6 +436,7 @@
     }
   }
 
+  // 3. 單筆新增提交
   async function submitRecord() {
     const payload = {
       action: "addRecord",
@@ -405,7 +457,7 @@
       });
       const result = await res.json();
       if(result.status === "success") {
-        alert("記錄新增成功！庫存已自動重新計算。");
+        alert("記錄新增成功！");
         document.querySelectorAll('#entryPanel input:not(#recDate)').forEach(i => i.value = "");
       } else {
         alert("提交失敗: " + result.message);
@@ -415,6 +467,7 @@
     }
   }
 
+  // 4. CSV 批次匯入（覆寫模式）
   function handleCSVUpload() {
     const file = document.getElementById("csvFile").files[0];
     const sheetName = document.getElementById("importSheet").value;
@@ -477,7 +530,7 @@
         });
         const result = await res.json();
         if (result.status === "success") {
-          alert(`已成功覆寫 ${sheetName} 分頁！共匯入 ${result.count} 筆資料，庫存已自動即時同步。`);
+          alert(`已成功覆寫 ${sheetName} 分頁！共匯入 ${result.count} 筆資料。`);
           document.getElementById("csvFile").value = "";
         } else {
           alert("匯入失敗: " + result.message);
@@ -489,8 +542,9 @@
     reader.readAsText(file);
   }
 
+  // 初始化預設值
   document.getElementById("recDate").value = new Date().toISOString().split('T')[0];
-  loadStock();
+  loadStockFrontend();
 </script>
 
 </body>
