@@ -111,8 +111,8 @@
       <input type="text" id="recPN" placeholder="P/N (If any)">
       <input type="text" id="recName" placeholder="Parts Name">
       <input type="text" id="recModel" placeholder="Model">
-      <input type="number" id="recIn" placeholder="IN 數量" min="0">
-      <input type="number" id="recOut" placeholder="OUT 數量" min="0">
+      <input type="number" id="recIn" placeholder="IN 數量 (留空為無)">
+      <input type="number" id="recOut" placeholder="OUT 數量 (留空為無)">
       <input type="text" id="recRemark" placeholder="Remark">
       <button class="btn" onclick="submitRecord()">提交記錄</button>
     </div>
@@ -134,7 +134,7 @@
       <input type="file" id="csvFile" accept=".csv">
       <button class="btn btn-import" onclick="handleCSVUpload()">開始匯入</button>
     </div>
-    <small>系統將自動截取前 7 欄：Date, P/N, Parts Name, Model, IN, OUT, Remark</small>
+    <small>系統將自動截取前 7 欄並自動過濾下方多餘空白行（若無進出庫數量將保留空白，不再顯示 0）</small>
   </div>
 </div>
 
@@ -161,11 +161,11 @@
     </div>
     <div class="modal-field">
       <label>入庫 (IN)</label>
-      <input type="number" id="editIn" min="0">
+      <input type="number" id="editIn">
     </div>
     <div class="modal-field">
       <label>出庫 (OUT)</label>
-      <input type="number" id="editOut" min="0">
+      <input type="number" id="editOut">
     </div>
     <div class="modal-field">
       <label>備註 (Remark)</label>
@@ -267,8 +267,8 @@
         <td>${item.pn}</td>
         <td>${item.partsName}</td>
         <td>${item.model}</td>
-        <td style="color: #28a745; font-weight: bold;">${item.inQty}</td>
-        <td style="color: #dc3545; font-weight: bold;">${item.outQty}</td>
+        <td style="color: #28a745; font-weight: bold;">${item.inQty !== "" ? item.inQty : ""}</td>
+        <td style="color: #dc3545; font-weight: bold;">${item.outQty !== "" ? item.outQty : ""}</td>
         <td>${item.remark}</td>
         <td><button class="btn-edit" onclick="openEditModal(${item.rowId})">編輯</button></td>
       `;
@@ -374,7 +374,7 @@
     }
   }
 
-  // 4. CSV 批次匯入（精準截取前 7 欄）
+  // 4. CSV 批次匯入（過濾多餘空白列，無數值不硬填 0）
   function handleCSVUpload() {
     const file = document.getElementById("csvFile").files[0];
     const sheetName = document.getElementById("importSheet").value;
@@ -391,18 +391,42 @@
         lines.shift();
       }
 
-      const cleanRows = lines.map(line => {
+      const cleanRows = [];
+
+      lines.forEach(line => {
         const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.trim().replace(/^"|"$/g, ''));
-        return [
-          cols[0] || "",
-          cols[1] || "",
-          cols[2] || "",
-          cols[3] || "",
-          Number(cols[4]) || 0,
-          Number(cols[5]) || 0,
-          cols[6] || ""
-        ];
+        
+        const dateVal = cols[0] || "";
+        const pnVal = cols[1] || "";
+        const nameVal = cols[2] || "";
+        const modelVal = cols[3] || "";
+        const inRaw = cols[4] !== undefined ? cols[4].trim() : "";
+        const outRaw = cols[5] !== undefined ? cols[5].trim() : "";
+        const remarkVal = cols[6] || "";
+
+        // 防呆：整行都沒有實質內容時直接過濾跳過
+        if (!pnVal && !nameVal && !inRaw && !outRaw) {
+          return;
+        }
+
+        // 數值維持原樣：有填數字才轉為數字，留空則維持空字串 ""
+        const inQty = inRaw !== "" && !isNaN(inRaw) ? Number(inRaw) : "";
+        const outQty = outRaw !== "" && !isNaN(outRaw) ? Number(outRaw) : "";
+
+        cleanRows.push([
+          dateVal,
+          pnVal,
+          nameVal,
+          modelVal,
+          inQty,
+          outQty,
+          remarkVal
+        ]);
       });
+
+      if (cleanRows.length === 0) {
+        return alert("未偵測到任何有效的零件資料列！");
+      }
 
       try {
         const res = await fetch(GAS_URL, {
@@ -411,7 +435,7 @@
         });
         const result = await res.json();
         if (result.status === "success") {
-          alert(`成功匯入 ${result.count} 筆資料！`);
+          alert(`成功匯入 ${result.count} 筆有效資料！`);
           document.getElementById("csvFile").value = "";
         } else {
           alert("匯入失敗: " + result.message);
@@ -423,6 +447,7 @@
     reader.readAsText(file);
   }
 
+  // 初始化今日日期與預設載入庫存
   document.getElementById("recDate").value = new Date().toISOString().split('T')[0];
   loadStock();
 </script>
