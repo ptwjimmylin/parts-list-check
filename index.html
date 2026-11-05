@@ -26,14 +26,14 @@
     
     .btn { padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500; }
     .btn-blue { background: #0066cc; }
-    .btn-edit { background: #ffc107; color: #212529; padding: 4px 10px; font-size: 12px; border-radius: 3px; border: none; cursor: pointer; }
+    .btn-edit { background: #ffc107; color: #212529; padding: 4px 10px; font-size: 12px; border-radius: 3px; border: none; cursor: pointer; font-weight: bold; }
     .btn-import { background: #6f42c1; }
     .btn:hover, .btn-edit:hover { opacity: 0.88; }
     
     /* 彈跳編輯視窗 (Modal) */
     .modal-backdrop { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
     .modal-backdrop.show { display: flex; }
-    .modal { background: white; padding: 24px; border-radius: 8px; width: 420px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .modal { background: white; padding: 24px; border-radius: 8px; width: 440px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
     .modal h3 { margin-top: 0; }
     .modal-field { margin-bottom: 12px; }
     .modal-field label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 4px; color: #555; }
@@ -51,12 +51,27 @@
     <button class="tab-btn active" onclick="switchTab('stock', event)">庫存總覽 (stock in TW)</button>
     <button class="tab-btn" onclick="switchTab('history', event)">歷史紀錄查詢與編輯</button>
     <button class="tab-btn" onclick="switchTab('entry', event)">進出庫登記</button>
-    <button class="tab-btn" onclick="switchTab('import', event)">批次匯入資料</button>
+    <button class="tab-btn" onclick="switchTab('import', event)">批次匯入資料 (覆寫)</button>
   </div>
 
-  <!-- 1. 總庫存總覽 -->
+  <!-- 1. 總庫存總覽（含 Location 篩選器） -->
   <div id="stockPanel" class="panel active">
-    <button class="btn btn-blue" onclick="loadStock()">重新整理庫存</button>
+    <div class="form-group">
+      <label><strong>庫房位置 (Location)：</strong></label>
+      <select id="stockLocationSelect" onchange="filterStockTable()">
+        <option value="ALL">全部庫房 (All Locations)</option>
+        <option value="S2">S2</option>
+        <option value="S3">S3</option>
+        <option value="S4">S4</option>
+        <option value="S5">S5</option>
+        <option value="S6">S6</option>
+        <option value="DRY BOX">DRY BOX</option>
+        <option value="clean room">clean room</option>
+      </select>
+      <input type="text" id="stockSearchInput" placeholder="搜尋料號 P/N 或品名..." oninput="filterStockTable()">
+      <button class="btn btn-blue" onclick="loadStock()">重新整理庫存</button>
+    </div>
+
     <table id="stockTable">
       <thead>
         <tr>
@@ -80,7 +95,7 @@
         <option value="DRY BOX">DRY BOX</option>
         <option value="clean room">clean room</option>
       </select>
-      <input type="text" id="histSearchInput" placeholder="輸入料號 / 品名搜尋..." oninput="filterHistoryTable()">
+      <input type="text" id="histSearchInput" placeholder="搜尋料號 / 品名 / 型號..." oninput="filterHistoryTable()">
       <button class="btn btn-blue" onclick="loadHistory()">查詢 / 重新整理</button>
     </div>
     
@@ -118,9 +133,9 @@
     </div>
   </div>
 
-  <!-- 4. CSV 批次匯入 -->
+  <!-- 4. CSV 批次匯入（覆寫模式） -->
   <div id="importPanel" class="panel">
-    <h3>批次匯入 CSV 資料</h3>
+    <h3>批次匯入 CSV 資料（覆寫模式）</h3>
     <div class="form-group">
       <select id="importSheet">
         <option value="S2">S2</option>
@@ -132,13 +147,13 @@
         <option value="clean room">clean room</option>
       </select>
       <input type="file" id="csvFile" accept=".csv">
-      <button class="btn btn-import" onclick="handleCSVUpload()">開始匯入</button>
+      <button class="btn btn-import" onclick="handleCSVUpload()">開始覆寫匯入</button>
     </div>
-    <small>系統將自動截取前 7 欄並自動過濾下方多餘空白行（若無進出庫數量將保留空白，不再顯示 0）</small>
+    <small style="color: #c82333;">⚠️ 注意：匯入時會自動清空該分頁舊有的歷史資料，並以新 CSV 檔案全數覆寫！</small>
   </div>
 </div>
 
-<!-- 線上編輯 Modal 彈跳視窗 -->
+<!-- 線上修改視窗 (Modal) -->
 <div class="modal-backdrop" id="editModal">
   <div class="modal">
     <h3>修改進出庫記錄</h3>
@@ -161,11 +176,11 @@
     </div>
     <div class="modal-field">
       <label>入庫 (IN)</label>
-      <input type="number" id="editIn">
+      <input type="number" id="editIn" placeholder="留空為無">
     </div>
     <div class="modal-field">
       <label>出庫 (OUT)</label>
-      <input type="number" id="editOut">
+      <input type="number" id="editOut" placeholder="留空為無">
     </div>
     <div class="modal-field">
       <label>備註 (Remark)</label>
@@ -180,6 +195,7 @@
 
 <script>
   const GAS_URL = "https://script.google.com/macros/s/AKfycbyIklqSEpYdKMYN_f16rgAc2--Jm37AEHlIcjWRSAHj06XPIZ50sOv_sYBPb9J4ILMQ3g/exec";
+  let currentStockData = [];
   let currentHistoryData = [];
 
   function switchTab(tab, evt) {
@@ -203,46 +219,70 @@
     }
   }
 
-  // 1. 讀取總庫存
+  // 1. 讀取總庫存 (stock in TW)
   async function loadStock() {
     const tbody = document.querySelector("#stockTable tbody");
     tbody.innerHTML = "<tr><td colspan='6'>載入中...</td></tr>";
     try {
       const res = await fetch(`${GAS_URL}?action=getStock`);
       const result = await res.json();
-      tbody.innerHTML = "";
-      if (!result.data || result.data.length === 0) {
-        tbody.innerHTML = "<tr><td colspan='6'>目前無庫存資料</td></tr>";
-        return;
+      if (result.status === "success") {
+        currentStockData = result.data || [];
+        filterStockTable();
+      } else {
+        tbody.innerHTML = `<tr><td colspan='6'>讀取失敗：${result.message}</td></tr>`;
       }
-      result.data.forEach(row => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${row.location || ""}</td>
-          <td>${row["P/N"] || ""}</td>
-          <td>${row["parts name"] || ""}</td>
-          <td><strong>${row.QTY !== undefined ? row.QTY : 0}</strong></td>
-          <td>${row.model || ""}</td>
-          <td>${row.remark || ""}</td>
-        `;
-        tbody.appendChild(tr);
-      });
     } catch(err) {
       tbody.innerHTML = "<tr><td colspan='6'>讀取失敗，請確認試算表權限或網路狀態。</td></tr>";
     }
   }
 
-  // 2. 讀取指定分頁歷史資料
+  // 庫存過濾邏輯（Location + 搜尋關鍵字）
+  function filterStockTable() {
+    const selectedLoc = document.getElementById("stockLocationSelect").value;
+    const query = document.getElementById("stockSearchInput").value.trim().toLowerCase();
+    const tbody = document.querySelector("#stockTable tbody");
+
+    const filtered = currentStockData.filter(row => {
+      const locMatch = (selectedLoc === "ALL") || (String(row.location || "").trim().toUpperCase() === selectedLoc.toUpperCase());
+      const searchMatch = !query || 
+        String(row["P/N"] || "").toLowerCase().includes(query) ||
+        String(row["parts name"] || "").toLowerCase().includes(query) ||
+        String(row.model || "").toLowerCase().includes(query);
+      return locMatch && searchMatch;
+    });
+
+    tbody.innerHTML = "";
+    if (filtered.length === 0) {
+      tbody.innerHTML = "<tr><td colspan='6'>查無符合條件的庫存資料</td></tr>";
+      return;
+    }
+
+    filtered.forEach(row => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><strong>${row.location || ""}</strong></td>
+        <td>${row["P/N"] || ""}</td>
+        <td>${row["parts name"] || ""}</td>
+        <td><strong style="color: #0066cc;">${row.QTY !== undefined ? row.QTY : 0}</strong></td>
+        <td>${row.model || ""}</td>
+        <td>${row.remark || ""}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // 2. 讀取歷史資料
   async function loadHistory() {
     const sheetName = document.getElementById("histSheetSelect").value;
     const tbody = document.querySelector("#historyTable tbody");
-    tbody.innerHTML = "<tr><td colspan='8'>歷史紀錄讀取中...</td></tr>";
+    tbody.innerHTML = "<tr><td colspan='8'>歷史紀錄載入中...</td></tr>";
     
     try {
       const res = await fetch(`${GAS_URL}?action=getHistory&sheet=${encodeURIComponent(sheetName)}`);
       const result = await res.json();
       if (result.status === "success") {
-        currentHistoryData = result.data;
+        currentHistoryData = result.data || [];
         renderHistoryTable(currentHistoryData);
       } else {
         tbody.innerHTML = `<tr><td colspan='8'>讀取失敗：${result.message}</td></tr>`;
@@ -256,7 +296,7 @@
     const tbody = document.querySelector("#historyTable tbody");
     tbody.innerHTML = "";
     if (dataList.length === 0) {
-      tbody.innerHTML = "<tr><td colspan='8'>查無符合條件的進出庫紀錄</td></tr>";
+      tbody.innerHTML = "<tr><td colspan='8'>此分頁查無任何進出庫記錄</td></tr>";
       return;
     }
 
@@ -270,7 +310,7 @@
         <td style="color: #28a745; font-weight: bold;">${item.inQty !== "" ? item.inQty : ""}</td>
         <td style="color: #dc3545; font-weight: bold;">${item.outQty !== "" ? item.outQty : ""}</td>
         <td>${item.remark}</td>
-        <td><button class="btn-edit" onclick="openEditModal(${item.rowId})">編輯</button></td>
+        <td><button class="btn-edit" onclick="openEditModal(${item.rowId})">修改</button></td>
       `;
       tbody.appendChild(tr);
     });
@@ -285,7 +325,8 @@
     const filtered = currentHistoryData.filter(item => 
       String(item.pn).toLowerCase().includes(query) ||
       String(item.partsName).toLowerCase().includes(query) ||
-      String(item.model).toLowerCase().includes(query)
+      String(item.model).toLowerCase().includes(query) ||
+      String(item.remark).toLowerCase().includes(query)
     );
     renderHistoryTable(filtered);
   }
@@ -332,14 +373,14 @@
       });
       const result = await res.json();
       if (result.status === "success") {
-        alert("修改儲存成功！");
+        alert("資料修改成功！");
         closeModal();
         loadHistory();
       } else {
         alert("儲存失敗: " + result.message);
       }
     } catch(err) {
-      alert("儲存發生錯誤，請檢查網路連線。");
+      alert("儲存發生錯誤，請檢查網路。");
     }
   }
 
@@ -374,11 +415,15 @@
     }
   }
 
-  // 4. CSV 批次匯入（過濾多餘空白列，無數值不硬填 0）
+  // 4. CSV 批次匯入（覆寫模式）
   function handleCSVUpload() {
     const file = document.getElementById("csvFile").files[0];
     const sheetName = document.getElementById("importSheet").value;
     if (!file) return alert("請先選擇 CSV 檔案");
+
+    if (!confirm(`確定要以 ${file.name} 覆寫【${sheetName}】分頁的全部歷史資料嗎？舊資料將會被取代！`)) {
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = async function(e) {
@@ -404,12 +449,10 @@
         const outRaw = cols[5] !== undefined ? cols[5].trim() : "";
         const remarkVal = cols[6] || "";
 
-        // 防呆：整行都沒有實質內容時直接過濾跳過
         if (!pnVal && !nameVal && !inRaw && !outRaw) {
           return;
         }
 
-        // 數值維持原樣：有填數字才轉為數字，留空則維持空字串 ""
         const inQty = inRaw !== "" && !isNaN(inRaw) ? Number(inRaw) : "";
         const outQty = outRaw !== "" && !isNaN(outRaw) ? Number(outRaw) : "";
 
@@ -425,7 +468,7 @@
       });
 
       if (cleanRows.length === 0) {
-        return alert("未偵測到任何有效的零件資料列！");
+        return alert("未偵測到任何有效資料列！");
       }
 
       try {
@@ -435,7 +478,7 @@
         });
         const result = await res.json();
         if (result.status === "success") {
-          alert(`成功匯入 ${result.count} 筆有效資料！`);
+          alert(`已成功覆寫 ${sheetName} 分頁！共匯入 ${result.count} 筆資料。`);
           document.getElementById("csvFile").value = "";
         } else {
           alert("匯入失敗: " + result.message);
@@ -447,7 +490,7 @@
     reader.readAsText(file);
   }
 
-  // 初始化今日日期與預設載入庫存
+  // 初始化預設值
   document.getElementById("recDate").value = new Date().toISOString().split('T')[0];
   loadStock();
 </script>
