@@ -4,71 +4,74 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>PTW Taiwan Inventory System</title>
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- SheetJS 用於 Excel 匯入匯出 -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
     .glass-card { background: rgba(255, 255, 255, 0.96); backdrop-filter: blur(10px); }
-    .no-scrollbar::-webkit-scrollbar { display: none; }
-    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
 </head>
 <body class="bg-gradient-to-br from-sky-50 via-slate-50 to-blue-50 text-slate-800 min-h-screen pb-12">
+
+  <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleExcelImport(event)">
 
   <!-- 頂部 Header -->
   <header class="bg-white/95 backdrop-blur border-b border-sky-100 sticky top-0 z-30 shadow-xs">
     <div class="w-full max-w-[97%] mx-auto px-2 sm:px-4 h-16 flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-sky-600 text-white flex items-center justify-center font-bold text-xl shadow-md shadow-sky-200 flex-shrink-0">
+        <div class="w-10 h-10 rounded-xl bg-sky-600 text-white flex items-center justify-center font-bold text-xl shadow-md shadow-sky-200">
           <i data-lucide="boxes" class="w-6 h-6"></i>
         </div>
-        <div class="min-w-0">
-          <div class="flex items-center gap-2">
-            <h1 class="font-bold text-slate-900 text-lg leading-tight truncate">PTW Taiwan Inventory System</h1>
-            <span class="px-2 py-0.5 text-xs font-semibold bg-sky-100 text-sky-700 rounded-md border border-sky-200 flex-shrink-0">PRO v5.0 Live-Sync</span>
-          </div>
-          <p class="text-xs text-sky-600/80 truncate">Strict 7-Column • Full Live Delete/Edit Sync with Google Sheets</p>
+        <div>
+          <h1 class="font-bold text-slate-900 text-lg leading-tight">PTW Taiwan Inventory System</h1>
+          <p class="text-xs text-sky-600 font-medium">8-Tabs Schema • Real-time DB IN/OUT Calculation</p>
         </div>
       </div>
 
-      <div class="hidden lg:flex items-center gap-2.5">
-        <button onclick="fetchDataFromGAS()" class="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-sky-200 text-slate-700 bg-white hover:bg-sky-50 text-xs font-medium transition shadow-xs">
+      <!-- 功能操作按鈕 -->
+      <div class="flex items-center gap-2">
+        <button onclick="fetchDataFromGAS()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-sky-200 text-slate-700 bg-white hover:bg-sky-50 text-xs font-medium transition shadow-xs">
           <i data-lucide="refresh-cw" class="w-4 h-4 text-sky-600"></i>
-          <span>從 Sheet 刷新</span>
+          <span>刷新</span>
         </button>
 
-        <button onclick="toggleSyncPanel()" class="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-sky-200 text-slate-700 bg-white hover:bg-sky-50 text-xs font-medium transition shadow-xs">
+        <button onclick="triggerFileInput()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-xs font-semibold transition shadow-xs">
+          <i data-lucide="upload" class="w-4 h-4 text-emerald-600"></i>
+          <span>匯入 Excel</span>
+        </button>
+
+        <button onclick="exportCSV()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-sky-200 text-slate-700 bg-white hover:bg-sky-50 text-xs font-medium transition shadow-xs">
+          <i data-lucide="download" class="w-4 h-4 text-slate-500"></i>
+          <span>匯出 CSV</span>
+        </button>
+
+        <button onclick="toggleSyncPanel()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-sky-200 text-slate-700 bg-white hover:bg-sky-50 text-xs font-medium transition shadow-xs">
           <i data-lucide="cloud" class="w-4 h-4 text-sky-500"></i>
-          <span>API 網址設定</span>
-          <span id="sync-status-dot" class="w-2 h-2 rounded-full bg-emerald-500 ml-1 animate-pulse"></span>
+          <span>API 設定</span>
+          <span id="sync-status-dot" class="w-2 h-2 rounded-full bg-emerald-500 ml-1"></span>
         </button>
 
-        <button onclick="openModal()" class="flex items-center gap-1.5 bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-lg text-xs font-medium shadow-md shadow-sky-200 transition">
+        <button onclick="openModal()" class="flex items-center gap-1.5 bg-sky-600 hover:bg-sky-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-medium shadow-md shadow-sky-200 transition">
           <i data-lucide="plus-circle" class="w-4 h-4"></i>
-          <span>新增零件/異動</span>
-        </button>
-      </div>
-
-      <div class="lg:hidden flex items-center gap-2">
-        <button onclick="fetchDataFromGAS()" class="p-2 bg-sky-50 text-sky-600 rounded-lg text-xs font-medium border border-sky-200">
-          <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-        </button>
-        <button onclick="openModal()" class="bg-sky-600 text-white p-2 rounded-lg text-xs shadow-sm">
-          <i data-lucide="plus" class="w-4 h-4"></i>
+          <span>新增紀錄</span>
         </button>
       </div>
     </div>
   </header>
 
-  <!-- Google Sheet API 面板 -->
+  <!-- API 連線設定抽屜 -->
   <div id="sync-panel" class="hidden bg-slate-900 text-white border-b border-slate-800 p-4 transition-all">
-    <div class="w-full max-w-[97%] mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+    <div class="w-full max-w-[97%] mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
       <div class="flex items-center gap-3">
         <i data-lucide="key" class="w-5 h-5 text-sky-400"></i>
         <div>
           <p class="text-sm font-semibold">Google Apps Script Web App URL 設定</p>
-          <p class="text-xs text-slate-400">請確認貼上最新發布的 /exec 網址</p>
+          <p class="text-xs text-slate-400">請確認填入發布新版本產生的 /exec 網址</p>
         </div>
       </div>
       <div class="flex items-center gap-2 w-full md:w-auto">
@@ -80,95 +83,86 @@
 
   <main class="w-full max-w-[97%] mx-auto px-2 sm:px-4 pt-4 space-y-4">
 
-    <!-- 狀態通知 Bar -->
+    <!-- 載入通知 -->
     <div id="loading-bar" class="hidden bg-sky-100 border border-sky-300 rounded-xl p-3 flex items-center justify-between text-sky-800 text-xs font-semibold">
       <span class="flex items-center gap-2" id="loading-text">
-        <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> 正在與 Google Sheet 同步中...
+        <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> 正在連線同步 Google Sheet...
       </span>
     </div>
 
     <!-- 統計卡片 -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      <div class="glass-card p-4 sm:p-5 rounded-xl border border-sky-100 shadow-sm flex items-center justify-between">
+      <div class="glass-card p-4 rounded-xl border border-sky-100 shadow-sm flex items-center justify-between">
         <div>
-          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">總品項數 (PARTS)</p>
-          <h3 id="stat-total-items" class="text-2xl sm:text-3xl font-extrabold text-slate-800 mt-1">0</h3>
+          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">目前分頁品項</p>
+          <h3 id="stat-total-items" class="text-2xl font-extrabold text-slate-800 mt-1">0</h3>
         </div>
-        <div class="w-11 h-11 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600">
+        <div class="w-10 h-10 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600">
           <i data-lucide="layers" class="w-5 h-5"></i>
         </div>
       </div>
 
-      <div class="glass-card p-4 sm:p-5 rounded-xl border border-sky-100 shadow-sm flex items-center justify-between">
+      <div class="glass-card p-4 rounded-xl border border-sky-100 shadow-sm flex items-center justify-between">
         <div>
-          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">在地總庫存量 (QTY)</p>
-          <h3 id="stat-total-qty" class="text-2xl sm:text-3xl font-extrabold text-emerald-600 mt-1">0</h3>
+          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">在庫總數量 (QTY)</p>
+          <h3 id="stat-total-qty" class="text-2xl font-extrabold text-emerald-600 mt-1">0</h3>
         </div>
-        <div class="w-11 h-11 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+        <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
           <i data-lucide="package-check" class="w-5 h-5"></i>
         </div>
       </div>
 
-      <div class="glass-card p-4 sm:p-5 rounded-xl border border-sky-100 shadow-sm flex items-center justify-between">
+      <div class="glass-card p-4 rounded-xl border border-sky-100 shadow-sm flex items-center justify-between">
         <div>
-          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">缺貨品項 (QTY=0)</p>
-          <h3 id="stat-zero-qty" class="text-2xl sm:text-3xl font-extrabold text-slate-600 mt-1">0</h3>
+          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">零庫存/缺貨品項</p>
+          <h3 id="stat-zero-qty" class="text-2xl font-extrabold text-rose-500 mt-1">0</h3>
         </div>
-        <div class="w-11 h-11 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500">
+        <div class="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center text-rose-500">
           <i data-lucide="package-x" class="w-5 h-5"></i>
         </div>
       </div>
 
-      <div class="glass-card p-4 sm:p-5 rounded-xl border border-sky-100 shadow-sm flex items-center justify-between">
+      <div class="glass-card p-4 rounded-xl border border-sky-100 shadow-sm flex items-center justify-between">
         <div>
-          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">目前分頁</p>
-          <h3 id="stat-sheet-name" class="text-lg sm:text-xl font-bold text-sky-700 mt-1 truncate">Stock in TW</h3>
+          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">檢視中分頁</p>
+          <h3 id="stat-sheet-name" class="text-lg font-bold text-sky-700 mt-1 truncate">stock in TW</h3>
         </div>
-        <div class="w-11 h-11 rounded-xl bg-sky-100 flex items-center justify-center text-sky-700">
+        <div class="w-10 h-10 rounded-xl bg-sky-100 flex items-center justify-center text-sky-700">
           <i data-lucide="file-spreadsheet" class="w-5 h-5"></i>
         </div>
       </div>
     </div>
 
-    <!-- 分頁按鈕列 (依序排列，排除 S1) -->
+    <!-- 8 大分頁切換列 (嚴格規定順序) -->
     <div class="space-y-3 pt-1">
       <div class="flex items-center justify-between gap-2 border-b border-sky-200/80 pb-2 overflow-x-auto no-scrollbar">
         <div class="flex items-center gap-2 flex-nowrap" id="sheet-tabs-container">
+          <!-- 動態載入 8 個分頁按鈕 -->
         </div>
-        <span id="filtered-count" class="text-xs font-semibold text-sky-800 bg-sky-100/80 border border-sky-200 px-3 py-1 rounded-lg whitespace-nowrap flex-shrink-0">
+        <span id="filtered-count" class="text-xs font-semibold text-sky-800 bg-sky-100/80 border border-sky-200 px-3 py-1 rounded-lg whitespace-nowrap">
           0 筆
         </span>
       </div>
 
-      <!-- 搜尋列 -->
+      <!-- 搜尋列與欄位調整 -->
       <div class="bg-white/95 backdrop-blur p-3 rounded-xl border border-sky-100 shadow-xs flex items-center gap-3">
         <div class="relative w-full">
           <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
-          <input type="text" id="search-input" onkeyup="handleSearch()" placeholder="搜尋關鍵字 (料號, 品名, 機型, 備註...)" class="w-full pl-10 pr-4 py-2 text-xs sm:text-sm rounded-lg bg-sky-50/50 border border-sky-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500 transition">
+          <input type="text" id="search-input" onkeyup="handleSearch()" placeholder="搜尋目前分頁資料 (料號, 品名, 機型, 備註...)" class="w-full pl-10 pr-4 py-2 text-sm rounded-lg bg-sky-50/50 border border-sky-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-sky-500">
         </div>
       </div>
     </div>
 
-    <!-- 表格容器 -->
+    <!-- 滿版資料表格 -->
     <div class="bg-white rounded-xl border border-sky-100 shadow-sm overflow-hidden flex flex-col">
       <div class="overflow-x-auto max-h-[66vh] overflow-y-auto relative">
-        <table class="w-full text-left border-collapse min-w-[850px]">
+        <table class="w-full text-left border-collapse min-w-[900px]">
           <thead class="sticky top-0 z-20 bg-sky-100/95 backdrop-blur shadow-xs">
-            <tr class="text-xs font-bold text-slate-600 uppercase tracking-wider">
-              <th class="py-3.5 px-4 w-12 text-center bg-sky-100/90 text-sky-950 font-bold">#</th>
-              <th class="py-3.5 px-4 bg-sky-100/90 text-sky-950 font-bold">LOCATION</th>
-              <th class="py-3.5 px-4 bg-sky-100/90 text-sky-950 font-bold">P/N (IF ANY)</th>
-              <th class="py-3.5 px-4 bg-sky-100/90 text-sky-950 font-bold">QTY</th>
-              <th class="py-3.5 px-4 bg-sky-100/90 text-sky-950 font-bold">PARTS NAME</th>
-              <th class="py-3.5 px-4 bg-sky-100/90 text-sky-950 font-bold">MODEL</th>
-              <th class="py-3.5 px-4 bg-sky-100/90 text-sky-950 font-bold">IN</th>
-              <th class="py-3.5 px-4 bg-sky-100/90 text-sky-950 font-bold">OUT</th>
-              <th class="py-3.5 px-4 bg-sky-100/90 text-sky-950 font-bold">DATE</th>
-              <th class="py-3.5 px-4 bg-sky-100/90 text-sky-950 font-bold">REMARK</th>
-              <th class="py-3.5 px-4 text-center w-24 bg-sky-100/90 text-sky-950 font-bold">操作</th>
+            <tr id="dynamic-thead" class="text-xs font-bold text-slate-700 uppercase tracking-wider">
+              <!-- 動態表頭依分頁不同自動調整 -->
             </tr>
           </thead>
-          <tbody id="dynamic-tbody" class="divide-y divide-slate-100 text-xs sm:text-sm">
+          <tbody id="dynamic-tbody" class="divide-y divide-slate-100 text-sm">
           </tbody>
         </table>
       </div>
@@ -176,83 +170,83 @@
 
   </main>
 
-  <!-- Modal 新增/編輯視窗 -->
+  <!-- Modal：新增 / 編輯視窗 -->
   <div id="item-modal" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl border border-sky-200 shadow-2xl w-full max-w-lg overflow-hidden transition-all">
+    <div class="bg-white rounded-2xl border border-sky-200 shadow-2xl w-full max-w-lg overflow-hidden">
       <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
         <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
           <i data-lucide="edit-3" class="w-4 h-4 text-sky-600"></i>
-          <span id="modal-title">新增/編輯零件記錄</span>
+          <span id="modal-title">新增零件紀錄</span>
         </h3>
-        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
+        <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
 
       <form id="item-form" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4">
-        <!-- 記錄被編輯的資料在 Sheet 中的列號與工作表名稱 -->
         <input type="hidden" id="form-edit-index" value="-1">
         <input type="hidden" id="form-edit-rowindex" value="">
-        <input type="hidden" id="form-edit-sheet" value="">
 
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="block text-xs font-semibold text-slate-600 mb-1">目標貨架 (Location)</label>
-            <select id="form-rack" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500">
+            <label class="block text-xs font-semibold text-slate-600 mb-1">目標庫位分頁 (Target Tab)</label>
+            <select id="form-target-sheet" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500">
               <option value="S2">S2</option>
               <option value="S3">S3</option>
               <option value="S4" selected>S4</option>
               <option value="S5">S5</option>
               <option value="S6">S6</option>
               <option value="DRY BOX">DRY BOX</option>
-              <option value="Clean room">Clean room</option>
+              <option value="clean room">clean room</option>
+              <option value="stock in TW">stock in TW (總庫存主表)</option>
             </select>
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-600 mb-1">料號 (P/N (If any))</label>
-            <input type="text" id="form-pn" placeholder="例如: VQ1301-5B1" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500">
+            <input type="text" id="form-pn" placeholder="例如: VQ1301-5B1" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50">
           </div>
         </div>
 
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1">零件名稱 (Parts Name)</label>
-          <input type="text" id="form-parts-name" required placeholder="例如: Solenoid" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500">
+          <input type="text" id="form-parts-name" required placeholder="例如: Solenoid" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50">
         </div>
 
         <div class="grid grid-cols-3 gap-3">
           <div>
-            <label class="block text-xs font-semibold text-emerald-600 mb-1">進貨 (IN)</label>
-            <input type="number" id="form-in" value="0" min="0" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500 text-center font-bold">
+            <label class="block text-xs font-semibold text-emerald-600 mb-1">進貨量 (IN)</label>
+            <input type="number" id="form-in" value="0" min="0" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 text-center font-bold">
           </div>
           <div>
-            <label class="block text-xs font-semibold text-amber-600 mb-1">出貨 (OUT)</label>
-            <input type="number" id="form-out" value="0" min="0" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500 text-center font-bold">
+            <label class="block text-xs font-semibold text-amber-600 mb-1">出貨量 (OUT)</label>
+            <input type="number" id="form-out" value="0" min="0" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 text-center font-bold">
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-600 mb-1">機型 (Model)</label>
-            <input type="text" id="form-model" placeholder="例如: 93xx" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500">
+            <input type="text" id="form-model" placeholder="例如: 93xx" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50">
           </div>
         </div>
 
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1">備註 (Remark)</label>
-          <input type="text" id="form-remarks" placeholder="例如: to TSMC 3" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500">
+          <input type="text" id="form-remarks" placeholder="例如: To TSMC 3" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50">
         </div>
 
         <div class="pt-2 flex items-center justify-end gap-3 border-t border-slate-100">
-          <button type="button" onclick="closeModal()" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition">取消</button>
-          <button type="submit" class="px-5 py-2 text-xs font-medium bg-sky-600 hover:bg-sky-700 text-white rounded-xl shadow-md shadow-sky-200 transition">儲存並同步至 Google Sheet</button>
+          <button type="button" onclick="closeModal()" class="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-xl">取消</button>
+          <button type="submit" class="px-5 py-2 text-xs font-medium bg-sky-600 hover:bg-sky-700 text-white rounded-xl shadow-md shadow-sky-200">儲存並同步至 Google Sheet</button>
         </div>
       </form>
     </div>
   </div>
 
   <script>
+    // 預設後端 API 網址 (請填入您發布後的 /exec 網址)
     const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbx_aFxaqB69URgcvpm-IPS8wsU14i5l2PFaPBq5HBXptg81hCmME73N4lRCBDagYU5QVw/exec";
-    const orderedSheetNames = ['Stock in TW', 'S2', 'S3', 'S4', 'S5', 'S6', 'DRY BOX', 'Clean room'];
+
+    // 規定嚴格排序之 8 大分頁 (排除 S1 與 Print 頁)
+    const orderedSheetNames = ['stock in TW', 'S2', 'S3', 'S4', 'S5', 'S6', 'DRY BOX', 'clean room'];
 
     let allSheetData = {};
-    let currentSheetName = 'Stock in TW';
+    let currentSheetName = 'stock in TW';
     let currentRows = [];
     let filteredRows = [];
 
@@ -260,6 +254,7 @@
       return localStorage.getItem('GAS_WEB_APP_URL') || DEFAULT_GAS_URL;
     }
 
+    // 模糊搜尋欄位值
     function getVal(row, keys) {
       if (!row) return '';
       const rowKeys = Object.keys(row);
@@ -275,91 +270,116 @@
       return '';
     }
 
-    function normalizeRow(r, fallbackLocation) {
-      let pn = getVal(r, ['P/N (If any)', 'P/N (IF ANY)', 'P/N', '料號']);
-      let name = getVal(r, ['Parts Name', 'PARTS NAME', '品名']);
-      let model = getVal(r, ['Model', 'MODEL', '機型']);
-      let inVal = parseFloat(getVal(r, ['IN', 'In', '進貨'])) || 0;
-      let outVal = parseFloat(getVal(r, ['OUT', 'Out', '出貨'])) || 0;
-      let dateVal = getVal(r, ['Date', 'DATE', '日期']);
-      let remarkVal = getVal(r, ['Remark', 'Remarks', 'REMARK', '備註']);
-      let rowIndex = r._rowIndex || null;
-
-      let qtyVal = inVal - outVal;
+    // 格式化各子分頁明細紀錄
+    function normalizeDetailRow(r, sheetName) {
+      const pn = getVal(r, ['P/N (If any)', 'P/N', '料號']);
+      const name = getVal(r, ['Parts Name', '品名', '零件名稱']);
+      const model = getVal(r, ['Model', '機型']);
+      const inVal = parseFloat(getVal(r, ['IN', '進貨'])) || 0;
+      const outVal = parseFloat(getVal(r, ['OUT', '出貨'])) || 0;
+      const dateVal = getVal(r, ['Date', '日期']);
+      const remarkVal = getVal(r, ['Remark', 'Remarks', '備註']);
+      const rowIndex = r._rowIndex || null;
 
       return {
-        'LOCATION': fallbackLocation,
-        'P/N (IF ANY)': pn.trim(),
-        'QTY': isNaN(qtyVal) ? 0 : qtyVal,
-        'PARTS NAME': name.trim(),
-        'MODEL': model.trim(),
+        'Date': dateVal,
+        'P/N (If any)': pn.trim(),
+        'Parts Name': name.trim(),
+        'Model': model.trim(),
         'IN': inVal,
         'OUT': outVal,
-        'DATE': dateVal,
-        'REMARK': remarkVal,
+        'Remark': remarkVal,
+        'LOCATION': sheetName,
         '_rowIndex': rowIndex,
-        '_sourceSheet': fallbackLocation
+        '_sourceSheet': sheetName
       };
     }
 
-    function reaggregateMasterSheet() {
-      const subSheets = ['S2', 'S3', 'S4', 'S5', 'S6', 'DRY BOX', 'Clean room'];
-      const partsMap = new Map();
+    // 🌟 核心庫存計算：遍歷 S2, S3, S4, S5, S6, DRY BOX, clean room
+    // 依據 P/N + Parts Name 吻合聚合，直接統計 (Total IN - Total OUT) 呈現在 stock in TW
+    function calculateStockInTW() {
+      const dbSheets = ['S2', 'S3', 'S4', 'S5', 'S6', 'DRY BOX', 'clean room'];
+      const summaryMap = new Map();
 
-      subSheets.forEach(sheetName => {
-        const rows = allSheetData[sheetName] || [];
-        rows.forEach(rawR => {
-          const item = normalizeRow(rawR, sheetName);
-          const pn = item['P/N (IF ANY)'];
-          const name = item['PARTS NAME'];
+      // 先抓取目前 stock in TW 已有的基本資料 (Unit, Category, Status, Remarks)
+      const existingMaster = allSheetData['stock in TW'] || [];
+      existingMaster.forEach(r => {
+        const pn = getVal(r, ['P/N (If any)', 'P/N']).trim();
+        const name = getVal(r, ['Parts Name', '品名']).trim();
+        if (!name && !pn) return;
+        const key = `${pn.toLowerCase()}___${name.toLowerCase()}`;
+        summaryMap.set(key, {
+          pn: pn,
+          name: name,
+          unit: getVal(r, ['Unit']) || 'PCS',
+          category: getVal(r, ['Category']),
+          status: getVal(r, ['Status']) || 'Good',
+          model: getVal(r, ['Model']),
+          remarks: getVal(r, ['Remarks', 'Remark']),
+          locations: new Set(),
+          totalIn: 0,
+          totalOut: 0,
+          _rowIndex: r._rowIndex || null
+        });
+      });
 
+      // 累加 7 大資料庫庫位的 IN 與 OUT
+      dbSheets.forEach(sName => {
+        const rows = allSheetData[sName] || [];
+        rows.forEach(r => {
+          const item = normalizeDetailRow(r, sName);
+          const pn = item['P/N (If any)'];
+          const name = item['Parts Name'];
           if (!name && !pn) return;
 
-          const strictKey = `${pn.toLowerCase()}___|||___${name.toLowerCase()}`;
-
-          if (!partsMap.has(strictKey)) {
-            partsMap.set(strictKey, {
+          const key = `${pn.toLowerCase()}___${name.toLowerCase()}`;
+          if (!summaryMap.has(key)) {
+            summaryMap.set(key, {
               pn: pn,
               name: name,
-              model: item['MODEL'],
-              locations: new Set([sheetName]),
+              unit: 'PCS',
+              category: '',
+              status: 'Good',
+              model: item['Model'],
+              remarks: item['Remark'],
+              locations: new Set([sName]),
               totalIn: 0,
               totalOut: 0,
-              latestDate: item['DATE'],
-              latestRemark: item['REMARK']
+              _rowIndex: null
             });
           }
 
-          const targetObj = partsMap.get(strictKey);
-          targetObj.locations.add(sheetName);
-          targetObj.totalIn += item['IN'];
-          targetObj.totalOut += item['OUT'];
-
-          if (item['MODEL'] && !targetObj.model) targetObj.model = item['MODEL'];
-          if (item['DATE']) targetObj.latestDate = item['DATE'];
-          if (item['REMARK']) targetObj.latestRemark = item['REMARK'];
+          const target = summaryMap.get(key);
+          target.locations.add(sName);
+          target.totalIn += item['IN'];
+          target.totalOut += item['OUT'];
+          if (!target.model && item['Model']) target.model = item['Model'];
         });
       });
 
+      // 產生 stock in TW 的 9 欄標準資料
       let masterRows = [];
-      partsMap.forEach(item => {
-        const finalQty = item.totalIn - item.totalOut;
+      summaryMap.forEach(item => {
+        const netQty = item.totalIn - item.totalOut;
         masterRows.push({
-          'LOCATION': Array.from(item.locations).join(', '),
-          'P/N (IF ANY)': item.pn || '-',
-          'QTY': isNaN(finalQty) ? 0 : finalQty,
-          'PARTS NAME': item.name || '-',
-          'MODEL': item.model || '-',
-          'IN': item.totalIn > 0 ? item.totalIn : '',
-          'OUT': item.totalOut > 0 ? item.totalOut : '',
-          'DATE': item.latestDate || '',
-          'REMARK': item.latestRemark || ''
+          'P/N (If any)': item.pn || '-',
+          'Parts Name': item.name || '-',
+          'QTY': isNaN(netQty) ? 0 : netQty,
+          'Unit': item.unit || 'PCS',
+          'Category': item.category || '-',
+          'Status': item.status || 'Good',
+          'Model': item.model || '-',
+          'Remarks': item.remarks || '',
+          'LOCATION': Array.from(item.locations).join(', ') || 'TW',
+          '_rowIndex': item._rowIndex,
+          '_sourceSheet': 'stock in TW'
         });
       });
 
-      allSheetData['Stock in TW'] = masterRows;
+      allSheetData['stock in TW'] = masterRows;
     }
 
+    // 從 Google Sheet 抓取所有分頁
     async function fetchDataFromGAS() {
       const gasUrl = getGasUrl();
       if (!gasUrl) return;
@@ -374,47 +394,49 @@
         if (json.status === 'success' && json.data) {
           allSheetData = json.data;
 
-          Object.keys(allSheetData).forEach(s => {
-            if (Array.isArray(allSheetData[s])) {
-              allSheetData[s] = allSheetData[s].map(r => normalizeRow(r, s));
-            }
-          });
+          // 重新計算 stock in TW 庫存彙總
+          calculateStockInTW();
 
-          reaggregateMasterSheet();
           renderSheetTabs();
           switchSheet(currentSheetName);
         }
       } catch (err) {
-        console.error(err);
+        console.error('抓取資料失敗:', err);
       } finally {
         loadingBar.classList.add('hidden');
       }
     }
 
+    // 渲染分頁切換按鈕
     function renderSheetTabs() {
       const container = document.getElementById('sheet-tabs-container');
       container.innerHTML = orderedSheetNames.map(name => `
-        <button onclick="switchSheet('${name}')" id="sheet-btn-${name}" class="sheet-tab-btn px-4 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-600 bg-white/80 border border-sky-100 hover:bg-sky-100 hover:text-sky-900 transition flex items-center gap-1.5 flex-shrink-0 shadow-2xs">
-          <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> ${name}
+        <button onclick="switchSheet('${name}')" id="sheet-btn-${name.replace(/\s+/g, '_')}" class="sheet-tab-btn px-4 py-2 rounded-lg text-xs font-semibold bg-white/80 border border-sky-100 hover:bg-sky-100 text-slate-700 transition flex items-center gap-1.5 whitespace-nowrap shadow-2xs">
+          <i data-lucide="file-spreadsheet" class="w-4 h-4 text-sky-600"></i> ${name}
         </button>
       `).join('');
       lucide.createIcons();
     }
 
+    // 切換分頁
     function switchSheet(sheetName) {
       currentSheetName = sheetName;
-      if (sheetName === 'Stock in TW') {
-        reaggregateMasterSheet();
+      if (sheetName === 'stock in TW') {
+        calculateStockInTW();
+        currentRows = [...(allSheetData['stock in TW'] || [])];
+      } else {
+        const raw = allSheetData[sheetName] || [];
+        currentRows = raw.map(r => normalizeDetailRow(r, sheetName));
       }
-      currentRows = [...(allSheetData[sheetName] || [])];
 
+      // 更新按鈕樣式
       document.querySelectorAll('.sheet-tab-btn').forEach(btn => {
-        btn.className = 'sheet-tab-btn px-4 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-600 bg-white/80 border border-sky-100 hover:bg-sky-100 hover:text-sky-900 transition flex items-center gap-1.5 flex-shrink-0 shadow-2xs';
+        btn.className = 'sheet-tab-btn px-4 py-2 rounded-lg text-xs font-semibold bg-white/80 border border-sky-100 hover:bg-sky-100 text-slate-700 transition flex items-center gap-1.5 whitespace-nowrap shadow-2xs';
       });
 
-      const activeBtn = document.getElementById(`sheet-btn-${sheetName}`);
+      const activeBtn = document.getElementById(`sheet-btn-${sheetName.replace(/\s+/g, '_')}`);
       if (activeBtn) {
-        activeBtn.className = 'sheet-tab-btn px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-sky-600 text-white shadow-sm flex items-center gap-1.5 flex-shrink-0';
+        activeBtn.className = 'sheet-tab-btn px-4 py-2 rounded-lg text-xs font-semibold bg-sky-600 text-white shadow-sm flex items-center gap-1.5 whitespace-nowrap';
       }
 
       handleSearch();
@@ -424,50 +446,102 @@
       const keyword = document.getElementById('search-input').value.toLowerCase();
       filteredRows = currentRows.filter(row => {
         if (!keyword) return true;
-        return Object.values(row).some(val => String(val || '').toLowerCase().includes(keyword));
+        return Object.values(row).some(v => String(v || '').toLowerCase().includes(keyword));
       });
       renderTable();
     }
 
+    // 渲染表格內容 (依據是否為 stock in TW 分流顯示欄位)
     function renderTable() {
+      const thead = document.getElementById('dynamic-thead');
       const tbody = document.getElementById('dynamic-tbody');
 
+      const isMaster = currentSheetName === 'stock in TW';
+
+      // 建立表頭
+      if (isMaster) {
+        // stock in TW 9 欄
+        thead.innerHTML = `
+          <th class="py-3 px-4 w-12 text-center">#</th>
+          <th class="py-3 px-4">P/N (If any)</th>
+          <th class="py-3 px-4">Parts Name</th>
+          <th class="py-3 px-4 text-center">QTY (總庫存)</th>
+          <th class="py-3 px-4">Unit</th>
+          <th class="py-3 px-4">Category</th>
+          <th class="py-3 px-4">Status</th>
+          <th class="py-3 px-4">Model</th>
+          <th class="py-3 px-4">Remarks</th>
+          <th class="py-3 px-4">LOCATION</th>
+          <th class="py-3 px-4 text-center w-24">操作</th>
+        `;
+      } else {
+        // S2 ~ S6, DRY BOX, clean room 7 欄
+        thead.innerHTML = `
+          <th class="py-3 px-4 w-12 text-center">#</th>
+          <th class="py-3 px-4">Date</th>
+          <th class="py-3 px-4">P/N (If any)</th>
+          <th class="py-3 px-4">Parts Name</th>
+          <th class="py-3 px-4">Model</th>
+          <th class="py-3 px-4 text-center">IN</th>
+          <th class="py-3 px-4 text-center">OUT</th>
+          <th class="py-3 px-4">Remark</th>
+          <th class="py-3 px-4 text-center w-24">操作</th>
+        `;
+      }
+
       if (filteredRows.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="11" class="text-center py-12 text-slate-400">無數據</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="12" class="text-center py-12 text-slate-400">目前無任何資料</td></tr>`;
         updateMetrics();
         return;
       }
 
       tbody.innerHTML = filteredRows.map((row, index) => {
-        const num = Number(row['QTY']) || 0;
-        const qtyBadge = num > 0 
-          ? `<span class="px-3 py-1 rounded-md text-xs sm:text-sm font-bold bg-emerald-50 text-emerald-700 border border-emerald-300">${num}</span>`
-          : `<span class="px-3 py-1 rounded-md text-xs sm:text-sm font-bold bg-slate-100 text-slate-400 border border-slate-200">${num}</span>`;
+        if (isMaster) {
+          const qty = Number(row['QTY']) || 0;
+          const qtyBadge = qty > 0 
+            ? `<span class="px-2.5 py-0.5 rounded-md text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-300">${qty}</span>`
+            : `<span class="px-2.5 py-0.5 rounded-md text-xs font-bold bg-rose-50 text-rose-600 border border-rose-300">${qty}</span>`;
 
-        return `
-          <tr class="hover:bg-sky-50/50 transition">
-            <td class="py-3 px-4 text-center font-mono text-slate-400">${index + 1}</td>
-            <td class="py-3 px-4"><span class="px-2.5 py-0.5 rounded text-xs font-bold border border-slate-200 bg-slate-100">${row['LOCATION']}</span></td>
-            <td class="py-3 px-4 font-mono font-semibold text-slate-800">${row['P/N (IF ANY)'] || '-'}</td>
-            <td class="py-3 px-4 text-center">${qtyBadge}</td>
-            <td class="py-3 px-4 font-bold text-slate-900">${row['PARTS NAME'] || '-'}</td>
-            <td class="py-3 px-4 font-medium text-slate-600">${row['MODEL'] || '-'}</td>
-            <td class="py-3 px-4 text-center font-semibold text-emerald-600">${row['IN'] || ''}</td>
-            <td class="py-3 px-4 text-center font-semibold text-amber-600">${row['OUT'] || ''}</td>
-            <td class="py-3 px-4 text-slate-600">${row['DATE'] || ''}</td>
-            <td class="py-3 px-4 text-slate-700">${row['REMARK'] || ''}</td>
-            <td class="py-3 px-4 text-center">
-              <div class="flex items-center justify-center gap-1.5">
-                <button onclick="editRow(${index})" class="p-1.5 text-slate-400 hover:text-sky-600 rounded transition" title="編輯修改">
-                  <i data-lucide="edit-2" class="w-4 h-4"></i>
-                </button>
-                <button onclick="deleteRow(${index})" class="p-1.5 text-slate-400 hover:text-rose-600 rounded transition" title="刪除此列">
-                  <i data-lucide="trash-2" class="w-4 h-4"></i>
-                </button>
-              </div>
-            </td>
-          </tr>
-        `;
+          return `
+            <tr class="hover:bg-sky-50/50 transition">
+              <td class="py-3 px-4 text-center font-mono text-slate-400 text-xs">${index + 1}</td>
+              <td class="py-3 px-4 font-mono font-semibold text-slate-800">${row['P/N (If any)'] || '-'}</td>
+              <td class="py-3 px-4 font-bold text-slate-900">${row['Parts Name'] || '-'}</td>
+              <td class="py-3 px-4 text-center">${qtyBadge}</td>
+              <td class="py-3 px-4 text-slate-600">${row['Unit'] || 'PCS'}</td>
+              <td class="py-3 px-4 text-slate-600">${row['Category'] || '-'}</td>
+              <td class="py-3 px-4"><span class="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700">${row['Status'] || 'Good'}</span></td>
+              <td class="py-3 px-4 text-slate-600">${row['Model'] || '-'}</td>
+              <td class="py-3 px-4 text-slate-600">${row['Remarks'] || ''}</td>
+              <td class="py-3 px-4"><span class="px-2 py-0.5 rounded text-xs font-bold border border-sky-200 bg-sky-50 text-sky-700">${row['LOCATION'] || 'TW'}</span></td>
+              <td class="py-3 px-4 text-center">
+                <div class="flex items-center justify-center gap-1.5">
+                  <button onclick="editRow(${index})" class="p-1.5 text-slate-400 hover:text-sky-600 rounded transition" title="編輯"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+                  <button onclick="deleteRow(${index})" class="p-1.5 text-slate-400 hover:text-rose-600 rounded transition" title="刪除"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                </div>
+              </td>
+            </tr>
+          `;
+        } else {
+          return `
+            <tr class="hover:bg-sky-50/50 transition">
+              <td class="py-3 px-4 text-center font-mono text-slate-400 text-xs">${index + 1}</td>
+              <td class="py-3 px-4 font-mono text-slate-600">${row['Date'] || ''}</td>
+              <td class="py-3 px-4 font-mono font-semibold text-slate-800">${row['P/N (If any)'] || '-'}</td>
+              <td class="py-3 px-4 font-bold text-slate-900">${row['Parts Name'] || '-'}</td>
+              <td class="py-3 px-4 text-slate-600">${row['Model'] || '-'}</td>
+              <td class="py-3 px-4 text-center font-semibold text-emerald-600">${row['IN'] || ''}</td>
+              <td class="py-3 px-4 text-center font-semibold text-amber-600">${row['OUT'] || ''}</td>
+              <td class="py-3 px-4 text-slate-600">${row['Remark'] || ''}</td>
+              <td class="py-3 px-4 text-center">
+                <div class="flex items-center justify-center gap-1.5">
+                  <button onclick="editRow(${index})" class="p-1.5 text-slate-400 hover:text-sky-600 rounded transition" title="編輯"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+                  <button onclick="deleteRow(${index})" class="p-1.5 text-slate-400 hover:text-rose-600 rounded transition" title="刪除"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }
       }).join('');
 
       lucide.createIcons();
@@ -480,13 +554,22 @@
 
       let totalQty = 0;
       let zeroCount = 0;
-      currentRows.forEach(r => {
-        const num = Number(r['QTY']) || 0;
-        totalQty += num;
-        if (num === 0) zeroCount++;
-      });
 
-      document.getElementById('stat-total-qty').innerText = isNaN(totalQty) ? 0 : totalQty;
+      if (currentSheetName === 'stock in TW') {
+        currentRows.forEach(r => {
+          const q = Number(r['QTY']) || 0;
+          totalQty += q;
+          if (q <= 0) zeroCount++;
+        });
+      } else {
+        currentRows.forEach(r => {
+          const inVal = Number(r['IN']) || 0;
+          const outVal = Number(r['OUT']) || 0;
+          totalQty += (inVal - outVal);
+        });
+      }
+
+      document.getElementById('stat-total-qty').innerText = totalQty;
       document.getElementById('stat-zero-qty').innerText = zeroCount;
       document.getElementById('filtered-count').innerText = `${filteredRows.length} 筆`;
     }
@@ -494,12 +577,12 @@
     function openModal() {
       document.getElementById('form-edit-index').value = "-1";
       document.getElementById('form-edit-rowindex').value = "";
-      document.getElementById('form-edit-sheet').value = "";
-      document.getElementById('modal-title').innerText = "新增零件記錄";
-      document.getElementById('form-in').value = "0";
-      document.getElementById('form-out').value = "0";
+      document.getElementById('modal-title').innerText = "新增零件紀錄";
+      document.getElementById('form-target-sheet').value = currentSheetName === 'stock in TW' ? 'S4' : currentSheetName;
       document.getElementById('form-pn').value = "";
       document.getElementById('form-parts-name').value = "";
+      document.getElementById('form-in').value = "0";
+      document.getElementById('form-out').value = "0";
       document.getElementById('form-model').value = "";
       document.getElementById('form-remarks').value = "";
       document.getElementById('item-modal').classList.remove('hidden');
@@ -509,57 +592,54 @@
       document.getElementById('item-modal').classList.add('hidden');
     }
 
-    // 點擊「編輯」
+    // 編輯資料列
     function editRow(index) {
       const row = filteredRows[index];
       if (!row) return;
 
       document.getElementById('form-edit-index').value = index;
       document.getElementById('form-edit-rowindex').value = row._rowIndex || '';
-      document.getElementById('form-edit-sheet').value = row._sourceSheet || currentSheetName;
-      document.getElementById('modal-title').innerText = "編輯零件記錄";
+      document.getElementById('modal-title').innerText = "編輯零件紀錄";
 
-      document.getElementById('form-rack').value = row._sourceSheet || (row.LOCATION ? row.LOCATION.split(',')[0].trim() : 'S4');
-      document.getElementById('form-pn').value = row['P/N (IF ANY)'] !== '-' ? row['P/N (IF ANY)'] : '';
-      document.getElementById('form-parts-name').value = row['PARTS NAME'] !== '-' ? row['PARTS NAME'] : '';
+      document.getElementById('form-target-sheet').value = row._sourceSheet || currentSheetName;
+      document.getElementById('form-pn').value = row['P/N (If any)'] !== '-' ? row['P/N (If any)'] : '';
+      document.getElementById('form-parts-name').value = row['Parts Name'] !== '-' ? row['Parts Name'] : '';
       document.getElementById('form-in').value = row['IN'] || 0;
       document.getElementById('form-out').value = row['OUT'] || 0;
-      document.getElementById('form-model').value = row['MODEL'] !== '-' ? row['MODEL'] : '';
-      document.getElementById('form-remarks').value = row['REMARK'] || '';
+      document.getElementById('form-model').value = row['Model'] !== '-' ? row['Model'] : '';
+      document.getElementById('form-remarks').value = row['Remark'] || row['Remarks'] || '';
 
       document.getElementById('item-modal').classList.remove('hidden');
     }
 
-    // 點擊「刪除」：網頁與 Google Sheet 真正同步刪除
+    // 刪除資料列 (真連動 Google Sheet)
     async function deleteRow(index) {
       const row = filteredRows[index];
       if (!row) return;
 
-      if (!confirm(`確定要將「${row['PARTS NAME']}」從 Google Sheet 中徹底刪除嗎？`)) {
+      const pName = row['Parts Name'];
+      const pn = row['P/N (If any)'];
+      const targetSheet = row._sourceSheet || currentSheetName;
+      const rowIndex = row._rowIndex;
+
+      if (!confirm(`確定要將「${pName}」自 Google Sheet 的 ${targetSheet} 分頁徹底刪除嗎？`)) {
         return;
       }
 
-      const targetSheet = row._sourceSheet || currentSheetName;
-      const rowIndex = row._rowIndex;
-      const pn = row['P/N (IF ANY)'];
-      const partsName = row['PARTS NAME'];
-
-      // 前端畫面先移除
+      // 前端先移除
       currentRows = currentRows.filter(r => r !== row);
       if (allSheetData[targetSheet]) {
         allSheetData[targetSheet] = allSheetData[targetSheet].filter(r => r !== row);
       }
-      reaggregateMasterSheet();
+      calculateStockInTW();
       handleSearch();
 
-      // 發送真正刪除命令到 Google Apps Script
+      // 送出刪除命令
       const gasUrl = getGasUrl();
       if (!gasUrl) return;
 
       const loadingBar = document.getElementById('loading-bar');
-      document.getElementById('loading-text').innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> 正在自 Google Sheet 刪除該筆資料...`;
       loadingBar.classList.remove('hidden');
-      lucide.createIcons();
 
       try {
         await fetch(gasUrl, {
@@ -568,13 +648,12 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             action: 'DELETE',
-            LOCATION: targetSheet,
+            targetSheet: targetSheet,
             rowIndex: rowIndex,
             pn: pn,
-            partsName: partsName
+            partsName: pName
           })
         });
-
         setTimeout(fetchDataFromGAS, 1500);
       } catch (err) {
         console.error('刪除失敗:', err);
@@ -583,20 +662,19 @@
       }
     }
 
-    // 表單送出 (新增或編輯)
+    // 表單送出 (新增 / 更新)
     function handleFormSubmit(e) {
       e.preventDefault();
       const editIdx = parseInt(document.getElementById('form-edit-index').value);
       const editRowIndex = document.getElementById('form-edit-rowindex').value;
-      const editSheet = document.getElementById('form-edit-sheet').value;
+      const targetSheet = document.getElementById('form-target-sheet').value;
 
+      const pn = document.getElementById('form-pn').value.trim();
+      const partsName = document.getElementById('form-parts-name').value.trim();
       const inVal = Number(document.getElementById('form-in').value) || 0;
       const outVal = Number(document.getElementById('form-out').value) || 0;
-      const targetLoc = document.getElementById('form-rack').value;
-      const pnVal = document.getElementById('form-pn').value.trim();
-      const nameVal = document.getElementById('form-parts-name').value.trim();
-      const modelVal = document.getElementById('form-model').value.trim();
-      const remarkVal = document.getElementById('form-remarks').value.trim();
+      const model = document.getElementById('form-model').value.trim();
+      const remark = document.getElementById('form-remarks').value.trim();
 
       const d = new Date();
       const dateVal = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
@@ -606,66 +684,114 @@
       const isUpdate = editIdx >= 0 && editRowIndex !== '';
       const payload = {
         action: isUpdate ? 'UPDATE' : 'ADD',
-        LOCATION: isUpdate ? editSheet : targetLoc,
+        targetSheet: targetSheet,
         rowIndex: isUpdate ? parseInt(editRowIndex) : null,
-        'P/N': pnVal,
-        'PARTS NAME': nameVal,
-        'MODEL': modelVal,
-        'IN': inVal,
-        'OUT': outVal,
-        'REMARK': remarkVal,
-        'DATE': dateVal
+        date: dateVal,
+        pn: pn,
+        partsName: partsName,
+        model: model,
+        in: inVal,
+        out: outVal,
+        remark: remark
       };
 
-      syncToGAS(payload);
+      const gasUrl = getGasUrl();
+      if (gasUrl) {
+        const loadingBar = document.getElementById('loading-bar');
+        loadingBar.classList.remove('hidden');
+        fetch(gasUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        }).then(() => {
+          setTimeout(fetchDataFromGAS, 1500);
+        }).finally(() => {
+          loadingBar.classList.add('hidden');
+        });
+      }
     }
 
-    function toggleSyncPanel() { document.getElementById('sync-panel').classList.toggle('hidden'); }
+    // 匯入 Excel 檔案功能
+    function triggerFileInput() {
+      document.getElementById('excel-file-input').click();
+    }
+
+    function handleExcelImport(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async function(evt) {
+        try {
+          const data = new Uint8Array(evt.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          let importedAll = {};
+
+          workbook.SheetNames.forEach(name => {
+            if (orderedSheetNames.includes(name)) {
+              const ws = workbook.Sheets[name];
+              const json = XLSX.utils.sheet_to_json(ws);
+              if (json && json.length > 0) {
+                importedAll[name] = json;
+              }
+            }
+          });
+
+          const gasUrl = getGasUrl();
+          if (gasUrl) {
+            const loadingBar = document.getElementById('loading-bar');
+            loadingBar.classList.remove('hidden');
+            await fetch(gasUrl, {
+              method: 'POST',
+              mode: 'no-cors',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'BULK_IMPORT', allData: importedAll })
+            });
+            setTimeout(fetchDataFromGAS, 2000);
+          }
+          alert('Excel 匯入完成，已同步上傳 Google Sheet！');
+        } catch (err) {
+          alert('匯入失敗：' + err.message);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+      e.target.value = '';
+    }
+
+    // 匯出 CSV 功能
+    function exportCSV() {
+      if (filteredRows.length === 0) {
+        alert('無資料可匯出');
+        return;
+      }
+      const headers = Object.keys(filteredRows[0]).filter(k => !k.startsWith('_'));
+      let csv = '\uFEFF' + headers.join(',') + '\n';
+      filteredRows.forEach(r => {
+        csv += headers.map(h => `"${String(r[h] || '').replace(/"/g, '""')}"`).join(',') + '\n';
+      });
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${currentSheetName}_${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+    }
+
+    function toggleSyncPanel() {
+      document.getElementById('sync-panel').classList.toggle('hidden');
+    }
 
     function saveGasUrl() {
       const url = document.getElementById('gas-url-input').value.trim();
       localStorage.setItem('GAS_WEB_APP_URL', url);
-      alert('已成功儲存連線網址！');
-      checkSyncStatus();
+      alert('已儲存 API 網址！');
       fetchDataFromGAS();
-    }
-
-    function checkSyncStatus() {
-      const gasUrl = getGasUrl();
-      const dot = document.getElementById('sync-status-dot');
-      if (gasUrl) {
-        document.getElementById('gas-url-input').value = gasUrl;
-        dot.className = 'w-2 h-2 rounded-full bg-emerald-500 ml-1 animate-pulse';
-      }
-    }
-
-    async function syncToGAS(itemData) {
-      const gasUrl = getGasUrl();
-      if (!gasUrl) return;
-
-      const loadingBar = document.getElementById('loading-bar');
-      document.getElementById('loading-text').innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> 正在同步更新至 Google Sheet...`;
-      loadingBar.classList.remove('hidden');
-      lucide.createIcons();
-
-      try {
-        await fetch(gasUrl, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(itemData)
-        });
-        setTimeout(fetchDataFromGAS, 1500);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        loadingBar.classList.add('hidden');
-      }
     }
 
     window.onload = () => {
       lucide.createIcons();
-      checkSyncStatus();
+      document.getElementById('gas-url-input').value = getGasUrl();
       fetchDataFromGAS();
     };
   </script>
