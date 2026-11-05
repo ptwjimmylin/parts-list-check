@@ -17,6 +17,8 @@
 </head>
 <body class="bg-gradient-to-br from-sky-50 via-slate-50 to-blue-50 text-slate-800 min-h-screen pb-12">
 
+  <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleFileImport(event)">
+
   <!-- 頂部 Header -->
   <header class="bg-white/95 backdrop-blur border-b border-sky-100 sticky top-0 z-30 shadow-xs">
     <div class="w-full max-w-[97%] mx-auto px-2 sm:px-4 h-16 flex items-center justify-between">
@@ -27,12 +29,13 @@
         <div class="min-w-0">
           <div class="flex items-center gap-2">
             <h1 class="font-bold text-slate-900 text-lg leading-tight truncate">PTW Taiwan Inventory System</h1>
-            <span class="px-2 py-0.5 text-xs font-semibold bg-sky-100 text-sky-700 rounded-md border border-sky-200 flex-shrink-0">PRO v4.8</span>
+            <span class="px-2 py-0.5 text-xs font-semibold bg-sky-100 text-sky-700 rounded-md border border-sky-200 flex-shrink-0">PRO v4.9</span>
           </div>
           <p class="text-xs text-sky-600/80 truncate">Strict Alignment • Real-Time Stock in TW Sync</p>
         </div>
       </div>
 
+      <!-- 桌面端操作按鈕 -->
       <div class="hidden lg:flex items-center gap-2.5">
         <button onclick="fetchDataFromGAS()" class="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-sky-200 text-slate-700 bg-white hover:bg-sky-50 text-xs font-medium transition shadow-xs">
           <i data-lucide="refresh-cw" class="w-4 h-4 text-sky-600"></i>
@@ -51,6 +54,7 @@
         </button>
       </div>
 
+      <!-- 手機端操作按鈕 -->
       <div class="lg:hidden flex items-center gap-2">
         <button onclick="fetchDataFromGAS()" class="p-2 bg-sky-50 text-sky-600 rounded-lg text-xs font-medium border border-sky-200">
           <i data-lucide="refresh-cw" class="w-4 h-4"></i>
@@ -81,7 +85,7 @@
 
   <main class="w-full max-w-[97%] mx-auto px-2 sm:px-4 pt-4 space-y-4">
 
-    <!-- 載入中 Bar -->
+    <!-- 狀態通知 Bar -->
     <div id="loading-bar" class="hidden bg-sky-100 border border-sky-300 rounded-xl p-3 flex items-center justify-between text-sky-800 text-xs font-semibold">
       <span class="flex items-center gap-2" id="loading-text">
         <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> 正在向 Google Sheet 抓取數據...
@@ -166,6 +170,7 @@
               <th class="py-3.5 px-4 bg-sky-100/90 text-sky-950 font-bold">OUT</th>
               <th class="py-3.5 px-4 bg-sky-100/90 text-sky-950 font-bold">DATE</th>
               <th class="py-3.5 px-4 bg-sky-100/90 text-sky-950 font-bold">REMARK</th>
+              <th class="py-3.5 px-4 text-center w-24 bg-sky-100/90 text-sky-950 font-bold">操作</th>
             </tr>
           </thead>
           <tbody id="dynamic-tbody" class="divide-y divide-slate-100 text-xs sm:text-sm">
@@ -176,13 +181,13 @@
 
   </main>
 
-  <!-- Modal 新增視窗 -->
+  <!-- Modal 新增/編輯視窗 -->
   <div id="item-modal" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl border border-sky-200 shadow-2xl w-full max-w-lg overflow-hidden transition-all">
       <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
         <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
           <i data-lucide="edit-3" class="w-4 h-4 text-sky-600"></i>
-          <span>新增零件記錄</span>
+          <span id="modal-title">新增零件記錄</span>
         </h3>
         <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
           <i data-lucide="x" class="w-5 h-5"></i>
@@ -190,6 +195,8 @@
       </div>
 
       <form id="item-form" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4">
+        <input type="hidden" id="form-edit-index" value="-1">
+
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="block text-xs font-semibold text-slate-600 mb-1">目標貨架 (Location)</label>
@@ -243,7 +250,7 @@
   </div>
 
   <script>
-    // 預設寫死最新 Web App URL
+    // 預設填入最新 Web App URL
     const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbx_aFxaqB69URgcvpm-IPS8wsU14i5l2PFaPBq5HBXptg81hCmME73N4lRCBDagYU5QVw/exec";
     const orderedSheetNames = ['Stock in TW', 'S2', 'S3', 'S4', 'S5', 'S6', 'DRY BOX', 'Clean room'];
 
@@ -271,7 +278,7 @@
       return '';
     }
 
-    // 嚴格標準化每一列：徹底消除 NaN
+    // 嚴格過濾與計算：徹底排除 "0 PCS" 或非法字串造成的 NaN
     function normalizeRow(r, fallbackLocation) {
       let pn = getVal(r, ['P/N (If any)', 'P/N (IF ANY)', 'P/N', '料號']);
       let name = getVal(r, ['Parts Name', 'PARTS NAME', '品名']);
@@ -424,11 +431,12 @@
       renderTable();
     }
 
+    // 渲染表格 (包含編輯與刪除操作按鈕)
     function renderTable() {
       const tbody = document.getElementById('dynamic-tbody');
 
       if (filteredRows.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" class="text-center py-12 text-slate-400">無數據</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" class="text-center py-12 text-slate-400">無數據</td></tr>`;
         updateMetrics();
         return;
       }
@@ -451,10 +459,21 @@
             <td class="py-3 px-4 text-center font-semibold text-amber-600">${row['OUT'] || ''}</td>
             <td class="py-3 px-4 text-slate-600">${row['DATE'] || ''}</td>
             <td class="py-3 px-4 text-slate-700">${row['REMARK'] || ''}</td>
+            <td class="py-3 px-4 text-center">
+              <div class="flex items-center justify-center gap-1.5">
+                <button onclick="editRow(${index})" class="p-1.5 text-slate-400 hover:text-sky-600 rounded transition" title="編輯">
+                  <i data-lucide="edit-2" class="w-4 h-4"></i>
+                </button>
+                <button onclick="deleteRow(${index})" class="p-1.5 text-slate-400 hover:text-rose-600 rounded transition" title="刪除">
+                  <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
+              </div>
+            </td>
           </tr>
         `;
       }).join('');
 
+      lucide.createIcons();
       updateMetrics();
     }
 
@@ -475,11 +494,63 @@
       document.getElementById('filtered-count').innerText = `${filteredRows.length} 筆`;
     }
 
-    function openModal() { document.getElementById('item-modal').classList.remove('hidden'); }
+    function openModal() {
+      document.getElementById('form-edit-index').value = "-1";
+      document.getElementById('modal-title').innerText = "新增零件記錄";
+      document.getElementById('item-modal').classList.remove('hidden');
+    }
     function closeModal() { document.getElementById('item-modal').classList.add('hidden'); }
 
+    // 編輯功能 (點擊鉛筆進入)
+    function editRow(index) {
+      const row = filteredRows[index];
+      if (!row) return;
+
+      document.getElementById('form-edit-index').value = index;
+      document.getElementById('modal-title').innerText = "編輯零件記錄";
+      document.getElementById('form-rack').value = (row['LOCATION'] || 'S4').split(',')[0].trim();
+      document.getElementById('form-pn').value = row['P/N (IF ANY)'] !== '-' ? row['P/N (IF ANY)'] : '';
+      document.getElementById('form-parts-name').value = row['PARTS NAME'] || '';
+      document.getElementById('form-in').value = row['IN'] !== undefined ? row['IN'] : 0;
+      document.getElementById('form-out').value = row['OUT'] !== undefined ? row['OUT'] : 0;
+      document.getElementById('form-model').value = row['MODEL'] !== '-' ? row['MODEL'] : '';
+      document.getElementById('form-remarks').value = row['REMARK'] || '';
+
+      document.getElementById('item-modal').classList.remove('hidden');
+    }
+
+    // 刪除功能 (點擊垃圾桶進入)
+    function deleteRow(index) {
+      if (confirm('確定要刪除這筆記錄嗎？')) {
+        const itemToDelete = filteredRows[index];
+        currentRows = currentRows.filter(r => r !== itemToDelete);
+
+        if (currentSheetName !== 'Stock in TW') {
+          allSheetData[currentSheetName] = [...currentRows];
+        } else {
+          const pn = itemToDelete['P/N (IF ANY)'];
+          const name = itemToDelete['PARTS NAME'];
+          orderedSheetNames.forEach(s => {
+            if (s === 'Stock in TW') return;
+            if (allSheetData[s]) {
+              allSheetData[s] = allSheetData[s].filter(r => {
+                const rPn = (r['P/N (IF ANY)'] || r['P/N (If any)'] || '').trim();
+                const rName = (r['PARTS NAME'] || r['Parts Name'] || '').trim();
+                return !(rPn.toLowerCase() === pn.toLowerCase() && rName.toLowerCase() === name.toLowerCase());
+              });
+            }
+          });
+        }
+        reaggregateMasterSheet();
+        handleSearch();
+      }
+    }
+
+    // 表單提交：支援新增與編輯，並精準同步回 Google Sheet
     function handleFormSubmit(e) {
       e.preventDefault();
+      const editIdx = parseInt(document.getElementById('form-edit-index').value);
+
       const inVal = Number(document.getElementById('form-in').value) || 0;
       const outVal = Number(document.getElementById('form-out').value) || 0;
       const targetLoc = document.getElementById('form-rack').value;
@@ -491,6 +562,33 @@
       const d = new Date();
       const dateVal = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
 
+      const rowObj = {
+        'LOCATION': targetLoc,
+        'P/N (IF ANY)': pnVal,
+        'QTY': inVal - outVal,
+        'PARTS NAME': nameVal,
+        'IN': inVal,
+        'OUT': outVal,
+        'DATE': dateVal,
+        'MODEL': modelVal,
+        'REMARK': remarkVal
+      };
+
+      if (!allSheetData[targetLoc]) allSheetData[targetLoc] = [];
+
+      if (editIdx >= 0) {
+        if (currentSheetName === 'Stock in TW') {
+          allSheetData[targetLoc].unshift(rowObj);
+        } else {
+          currentRows[editIdx] = rowObj;
+          allSheetData[currentSheetName] = [...currentRows];
+        }
+      } else {
+        allSheetData[targetLoc].unshift(rowObj);
+      }
+
+      reaggregateMasterSheet();
+      handleSearch();
       closeModal();
 
       syncToGAS({
