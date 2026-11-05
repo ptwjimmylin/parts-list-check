@@ -54,7 +54,7 @@
     <button class="tab-btn" onclick="switchTab('import', event)">批次匯入資料 (覆寫)</button>
   </div>
 
-  <!-- 1. 總庫存總覽（含 Location 篩選器） -->
+  <!-- 1. 總庫存總覽（含自動計算與 Location 篩選器） -->
   <div id="stockPanel" class="panel active">
     <div class="form-group">
       <label><strong>庫房位置 (Location)：</strong></label>
@@ -69,7 +69,7 @@
         <option value="clean room">clean room</option>
       </select>
       <input type="text" id="stockSearchInput" placeholder="搜尋料號 P/N 或品名..." oninput="filterStockTable()">
-      <button class="btn btn-blue" onclick="loadStock()">重新整理庫存</button>
+      <button class="btn btn-blue" onclick="loadStock()">即時計算並重新整理</button>
     </div>
 
     <table id="stockTable">
@@ -219,10 +219,10 @@
     }
   }
 
-  // 1. 讀取總庫存 (stock in TW)
+  // 1. 讀取總庫存 (後端自動計算並同步回填)
   async function loadStock() {
     const tbody = document.querySelector("#stockTable tbody");
-    tbody.innerHTML = "<tr><td colspan='6'>載入中...</td></tr>";
+    tbody.innerHTML = "<tr><td colspan='6'>即時加總各庫房庫存中...</td></tr>";
     try {
       const res = await fetch(`${GAS_URL}?action=getStock`);
       const result = await res.json();
@@ -230,14 +230,13 @@
         currentStockData = result.data || [];
         filterStockTable();
       } else {
-        tbody.innerHTML = `<tr><td colspan='6'>讀取失敗：${result.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan='6'>計算失敗：${result.message}</td></tr>`;
       }
     } catch(err) {
       tbody.innerHTML = "<tr><td colspan='6'>讀取失敗，請確認試算表權限或網路狀態。</td></tr>";
     }
   }
 
-  // 庫存過濾邏輯（Location + 搜尋關鍵字）
   function filterStockTable() {
     const selectedLoc = document.getElementById("stockLocationSelect").value;
     const query = document.getElementById("stockSearchInput").value.trim().toLowerCase();
@@ -264,7 +263,7 @@
         <td><strong>${row.location || ""}</strong></td>
         <td>${row["P/N"] || ""}</td>
         <td>${row["parts name"] || ""}</td>
-        <td><strong style="color: #0066cc;">${row.QTY !== undefined ? row.QTY : 0}</strong></td>
+        <td><strong style="color: ${row.QTY < 0 ? '#dc3545' : '#0066cc'}; font-size: 15px;">${row.QTY}</strong></td>
         <td>${row.model || ""}</td>
         <td>${row.remark || ""}</td>
       `;
@@ -373,7 +372,7 @@
       });
       const result = await res.json();
       if (result.status === "success") {
-        alert("資料修改成功！");
+        alert("資料修改成功！庫存已自動重新計算。");
         closeModal();
         loadHistory();
       } else {
@@ -405,7 +404,7 @@
       });
       const result = await res.json();
       if(result.status === "success") {
-        alert("記錄新增成功！");
+        alert("記錄新增成功！庫存已自動重新計算。");
         document.querySelectorAll('#entryPanel input:not(#recDate)').forEach(i => i.value = "");
       } else {
         alert("提交失敗: " + result.message);
@@ -478,7 +477,7 @@
         });
         const result = await res.json();
         if (result.status === "success") {
-          alert(`已成功覆寫 ${sheetName} 分頁！共匯入 ${result.count} 筆資料。`);
+          alert(`已成功覆寫 ${sheetName} 分頁！共匯入 ${result.count} 筆資料，庫存已自動即時同步。`);
           document.getElementById("csvFile").value = "";
         } else {
           alert("匯入失敗: " + result.message);
@@ -490,7 +489,6 @@
     reader.readAsText(file);
   }
 
-  // 初始化預設值
   document.getElementById("recDate").value = new Date().toISOString().split('T')[0];
   loadStock();
 </script>
