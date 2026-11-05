@@ -4,11 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>PTW Taiwan Inventory System</title>
-  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- SheetJS 用於 Excel 匯入匯出 -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -33,7 +30,7 @@
         </div>
       </div>
 
-      <!-- 功能操作按鈕 -->
+      <!-- 操作按鈕 -->
       <div class="flex items-center gap-2">
         <button onclick="fetchDataFromGAS()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-sky-200 text-slate-700 bg-white hover:bg-sky-50 text-xs font-medium transition shadow-xs">
           <i data-lucide="refresh-cw" class="w-4 h-4 text-sky-600"></i>
@@ -133,18 +130,16 @@
       </div>
     </div>
 
-    <!-- 8 大分頁切換列 (嚴格規定順序) -->
+    <!-- 8 大分頁切換列 -->
     <div class="space-y-3 pt-1">
       <div class="flex items-center justify-between gap-2 border-b border-sky-200/80 pb-2 overflow-x-auto no-scrollbar">
-        <div class="flex items-center gap-2 flex-nowrap" id="sheet-tabs-container">
-          <!-- 動態載入 8 個分頁按鈕 -->
-        </div>
+        <div class="flex items-center gap-2 flex-nowrap" id="sheet-tabs-container"></div>
         <span id="filtered-count" class="text-xs font-semibold text-sky-800 bg-sky-100/80 border border-sky-200 px-3 py-1 rounded-lg whitespace-nowrap">
           0 筆
         </span>
       </div>
 
-      <!-- 搜尋列與欄位調整 -->
+      <!-- 搜尋列 -->
       <div class="bg-white/95 backdrop-blur p-3 rounded-xl border border-sky-100 shadow-xs flex items-center gap-3">
         <div class="relative w-full">
           <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
@@ -153,24 +148,21 @@
       </div>
     </div>
 
-    <!-- 滿版資料表格 -->
+    <!-- 表格 -->
     <div class="bg-white rounded-xl border border-sky-100 shadow-sm overflow-hidden flex flex-col">
       <div class="overflow-x-auto max-h-[66vh] overflow-y-auto relative">
         <table class="w-full text-left border-collapse min-w-[900px]">
           <thead class="sticky top-0 z-20 bg-sky-100/95 backdrop-blur shadow-xs">
-            <tr id="dynamic-thead" class="text-xs font-bold text-slate-700 uppercase tracking-wider">
-              <!-- 動態表頭依分頁不同自動調整 -->
-            </tr>
+            <tr id="dynamic-thead" class="text-xs font-bold text-slate-700 uppercase tracking-wider"></tr>
           </thead>
-          <tbody id="dynamic-tbody" class="divide-y divide-slate-100 text-sm">
-          </tbody>
+          <tbody id="dynamic-tbody" class="divide-y divide-slate-100 text-sm"></tbody>
         </table>
       </div>
     </div>
 
   </main>
 
-  <!-- Modal：新增 / 編輯視窗 -->
+  <!-- Modal -->
   <div id="item-modal" class="hidden fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl border border-sky-200 shadow-2xl w-full max-w-lg overflow-hidden">
       <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
@@ -184,6 +176,7 @@
       <form id="item-form" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4">
         <input type="hidden" id="form-edit-index" value="-1">
         <input type="hidden" id="form-edit-rowindex" value="">
+        <input type="hidden" id="form-edit-sheet" value="">
 
         <div class="grid grid-cols-2 gap-4">
           <div>
@@ -239,10 +232,7 @@
   </div>
 
   <script>
-    // 預設後端 API 網址 (請填入您發布後的 /exec 網址)
     const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbx_aFxaqB69URgcvpm-IPS8wsU14i5l2PFaPBq5HBXptg81hCmME73N4lRCBDagYU5QVw/exec";
-
-    // 規定嚴格排序之 8 大分頁 (排除 S1 與 Print 頁)
     const orderedSheetNames = ['stock in TW', 'S2', 'S3', 'S4', 'S5', 'S6', 'DRY BOX', 'clean room'];
 
     let allSheetData = {};
@@ -254,7 +244,6 @@
       return localStorage.getItem('GAS_WEB_APP_URL') || DEFAULT_GAS_URL;
     }
 
-    // 模糊搜尋欄位值
     function getVal(row, keys) {
       if (!row) return '';
       const rowKeys = Object.keys(row);
@@ -270,7 +259,6 @@
       return '';
     }
 
-    // 格式化各子分頁明細紀錄
     function normalizeDetailRow(r, sheetName) {
       const pn = getVal(r, ['P/N (If any)', 'P/N', '料號']);
       const name = getVal(r, ['Parts Name', '品名', '零件名稱']);
@@ -295,13 +283,11 @@
       };
     }
 
-    // 🌟 核心庫存計算：遍歷 S2, S3, S4, S5, S6, DRY BOX, clean room
-    // 依據 P/N + Parts Name 吻合聚合，直接統計 (Total IN - Total OUT) 呈現在 stock in TW
+    // 🌟 核心庫存統計與來源追蹤
     function calculateStockInTW() {
       const dbSheets = ['S2', 'S3', 'S4', 'S5', 'S6', 'DRY BOX', 'clean room'];
       const summaryMap = new Map();
 
-      // 先抓取目前 stock in TW 已有的基本資料 (Unit, Category, Status, Remarks)
       const existingMaster = allSheetData['stock in TW'] || [];
       existingMaster.forEach(r => {
         const pn = getVal(r, ['P/N (If any)', 'P/N']).trim();
@@ -319,11 +305,11 @@
           locations: new Set(),
           totalIn: 0,
           totalOut: 0,
-          _rowIndex: r._rowIndex || null
+          _rowIndex: r._rowIndex || null,
+          sourceRecords: [] // 記錄每一筆在各分頁的明細行號
         });
       });
 
-      // 累加 7 大資料庫庫位的 IN 與 OUT
       dbSheets.forEach(sName => {
         const rows = allSheetData[sName] || [];
         rows.forEach(r => {
@@ -345,7 +331,8 @@
               locations: new Set([sName]),
               totalIn: 0,
               totalOut: 0,
-              _rowIndex: null
+              _rowIndex: null,
+              sourceRecords: []
             });
           }
 
@@ -354,10 +341,10 @@
           target.totalIn += item['IN'];
           target.totalOut += item['OUT'];
           if (!target.model && item['Model']) target.model = item['Model'];
+          target.sourceRecords.push({ sheet: sName, rowIndex: item._rowIndex });
         });
       });
 
-      // 產生 stock in TW 的 9 欄標準資料
       let masterRows = [];
       summaryMap.forEach(item => {
         const netQty = item.totalIn - item.totalOut;
@@ -372,14 +359,14 @@
           'Remarks': item.remarks || '',
           'LOCATION': Array.from(item.locations).join(', ') || 'TW',
           '_rowIndex': item._rowIndex,
-          '_sourceSheet': 'stock in TW'
+          '_sourceSheet': 'stock in TW',
+          '_sourceRecords': item.sourceRecords
         });
       });
 
       allSheetData['stock in TW'] = masterRows;
     }
 
-    // 從 Google Sheet 抓取所有分頁
     async function fetchDataFromGAS() {
       const gasUrl = getGasUrl();
       if (!gasUrl) return;
@@ -393,10 +380,7 @@
 
         if (json.status === 'success' && json.data) {
           allSheetData = json.data;
-
-          // 重新計算 stock in TW 庫存彙總
           calculateStockInTW();
-
           renderSheetTabs();
           switchSheet(currentSheetName);
         }
@@ -407,7 +391,6 @@
       }
     }
 
-    // 渲染分頁切換按鈕
     function renderSheetTabs() {
       const container = document.getElementById('sheet-tabs-container');
       container.innerHTML = orderedSheetNames.map(name => `
@@ -418,7 +401,6 @@
       lucide.createIcons();
     }
 
-    // 切換分頁
     function switchSheet(sheetName) {
       currentSheetName = sheetName;
       if (sheetName === 'stock in TW') {
@@ -429,7 +411,6 @@
         currentRows = raw.map(r => normalizeDetailRow(r, sheetName));
       }
 
-      // 更新按鈕樣式
       document.querySelectorAll('.sheet-tab-btn').forEach(btn => {
         btn.className = 'sheet-tab-btn px-4 py-2 rounded-lg text-xs font-semibold bg-white/80 border border-sky-100 hover:bg-sky-100 text-slate-700 transition flex items-center gap-1.5 whitespace-nowrap shadow-2xs';
       });
@@ -451,16 +432,12 @@
       renderTable();
     }
 
-    // 渲染表格內容 (依據是否為 stock in TW 分流顯示欄位)
     function renderTable() {
       const thead = document.getElementById('dynamic-thead');
       const tbody = document.getElementById('dynamic-tbody');
-
       const isMaster = currentSheetName === 'stock in TW';
 
-      // 建立表頭
       if (isMaster) {
-        // stock in TW 9 欄
         thead.innerHTML = `
           <th class="py-3 px-4 w-12 text-center">#</th>
           <th class="py-3 px-4">P/N (If any)</th>
@@ -475,7 +452,6 @@
           <th class="py-3 px-4 text-center w-24">操作</th>
         `;
       } else {
-        // S2 ~ S6, DRY BOX, clean room 7 欄
         thead.innerHTML = `
           <th class="py-3 px-4 w-12 text-center">#</th>
           <th class="py-3 px-4">Date</th>
@@ -592,7 +568,6 @@
       document.getElementById('item-modal').classList.add('hidden');
     }
 
-    // 編輯資料列
     function editRow(index) {
       const row = filteredRows[index];
       if (!row) return;
@@ -612,29 +587,19 @@
       document.getElementById('item-modal').classList.remove('hidden');
     }
 
-    // 刪除資料列 (真連動 Google Sheet)
+    // 🌟 真正連動刪除（若在 stock in TW 點刪除，自動找到背後來源庫位刪除）
     async function deleteRow(index) {
       const row = filteredRows[index];
       if (!row) return;
 
       const pName = row['Parts Name'];
       const pn = row['P/N (If any)'];
-      const targetSheet = row._sourceSheet || currentSheetName;
-      const rowIndex = row._rowIndex;
+      const isMaster = currentSheetName === 'stock in TW';
 
-      if (!confirm(`確定要將「${pName}」自 Google Sheet 的 ${targetSheet} 分頁徹底刪除嗎？`)) {
+      if (!confirm(`確定要將「${pName}」自 Google Sheet 中徹底刪除嗎？`)) {
         return;
       }
 
-      // 前端先移除
-      currentRows = currentRows.filter(r => r !== row);
-      if (allSheetData[targetSheet]) {
-        allSheetData[targetSheet] = allSheetData[targetSheet].filter(r => r !== row);
-      }
-      calculateStockInTW();
-      handleSearch();
-
-      // 送出刪除命令
       const gasUrl = getGasUrl();
       if (!gasUrl) return;
 
@@ -642,18 +607,42 @@
       loadingBar.classList.remove('hidden');
 
       try {
-        await fetch(gasUrl, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'DELETE',
-            targetSheet: targetSheet,
-            rowIndex: rowIndex,
-            pn: pn,
-            partsName: pName
-          })
-        });
+        if (isMaster) {
+          // 在總表刪除：刪除 stock in TW 本身 + 刪除各庫位的紀錄
+          if (row._rowIndex) {
+            await fetch(gasUrl, {
+              method: 'POST',
+              mode: 'no-cors',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ action: 'DELETE', targetSheet: 'stock in TW', rowIndex: row._rowIndex, pn, partsName: pName })
+            });
+          }
+          if (row._sourceRecords && row._sourceRecords.length > 0) {
+            for (const src of row._sourceRecords) {
+              await fetch(gasUrl, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'DELETE', targetSheet: src.sheet, rowIndex: src.rowIndex, pn, partsName: pName })
+              });
+            }
+          }
+        } else {
+          // 在明細分頁刪除：直接刪除該分頁該列
+          await fetch(gasUrl, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'DELETE',
+              targetSheet: currentSheetName,
+              rowIndex: row._rowIndex,
+              pn,
+              partsName: pName
+            })
+          });
+        }
+
         setTimeout(fetchDataFromGAS, 1500);
       } catch (err) {
         console.error('刪除失敗:', err);
@@ -662,19 +651,18 @@
       }
     }
 
-    // 表單送出 (新增 / 更新)
     function handleFormSubmit(e) {
       e.preventDefault();
       const editIdx = parseInt(document.getElementById('form-edit-index').value);
       const editRowIndex = document.getElementById('form-edit-rowindex').value;
       const targetSheet = document.getElementById('form-target-sheet').value;
 
-      const pn = document.getElementById('form-pn').value.trim();
-      const partsName = document.getElementById('form-parts-name').value.trim();
       const inVal = Number(document.getElementById('form-in').value) || 0;
       const outVal = Number(document.getElementById('form-out').value) || 0;
-      const model = document.getElementById('form-model').value.trim();
-      const remark = document.getElementById('form-remarks').value.trim();
+      const pnVal = document.getElementById('form-pn').value.trim();
+      const nameVal = document.getElementById('form-parts-name').value.trim();
+      const modelVal = document.getElementById('form-model').value.trim();
+      const remarkVal = document.getElementById('form-remarks').value.trim();
 
       const d = new Date();
       const dateVal = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
@@ -687,12 +675,13 @@
         targetSheet: targetSheet,
         rowIndex: isUpdate ? parseInt(editRowIndex) : null,
         date: dateVal,
-        pn: pn,
-        partsName: partsName,
-        model: model,
+        pn: pnVal,
+        partsName: nameVal,
+        model: modelVal,
         in: inVal,
         out: outVal,
-        remark: remark
+        remark: remarkVal,
+        location: targetSheet
       };
 
       const gasUrl = getGasUrl();
@@ -712,10 +701,7 @@
       }
     }
 
-    // 匯入 Excel 檔案功能
-    function triggerFileInput() {
-      document.getElementById('excel-file-input').click();
-    }
+    function triggerFileInput() { document.getElementById('excel-file-input').click(); }
 
     function handleExcelImport(e) {
       const file = e.target.files[0];
@@ -729,11 +715,12 @@
           let importedAll = {};
 
           workbook.SheetNames.forEach(name => {
-            if (orderedSheetNames.includes(name)) {
+            const trimmed = name.trim();
+            if (orderedSheetNames.includes(trimmed)) {
               const ws = workbook.Sheets[name];
               const json = XLSX.utils.sheet_to_json(ws);
               if (json && json.length > 0) {
-                importedAll[name] = json;
+                importedAll[trimmed] = json;
               }
             }
           });
@@ -750,7 +737,7 @@
             });
             setTimeout(fetchDataFromGAS, 2000);
           }
-          alert('Excel 匯入完成，已同步上傳 Google Sheet！');
+          alert('Excel 匯入完成！');
         } catch (err) {
           alert('匯入失敗：' + err.message);
         }
@@ -759,12 +746,8 @@
       e.target.value = '';
     }
 
-    // 匯出 CSV 功能
     function exportCSV() {
-      if (filteredRows.length === 0) {
-        alert('無資料可匯出');
-        return;
-      }
+      if (filteredRows.length === 0) { alert('無資料可匯出'); return; }
       const headers = Object.keys(filteredRows[0]).filter(k => !k.startsWith('_'));
       let csv = '\uFEFF' + headers.join(',') + '\n';
       filteredRows.forEach(r => {
@@ -778,14 +761,12 @@
       a.click();
     }
 
-    function toggleSyncPanel() {
-      document.getElementById('sync-panel').classList.toggle('hidden');
-    }
+    function toggleSyncPanel() { document.getElementById('sync-panel').classList.toggle('hidden'); }
 
     function saveGasUrl() {
       const url = document.getElementById('gas-url-input').value.trim();
       localStorage.setItem('GAS_WEB_APP_URL', url);
-      alert('已儲存 API 網址！');
+      alert('API 網址已儲存！');
       fetchDataFromGAS();
     }
 
