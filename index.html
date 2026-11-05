@@ -2,24 +2,43 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <title>零件庫房管理系統</title>
+  <title>零件進出庫房管理系統</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 20px; background: #f5f6f8; }
-    .container { max-width: 1100px; margin: auto; background: white; padding: 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 20px; background: #f5f6f8; color: #333; }
+    .container { max-width: 1200px; margin: auto; background: white; padding: 24px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
     h2 { margin-top: 0; color: #1a1a1a; }
+    
     .tabs { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px; }
-    .tab-btn { padding: 8px 16px; border: none; background: #eee; cursor: pointer; border-radius: 4px; font-weight: bold; }
+    .tab-btn { padding: 9px 18px; border: none; background: #eaecef; cursor: pointer; border-radius: 4px; font-weight: 600; font-size: 14px; }
     .tab-btn.active { background: #0066cc; color: white; }
+    
     .panel { display: none; }
     .panel.active { display: block; }
-    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-    th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
-    th { background: #f0f3f6; }
-    .form-group { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; }
-    .form-group input, .form-group select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
-    .btn { padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
+    th, td { border: 1px solid #e1e4e8; padding: 10px 12px; text-align: left; }
+    th { background: #f6f8fa; font-weight: 600; }
+    tr:nth-child(even) { background-color: #fafbfc; }
+    
+    .form-group { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; align-items: center; }
+    .form-group input, .form-group select { padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 14px; }
+    
+    .btn { padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500; }
+    .btn-blue { background: #0066cc; }
+    .btn-edit { background: #ffc107; color: #212529; padding: 4px 10px; font-size: 12px; border-radius: 3px; border: none; cursor: pointer; }
     .btn-import { background: #6f42c1; }
-    .btn:hover { opacity: 0.9; }
+    .btn:hover, .btn-edit:hover { opacity: 0.88; }
+    
+    /* 彈跳編輯視窗 (Modal) */
+    .modal-backdrop { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+    .modal-backdrop.show { display: flex; }
+    .modal { background: white; padding: 24px; border-radius: 8px; width: 420px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .modal h3 { margin-top: 0; }
+    .modal-field { margin-bottom: 12px; }
+    .modal-field label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 4px; color: #555; }
+    .modal-field input { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+    .btn-cancel { background: #6c757d; }
   </style>
 </head>
 <body>
@@ -28,14 +47,15 @@
   <h2>零件進出庫房管理系統</h2>
   
   <div class="tabs">
-    <button class="tab-btn active" onclick="switchTab('stock')">庫存總覽 (stock in TW)</button>
-    <button class="tab-btn" onclick="switchTab('entry')">進出庫登記 / 編輯</button>
-    <button class="tab-btn" onclick="switchTab('import')">批次匯入資料</button>
+    <button class="tab-btn active" onclick="switchTab('stock', event)">庫存總覽 (stock in TW)</button>
+    <button class="tab-btn" onclick="switchTab('history', event)">歷史紀錄查詢與編輯</button>
+    <button class="tab-btn" onclick="switchTab('entry', event)">進出庫登記</button>
+    <button class="tab-btn" onclick="switchTab('import', event)">批次匯入資料</button>
   </div>
 
-  <!-- 1. 總庫存面板 -->
+  <!-- 1. 總庫存總覽 -->
   <div id="stockPanel" class="panel active">
-    <button class="btn" onclick="loadStock()">重新整理庫存</button>
+    <button class="btn btn-blue" onclick="loadStock()">重新整理庫存</button>
     <table id="stockTable">
       <thead>
         <tr>
@@ -46,7 +66,34 @@
     </table>
   </div>
 
-  <!-- 2. 進出庫錄入面板 -->
+  <!-- 2. 歷史紀錄查詢與編輯面板 -->
+  <div id="historyPanel" class="panel">
+    <div class="form-group">
+      <label><strong>選擇分頁：</strong></label>
+      <select id="histSheetSelect" onchange="loadHistory()">
+        <option value="S2">S2</option>
+        <option value="S3">S3</option>
+        <option value="S4">S4</option>
+        <option value="S5">S5</option>
+        <option value="S6">S6</option>
+        <option value="DRY BOX">DRY BOX</option>
+        <option value="clean room">clean room</option>
+      </select>
+      <input type="text" id="histSearchInput" placeholder="輸入料號 / 品名搜尋..." oninput="filterHistoryTable()">
+      <button class="btn btn-blue" onclick="loadHistory()">查詢 / 重新整理</button>
+    </div>
+    
+    <table id="historyTable">
+      <thead>
+        <tr>
+          <th>Date</th><th>P/N</th><th>Parts Name</th><th>Model</th><th>IN</th><th>OUT</th><th>Remark</th><th>操作</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- 3. 單筆進出庫登記 -->
   <div id="entryPanel" class="panel">
     <h3>新增進出庫記錄</h3>
     <div class="form-group">
@@ -70,9 +117,9 @@
     </div>
   </div>
 
-  <!-- 3. CSV 匯入面板 -->
+  <!-- 4. CSV 批次匯入 -->
   <div id="importPanel" class="panel">
-    <h3>批次匯入 CSV 至分頁</h3>
+    <h3>批次匯入 CSV 資料</h3>
     <div class="form-group">
       <select id="importSheet">
         <option value="S2">S2</option>
@@ -86,31 +133,77 @@
       <input type="file" id="csvFile" accept=".csv">
       <button class="btn btn-import" onclick="handleCSVUpload()">開始匯入</button>
     </div>
-    <small>CSV 格式依序需為：Date, P/N, Parts Name, Model, IN, OUT, Remark</small>
+    <small>CSV 欄位順序：Date, P/N, Parts Name, Model, IN, OUT, Remark</small>
+  </div>
+</div>
+
+<!-- 線上編輯 Modal 彈跳視窗 -->
+<div class="modal-backdrop" id="editModal">
+  <div class="modal">
+    <h3>修改進出庫記錄</h3>
+    <input type="hidden" id="editRowId">
+    <div class="modal-field">
+      <label>日期 (Date)</label>
+      <input type="date" id="editDate">
+    </div>
+    <div class="modal-field">
+      <label>料號 (P/N)</label>
+      <input type="text" id="editPN">
+    </div>
+    <div class="modal-field">
+      <label>零件品名 (Parts Name)</label>
+      <input type="text" id="editPartsName">
+    </div>
+    <div class="modal-field">
+      <label>型號 (Model)</label>
+      <input type="text" id="editModel">
+    </div>
+    <div class="modal-field">
+      <label>入庫 (IN)</label>
+      <input type="number" id="editIn" min="0">
+    </div>
+    <div class="modal-field">
+      <label>出庫 (OUT)</label>
+      <input type="number" id="editOut" min="0">
+    </div>
+    <div class="modal-field">
+      <label>備註 (Remark)</label>
+      <input type="text" id="editRemark">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" onclick="closeModal()">取消</button>
+      <button class="btn btn-blue" onclick="saveEditedRecord()">儲存更新</button>
+    </div>
   </div>
 </div>
 
 <script>
-  // 替換為你的 Google Apps Script Web App 部署網址
-  const GAS_URL = "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL";
+  // 已帶入你的 Google Apps Script Web App 網址
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbyIklqSEpYdKMYN_f16rgAc2--Jm37AEHlIcjWRSAHj06XPIZ50sOv_sYBPb9J4ILMQ3g/exec";
+  let currentHistoryData = [];
 
-  function switchTab(tab) {
+  function switchTab(tab, evt) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    if(tab === 'stock') {
+    
+    if (tab === 'stock') {
       document.getElementById('stockPanel').classList.add('active');
-      event.target.classList.add('active');
+      evt.target.classList.add('active');
       loadStock();
-    } else if(tab === 'entry') {
+    } else if (tab === 'history') {
+      document.getElementById('historyPanel').classList.add('active');
+      evt.target.classList.add('active');
+      loadHistory();
+    } else if (tab === 'entry') {
       document.getElementById('entryPanel').classList.add('active');
-      event.target.classList.add('active');
+      evt.target.classList.add('active');
     } else {
       document.getElementById('importPanel').classList.add('active');
-      event.target.classList.add('active');
+      evt.target.classList.add('active');
     }
   }
 
-  // 讀取 stock in TW 庫存
+  // 1. 讀取總庫存
   async function loadStock() {
     const tbody = document.querySelector("#stockTable tbody");
     tbody.innerHTML = "<tr><td colspan='6'>載入中...</td></tr>";
@@ -118,6 +211,10 @@
       const res = await fetch(`${GAS_URL}?action=getStock`);
       const result = await res.json();
       tbody.innerHTML = "";
+      if (!result.data || result.data.length === 0) {
+        tbody.innerHTML = "<tr><td colspan='6'>目前無庫存資料</td></tr>";
+        return;
+      }
       result.data.forEach(row => {
         const tr = document.createElement("tr");
         tr.innerHTML = `
@@ -131,11 +228,126 @@
         tbody.appendChild(tr);
       });
     } catch(err) {
-      tbody.innerHTML = "<tr><td colspan='6'>讀取失敗，請確認 API URL 與權限。</td></tr>";
+      tbody.innerHTML = "<tr><td colspan='6'>讀取失敗，請確認試算表權限或網路狀態。</td></tr>";
     }
   }
 
-  // 提交單筆資料
+  // 2. 讀取指定分頁歷史資料
+  async function loadHistory() {
+    const sheetName = document.getElementById("histSheetSelect").value;
+    const tbody = document.querySelector("#historyTable tbody");
+    tbody.innerHTML = "<tr><td colspan='8'>歷史紀錄讀取中...</td></tr>";
+    
+    try {
+      const res = await fetch(`${GAS_URL}?action=getHistory&sheet=${encodeURIComponent(sheetName)}`);
+      const result = await res.json();
+      if (result.status === "success") {
+        currentHistoryData = result.data;
+        renderHistoryTable(currentHistoryData);
+      } else {
+        tbody.innerHTML = `<tr><td colspan='8'>讀取失敗：${result.message}</td></tr>`;
+      }
+    } catch(err) {
+      tbody.innerHTML = "<tr><td colspan='8'>無法連接後端，請確認網路或 API 設定。</td></tr>";
+    }
+  }
+
+  // 渲染歷史表格
+  function renderHistoryTable(dataList) {
+    const tbody = document.querySelector("#historyTable tbody");
+    tbody.innerHTML = "";
+    if (dataList.length === 0) {
+      tbody.innerHTML = "<tr><td colspan='8'>查無符合條件的進出庫紀錄</td></tr>";
+      return;
+    }
+
+    dataList.forEach(item => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${item.date}</td>
+        <td>${item.pn}</td>
+        <td>${item.partsName}</td>
+        <td>${item.model}</td>
+        <td style="color: #28a745; font-weight: bold;">${item.inQty}</td>
+        <td style="color: #dc3545; font-weight: bold;">${item.outQty}</td>
+        <td>${item.remark}</td>
+        <td><button class="btn-edit" onclick="openEditModal(${item.rowId})">編輯</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // 本地即時關鍵字過濾
+  function filterHistoryTable() {
+    const query = document.getElementById("histSearchInput").value.trim().toLowerCase();
+    if (!query) {
+      renderHistoryTable(currentHistoryData);
+      return;
+    }
+    const filtered = currentHistoryData.filter(item => 
+      String(item.pn).toLowerCase().includes(query) ||
+      String(item.partsName).toLowerCase().includes(query) ||
+      String(item.model).toLowerCase().includes(query)
+    );
+    renderHistoryTable(filtered);
+  }
+
+  // 打開編輯視窗
+  function openEditModal(rowId) {
+    const record = currentHistoryData.find(r => r.rowId === rowId);
+    if (!record) return;
+
+    document.getElementById("editRowId").value = record.rowId;
+    document.getElementById("editDate").value = record.date;
+    document.getElementById("editPN").value = record.pn;
+    document.getElementById("editPartsName").value = record.partsName;
+    document.getElementById("editModel").value = record.model;
+    document.getElementById("editIn").value = record.inQty;
+    document.getElementById("editOut").value = record.outQty;
+    document.getElementById("editRemark").value = record.remark;
+
+    document.getElementById("editModal").classList.add("show");
+  }
+
+  function closeModal() {
+    document.getElementById("editModal").classList.remove("show");
+  }
+
+  // 儲存編輯回 Google Sheets
+  async function saveEditedRecord() {
+    const sheetName = document.getElementById("histSheetSelect").value;
+    const payload = {
+      action: "updateRecord",
+      sheet: sheetName,
+      rowId: document.getElementById("editRowId").value,
+      date: document.getElementById("editDate").value,
+      pn: document.getElementById("editPN").value,
+      partsName: document.getElementById("editPartsName").value,
+      model: document.getElementById("editModel").value,
+      in: document.getElementById("editIn").value,
+      out: document.getElementById("editOut").value,
+      remark: document.getElementById("editRemark").value
+    };
+
+    try {
+      const res = await fetch(GAS_URL, {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
+      const result = await res.json();
+      if (result.status === "success") {
+        alert("修改儲存成功！");
+        closeModal();
+        loadHistory();
+      } else {
+        alert("儲存失敗: " + result.message);
+      }
+    } catch(err) {
+      alert("儲存發生錯誤，請檢查網路連線。");
+    }
+  }
+
+  // 3. 單筆新增提交
   async function submitRecord() {
     const payload = {
       action: "addRecord",
@@ -149,20 +361,24 @@
       remark: document.getElementById("recRemark").value
     };
 
-    const res = await fetch(GAS_URL, {
-      method: "POST",
-      body: JSON.stringify(payload)
-    });
-    const result = await res.json();
-    if(result.status === "success") {
-      alert("記錄新增成功！");
-      document.querySelectorAll('#entryPanel input').forEach(i => i.value = "");
-    } else {
-      alert("提交失敗: " + result.message);
+    try {
+      const res = await fetch(GAS_URL, {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
+      const result = await res.json();
+      if(result.status === "success") {
+        alert("記錄新增成功！");
+        document.querySelectorAll('#entryPanel input:not(#recDate)').forEach(i => i.value = "");
+      } else {
+        alert("提交失敗: " + result.message);
+      }
+    } catch(err) {
+      alert("提交失敗，請檢查網路。");
     }
   }
 
-  // 匯入 CSV
+  // 4. CSV 批次匯入
   function handleCSVUpload() {
     const file = document.getElementById("csvFile").files[0];
     const sheetName = document.getElementById("importSheet").value;
@@ -172,7 +388,6 @@
     reader.onload = async function(e) {
       const text = e.target.result;
       const rows = text.split("\n").filter(r => r.trim() !== "").map(r => r.split(",").map(c => c.trim()));
-      // 排除第一列標題列（如果有的話）
       if (rows[0][0].toLowerCase().includes("date")) rows.shift();
 
       const res = await fetch(GAS_URL, {
@@ -189,7 +404,7 @@
     reader.readAsText(file);
   }
 
-  // 初始化今日日期與讀取庫存
+  // 初始化今日日期與預設載入庫存
   document.getElementById("recDate").value = new Date().toISOString().split('T')[0];
   loadStock();
 </script>
