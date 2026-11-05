@@ -6,7 +6,6 @@
   <title>PTW Taiwan Inventory System</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
@@ -16,8 +15,6 @@
   </style>
 </head>
 <body class="bg-gradient-to-br from-sky-50 via-slate-50 to-blue-50 text-slate-800 min-h-screen pb-12">
-
-  <input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleFileImport(event)">
 
   <!-- 頂部 Header -->
   <header class="bg-white/95 backdrop-blur border-b border-sky-100 sticky top-0 z-30 shadow-xs">
@@ -29,13 +26,12 @@
         <div class="min-w-0">
           <div class="flex items-center gap-2">
             <h1 class="font-bold text-slate-900 text-lg leading-tight truncate">PTW Taiwan Inventory System</h1>
-            <span class="px-2 py-0.5 text-xs font-semibold bg-sky-100 text-sky-700 rounded-md border border-sky-200 flex-shrink-0">PRO v4.9</span>
+            <span class="px-2 py-0.5 text-xs font-semibold bg-sky-100 text-sky-700 rounded-md border border-sky-200 flex-shrink-0">PRO v5.0 Live-Sync</span>
           </div>
-          <p class="text-xs text-sky-600/80 truncate">Strict Alignment • Real-Time Stock in TW Sync</p>
+          <p class="text-xs text-sky-600/80 truncate">Strict 7-Column • Full Live Delete/Edit Sync with Google Sheets</p>
         </div>
       </div>
 
-      <!-- 桌面端操作按鈕 -->
       <div class="hidden lg:flex items-center gap-2.5">
         <button onclick="fetchDataFromGAS()" class="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-sky-200 text-slate-700 bg-white hover:bg-sky-50 text-xs font-medium transition shadow-xs">
           <i data-lucide="refresh-cw" class="w-4 h-4 text-sky-600"></i>
@@ -54,7 +50,6 @@
         </button>
       </div>
 
-      <!-- 手機端操作按鈕 -->
       <div class="lg:hidden flex items-center gap-2">
         <button onclick="fetchDataFromGAS()" class="p-2 bg-sky-50 text-sky-600 rounded-lg text-xs font-medium border border-sky-200">
           <i data-lucide="refresh-cw" class="w-4 h-4"></i>
@@ -73,7 +68,7 @@
         <i data-lucide="key" class="w-5 h-5 text-sky-400"></i>
         <div>
           <p class="text-sm font-semibold">Google Apps Script Web App URL 設定</p>
-          <p class="text-xs text-slate-400">當前使用的 API 連線網址</p>
+          <p class="text-xs text-slate-400">請確認貼上最新發布的 /exec 網址</p>
         </div>
       </div>
       <div class="flex items-center gap-2 w-full md:w-auto">
@@ -88,7 +83,7 @@
     <!-- 狀態通知 Bar -->
     <div id="loading-bar" class="hidden bg-sky-100 border border-sky-300 rounded-xl p-3 flex items-center justify-between text-sky-800 text-xs font-semibold">
       <span class="flex items-center gap-2" id="loading-text">
-        <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> 正在向 Google Sheet 抓取數據...
+        <i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> 正在與 Google Sheet 同步中...
       </span>
     </div>
 
@@ -135,7 +130,7 @@
       </div>
     </div>
 
-    <!-- 分頁按鈕列 (移除 S1) -->
+    <!-- 分頁按鈕列 (依序排列，排除 S1) -->
     <div class="space-y-3 pt-1">
       <div class="flex items-center justify-between gap-2 border-b border-sky-200/80 pb-2 overflow-x-auto no-scrollbar">
         <div class="flex items-center gap-2 flex-nowrap" id="sheet-tabs-container">
@@ -187,7 +182,7 @@
       <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
         <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
           <i data-lucide="edit-3" class="w-4 h-4 text-sky-600"></i>
-          <span id="modal-title">新增零件記錄</span>
+          <span id="modal-title">新增/編輯零件記錄</span>
         </h3>
         <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
           <i data-lucide="x" class="w-5 h-5"></i>
@@ -195,7 +190,10 @@
       </div>
 
       <form id="item-form" onsubmit="handleFormSubmit(event)" class="p-6 space-y-4">
+        <!-- 記錄被編輯的資料在 Sheet 中的列號與工作表名稱 -->
         <input type="hidden" id="form-edit-index" value="-1">
+        <input type="hidden" id="form-edit-rowindex" value="">
+        <input type="hidden" id="form-edit-sheet" value="">
 
         <div class="grid grid-cols-2 gap-4">
           <div>
@@ -250,7 +248,6 @@
   </div>
 
   <script>
-    // 預設填入最新 Web App URL
     const DEFAULT_GAS_URL = "https://script.google.com/macros/s/AKfycbx_aFxaqB69URgcvpm-IPS8wsU14i5l2PFaPBq5HBXptg81hCmME73N4lRCBDagYU5QVw/exec";
     const orderedSheetNames = ['Stock in TW', 'S2', 'S3', 'S4', 'S5', 'S6', 'DRY BOX', 'Clean room'];
 
@@ -278,7 +275,6 @@
       return '';
     }
 
-    // 嚴格過濾與計算：徹底排除 "0 PCS" 或非法字串造成的 NaN
     function normalizeRow(r, fallbackLocation) {
       let pn = getVal(r, ['P/N (If any)', 'P/N (IF ANY)', 'P/N', '料號']);
       let name = getVal(r, ['Parts Name', 'PARTS NAME', '品名']);
@@ -287,6 +283,7 @@
       let outVal = parseFloat(getVal(r, ['OUT', 'Out', '出貨'])) || 0;
       let dateVal = getVal(r, ['Date', 'DATE', '日期']);
       let remarkVal = getVal(r, ['Remark', 'Remarks', 'REMARK', '備註']);
+      let rowIndex = r._rowIndex || null;
 
       let qtyVal = inVal - outVal;
 
@@ -299,11 +296,12 @@
         'IN': inVal,
         'OUT': outVal,
         'DATE': dateVal,
-        'REMARK': remarkVal
+        'REMARK': remarkVal,
+        '_rowIndex': rowIndex,
+        '_sourceSheet': fallbackLocation
       };
     }
 
-    // 嚴格聚合：Stock in TW 必須 P/N + Parts Name 完全吻合才累加
     function reaggregateMasterSheet() {
       const subSheets = ['S2', 'S3', 'S4', 'S5', 'S6', 'DRY BOX', 'Clean room'];
       const partsMap = new Map();
@@ -431,7 +429,6 @@
       renderTable();
     }
 
-    // 渲染表格 (包含編輯與刪除操作按鈕)
     function renderTable() {
       const tbody = document.getElementById('dynamic-tbody');
 
@@ -461,10 +458,10 @@
             <td class="py-3 px-4 text-slate-700">${row['REMARK'] || ''}</td>
             <td class="py-3 px-4 text-center">
               <div class="flex items-center justify-center gap-1.5">
-                <button onclick="editRow(${index})" class="p-1.5 text-slate-400 hover:text-sky-600 rounded transition" title="編輯">
+                <button onclick="editRow(${index})" class="p-1.5 text-slate-400 hover:text-sky-600 rounded transition" title="編輯修改">
                   <i data-lucide="edit-2" class="w-4 h-4"></i>
                 </button>
-                <button onclick="deleteRow(${index})" class="p-1.5 text-slate-400 hover:text-rose-600 rounded transition" title="刪除">
+                <button onclick="deleteRow(${index})" class="p-1.5 text-slate-400 hover:text-rose-600 rounded transition" title="刪除此列">
                   <i data-lucide="trash-2" class="w-4 h-4"></i>
                 </button>
               </div>
@@ -496,60 +493,102 @@
 
     function openModal() {
       document.getElementById('form-edit-index').value = "-1";
+      document.getElementById('form-edit-rowindex').value = "";
+      document.getElementById('form-edit-sheet').value = "";
       document.getElementById('modal-title').innerText = "新增零件記錄";
+      document.getElementById('form-in').value = "0";
+      document.getElementById('form-out').value = "0";
+      document.getElementById('form-pn').value = "";
+      document.getElementById('form-parts-name').value = "";
+      document.getElementById('form-model').value = "";
+      document.getElementById('form-remarks').value = "";
       document.getElementById('item-modal').classList.remove('hidden');
     }
-    function closeModal() { document.getElementById('item-modal').classList.add('hidden'); }
 
-    // 編輯功能 (點擊鉛筆進入)
+    function closeModal() {
+      document.getElementById('item-modal').classList.add('hidden');
+    }
+
+    // 點擊「編輯」
     function editRow(index) {
       const row = filteredRows[index];
       if (!row) return;
 
       document.getElementById('form-edit-index').value = index;
+      document.getElementById('form-edit-rowindex').value = row._rowIndex || '';
+      document.getElementById('form-edit-sheet').value = row._sourceSheet || currentSheetName;
       document.getElementById('modal-title').innerText = "編輯零件記錄";
-      document.getElementById('form-rack').value = (row['LOCATION'] || 'S4').split(',')[0].trim();
+
+      document.getElementById('form-rack').value = row._sourceSheet || (row.LOCATION ? row.LOCATION.split(',')[0].trim() : 'S4');
       document.getElementById('form-pn').value = row['P/N (IF ANY)'] !== '-' ? row['P/N (IF ANY)'] : '';
-      document.getElementById('form-parts-name').value = row['PARTS NAME'] || '';
-      document.getElementById('form-in').value = row['IN'] !== undefined ? row['IN'] : 0;
-      document.getElementById('form-out').value = row['OUT'] !== undefined ? row['OUT'] : 0;
+      document.getElementById('form-parts-name').value = row['PARTS NAME'] !== '-' ? row['PARTS NAME'] : '';
+      document.getElementById('form-in').value = row['IN'] || 0;
+      document.getElementById('form-out').value = row['OUT'] || 0;
       document.getElementById('form-model').value = row['MODEL'] !== '-' ? row['MODEL'] : '';
       document.getElementById('form-remarks').value = row['REMARK'] || '';
 
       document.getElementById('item-modal').classList.remove('hidden');
     }
 
-    // 刪除功能 (點擊垃圾桶進入)
-    function deleteRow(index) {
-      if (confirm('確定要刪除這筆記錄嗎？')) {
-        const itemToDelete = filteredRows[index];
-        currentRows = currentRows.filter(r => r !== itemToDelete);
+    // 點擊「刪除」：網頁與 Google Sheet 真正同步刪除
+    async function deleteRow(index) {
+      const row = filteredRows[index];
+      if (!row) return;
 
-        if (currentSheetName !== 'Stock in TW') {
-          allSheetData[currentSheetName] = [...currentRows];
-        } else {
-          const pn = itemToDelete['P/N (IF ANY)'];
-          const name = itemToDelete['PARTS NAME'];
-          orderedSheetNames.forEach(s => {
-            if (s === 'Stock in TW') return;
-            if (allSheetData[s]) {
-              allSheetData[s] = allSheetData[s].filter(r => {
-                const rPn = (r['P/N (IF ANY)'] || r['P/N (If any)'] || '').trim();
-                const rName = (r['PARTS NAME'] || r['Parts Name'] || '').trim();
-                return !(rPn.toLowerCase() === pn.toLowerCase() && rName.toLowerCase() === name.toLowerCase());
-              });
-            }
-          });
-        }
-        reaggregateMasterSheet();
-        handleSearch();
+      if (!confirm(`確定要將「${row['PARTS NAME']}」從 Google Sheet 中徹底刪除嗎？`)) {
+        return;
+      }
+
+      const targetSheet = row._sourceSheet || currentSheetName;
+      const rowIndex = row._rowIndex;
+      const pn = row['P/N (IF ANY)'];
+      const partsName = row['PARTS NAME'];
+
+      // 前端畫面先移除
+      currentRows = currentRows.filter(r => r !== row);
+      if (allSheetData[targetSheet]) {
+        allSheetData[targetSheet] = allSheetData[targetSheet].filter(r => r !== row);
+      }
+      reaggregateMasterSheet();
+      handleSearch();
+
+      // 發送真正刪除命令到 Google Apps Script
+      const gasUrl = getGasUrl();
+      if (!gasUrl) return;
+
+      const loadingBar = document.getElementById('loading-bar');
+      document.getElementById('loading-text').innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> 正在自 Google Sheet 刪除該筆資料...`;
+      loadingBar.classList.remove('hidden');
+      lucide.createIcons();
+
+      try {
+        await fetch(gasUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'DELETE',
+            LOCATION: targetSheet,
+            rowIndex: rowIndex,
+            pn: pn,
+            partsName: partsName
+          })
+        });
+
+        setTimeout(fetchDataFromGAS, 1500);
+      } catch (err) {
+        console.error('刪除失敗:', err);
+      } finally {
+        loadingBar.classList.add('hidden');
       }
     }
 
-    // 表單提交：支援新增與編輯，並精準同步回 Google Sheet
+    // 表單送出 (新增或編輯)
     function handleFormSubmit(e) {
       e.preventDefault();
       const editIdx = parseInt(document.getElementById('form-edit-index').value);
+      const editRowIndex = document.getElementById('form-edit-rowindex').value;
+      const editSheet = document.getElementById('form-edit-sheet').value;
 
       const inVal = Number(document.getElementById('form-in').value) || 0;
       const outVal = Number(document.getElementById('form-out').value) || 0;
@@ -562,37 +601,13 @@
       const d = new Date();
       const dateVal = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
 
-      const rowObj = {
-        'LOCATION': targetLoc,
-        'P/N (IF ANY)': pnVal,
-        'QTY': inVal - outVal,
-        'PARTS NAME': nameVal,
-        'IN': inVal,
-        'OUT': outVal,
-        'DATE': dateVal,
-        'MODEL': modelVal,
-        'REMARK': remarkVal
-      };
-
-      if (!allSheetData[targetLoc]) allSheetData[targetLoc] = [];
-
-      if (editIdx >= 0) {
-        if (currentSheetName === 'Stock in TW') {
-          allSheetData[targetLoc].unshift(rowObj);
-        } else {
-          currentRows[editIdx] = rowObj;
-          allSheetData[currentSheetName] = [...currentRows];
-        }
-      } else {
-        allSheetData[targetLoc].unshift(rowObj);
-      }
-
-      reaggregateMasterSheet();
-      handleSearch();
       closeModal();
 
-      syncToGAS({
-        'LOCATION': targetLoc,
+      const isUpdate = editIdx >= 0 && editRowIndex !== '';
+      const payload = {
+        action: isUpdate ? 'UPDATE' : 'ADD',
+        LOCATION: isUpdate ? editSheet : targetLoc,
+        rowIndex: isUpdate ? parseInt(editRowIndex) : null,
         'P/N': pnVal,
         'PARTS NAME': nameVal,
         'MODEL': modelVal,
@@ -600,7 +615,9 @@
         'OUT': outVal,
         'REMARK': remarkVal,
         'DATE': dateVal
-      });
+      };
+
+      syncToGAS(payload);
     }
 
     function toggleSyncPanel() { document.getElementById('sync-panel').classList.toggle('hidden'); }
@@ -608,7 +625,7 @@
     function saveGasUrl() {
       const url = document.getElementById('gas-url-input').value.trim();
       localStorage.setItem('GAS_WEB_APP_URL', url);
-      alert('已儲存！');
+      alert('已成功儲存連線網址！');
       checkSyncStatus();
       fetchDataFromGAS();
     }
@@ -627,7 +644,9 @@
       if (!gasUrl) return;
 
       const loadingBar = document.getElementById('loading-bar');
+      document.getElementById('loading-text').innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> 正在同步更新至 Google Sheet...`;
       loadingBar.classList.remove('hidden');
+      lucide.createIcons();
 
       try {
         await fetch(gasUrl, {
