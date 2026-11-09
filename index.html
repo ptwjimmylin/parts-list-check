@@ -9,7 +9,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
-<body class="bg-slate-100 min-h-screen text-slate-800">
+<body class="bg-slate-100 min-h-screen text-slate-800 pb-16">
 
   <!-- 頂部導航 -->
   <nav class="bg-slate-900 text-white shadow sticky top-0 z-40">
@@ -18,7 +18,7 @@
         <i class="fa-solid fa-boxes-stacked text-indigo-400 text-2xl"></i>
         <div>
           <h1 class="text-base sm:text-lg font-bold">零件庫房進出管理系統</h1>
-          <p class="text-xs text-slate-400">各庫房增刪改查 + Stock in TW 自動即時彙整</p>
+          <p class="text-xs text-slate-400">8 分頁均支援匯入、新增、編輯與即時試算</p>
         </div>
       </div>
       <div class="flex items-center gap-2">
@@ -34,7 +34,7 @@
 
   <main class="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
 
-    <!-- 8 大分頁切換 -->
+    <!-- 8 大分頁切換按鈕 -->
     <div class="bg-white p-2 rounded-xl shadow-sm border border-slate-200 overflow-x-auto flex gap-1.5" id="tabGroup">
       <button onclick="switchTab('Stock in TW')" id="tab-Stock-in-TW" class="tab-btn px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition bg-indigo-50 text-indigo-700 border border-indigo-200">
         <i class="fa-solid fa-warehouse mr-1.5"></i>Stock in TW (總庫存)
@@ -52,98 +52,71 @@
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
       <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
         <div>
-          <p class="text-xs font-medium text-slate-500">分頁總筆數</p>
+          <p class="text-xs font-medium text-slate-500">項目總數</p>
           <p class="text-2xl font-bold text-slate-800" id="statTotalItems">0</p>
         </div>
         <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-lg"><i class="fa-solid fa-list-ol"></i></div>
       </div>
       <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
         <div>
-          <p class="text-xs font-medium text-slate-500" id="statLabel2">在席在庫數量</p>
+          <p class="text-xs font-medium text-slate-500" id="statLabel2">在庫品項數</p>
           <p class="text-2xl font-bold text-emerald-600" id="statInStock">0</p>
         </div>
         <div class="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg"><i class="fa-solid fa-cubes"></i></div>
       </div>
       <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
         <div>
-          <p class="text-xs font-medium text-slate-500" id="statLabel3">缺料 / 零庫存筆數</p>
+          <p class="text-xs font-medium text-slate-500" id="statLabel3">缺料 / 零庫存品項</p>
           <p class="text-2xl font-bold text-rose-500" id="statOutStock">0</p>
         </div>
         <div class="w-10 h-10 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center text-lg"><i class="fa-solid fa-triangle-exclamation"></i></div>
       </div>
       <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
         <div>
-          <p class="text-xs font-medium text-slate-500">當前檢視</p>
+          <p class="text-xs font-medium text-slate-500">當前工作分頁</p>
           <p class="text-base sm:text-lg font-bold text-indigo-600 truncate" id="statCurrentTab">Stock in TW</p>
         </div>
         <div class="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg"><i class="fa-solid fa-folder-open"></i></div>
       </div>
     </div>
 
-    <!-- 操作面板 (各庫房明細表才出現，總庫存頁面隱藏) -->
-    <div id="actionCard" class="hidden bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
-      <div class="flex justify-between items-center pb-3 border-b border-slate-100">
-        <h3 class="font-bold text-sm text-slate-700 flex items-center gap-2">
-          <i class="fa-solid fa-plus-circle text-emerald-600"></i> 新增進出明細（<span id="activeTabNameTitle" class="text-indigo-600">S2</span>）
-        </h3>
-        <span class="text-xs text-slate-400">新增後系統會即時重新計算各庫房餘額</span>
-      </div>
-
-      <!-- 新增明細 Form -->
-      <form id="recordForm" onsubmit="handleRecordSubmit(event)" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-7 gap-3 text-sm">
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Date 日期</label>
-          <input type="date" id="inputDate" class="w-full border border-slate-300 rounded px-2.5 py-1.5 focus:outline-none focus:border-indigo-500" required>
+    <!-- 頂部快捷操作區 (無論在哪個分頁皆有新增與匯入功能) -->
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+      <div class="flex flex-wrap justify-between items-center pb-3 border-b border-slate-100 gap-3">
+        <div class="flex items-center gap-2">
+          <span class="inline-block w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
+          <h3 class="font-bold text-sm text-slate-800">
+            目前分頁：<span id="bannerTabName" class="text-indigo-600">Stock in TW</span> 操作面板
+          </h3>
         </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">P/N (料號)</label>
-          <input type="text" id="inputPn" placeholder="若無可留空" class="w-full border border-slate-300 rounded px-2.5 py-1.5 focus:outline-none focus:border-indigo-500">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Parts Name (品名) *</label>
-          <input type="text" id="inputPartsName" placeholder="必填" class="w-full border border-slate-300 rounded px-2.5 py-1.5 focus:outline-none focus:border-indigo-500" required>
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Model (型號)</label>
-          <input type="text" id="inputModel" placeholder="例如 CG4100" class="w-full border border-slate-300 rounded px-2.5 py-1.5 focus:outline-none focus:border-indigo-500">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-emerald-600 mb-1">IN (入庫數)</label>
-          <input type="number" id="inputInQty" min="0" value="0" class="w-full border border-slate-300 rounded px-2.5 py-1.5 focus:outline-none focus:border-indigo-500">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-rose-500 mb-1">OUT (出庫數)</label>
-          <input type="number" id="inputOutQty" min="0" value="0" class="w-full border border-slate-300 rounded px-2.5 py-1.5 focus:outline-none focus:border-indigo-500">
-        </div>
-        <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Remark (備註)</label>
-          <input type="text" id="inputRemark" placeholder="事由 / 備註" class="w-full border border-slate-300 rounded px-2.5 py-1.5 focus:outline-none focus:border-indigo-500">
-        </div>
-        <div class="sm:col-span-2 md:col-span-7 flex justify-end gap-2 pt-2">
-          <button type="submit" id="btnSubmitForm" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs rounded-lg shadow transition flex items-center gap-1.5">
-            <i class="fa-solid fa-floppy-disk"></i> 儲存此筆紀錄
+        <div class="flex items-center gap-2">
+          <button onclick="openAddModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow transition flex items-center gap-1.5">
+            <i class="fa-solid fa-plus-circle"></i> <span id="btnAddBtnText">新增庫存品項</span>
           </button>
         </div>
-      </form>
+      </div>
 
-      <!-- CSV 批次匯入 -->
-      <div class="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-3 rounded-lg">
-        <div class="flex items-center gap-2">
-          <i class="fa-solid fa-file-csv text-slate-500"></i>
-          <span class="text-xs font-semibold text-slate-700">批次 CSV 檔案匯入：</span>
-          <input type="file" id="csvFileInput" accept=".csv" onchange="handleCSVFile(event)" class="text-xs text-slate-600 file:mr-2 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+      <!-- CSV 批次匯入區 -->
+      <div class="flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-3.5 rounded-lg border border-slate-200">
+        <div class="flex items-center gap-3">
+          <i class="fa-solid fa-file-csv text-indigo-600 text-xl"></i>
+          <div>
+            <p class="text-xs font-bold text-slate-700">批次 CSV 檔案匯入至 <span id="importTargetLabel" class="text-indigo-600">Stock in TW</span>：</p>
+            <p class="text-[11px] text-slate-400" id="importColsHint">支援欄位：Location, P/N, parts name, QTY, model, remark</p>
+          </div>
         </div>
+        <input type="file" id="csvFileInput" accept=".csv" onchange="handleCSVFile(event)" class="text-xs text-slate-600 file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 cursor-pointer">
       </div>
     </div>
 
-    <!-- 搜尋工具列 -->
+    <!-- 搜尋與筆數列 -->
     <div class="flex flex-col sm:flex-row justify-between items-center gap-3">
       <div class="relative w-full sm:w-96">
         <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-sm"></i>
         <input type="text" id="searchKeyword" oninput="applyFilter()" placeholder="快速搜尋料號、品名、型號、備註..." class="w-full pl-9 pr-4 py-2 text-sm bg-white border border-slate-200 rounded-lg shadow-sm focus:outline-none focus:border-indigo-500">
       </div>
       <div class="text-xs text-slate-500 font-medium self-end sm:self-center">
-        共顯示 <span id="filteredCount" class="font-bold text-slate-800">0</span> 筆
+        共顯示 <span id="filteredCount" class="font-bold text-slate-800">0</span> 筆資料
       </div>
     </div>
 
@@ -166,12 +139,87 @@
 
   </main>
 
-  <!-- 編輯彈出視窗 (Edit Modal) -->
+  <!-- 彈出式視窗：新增視窗 (Add Modal) -->
+  <div id="addModal" class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+      <div class="flex justify-between items-center pb-3 border-b border-slate-100">
+        <h3 class="font-bold text-base text-slate-800 flex items-center gap-2">
+          <i class="fa-solid fa-plus-circle text-indigo-600"></i> <span id="addModalTitle">新增項目</span>
+        </h3>
+        <button onclick="closeAddModal()" class="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
+      </div>
+
+      <form id="addForm" onsubmit="handleAddSubmit(event)" class="space-y-3 text-sm">
+        <!-- Stock in TW 專用欄位 -->
+        <div id="stockOnlyFields" class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">Location 存放庫房 *</label>
+            <select id="addLocation" class="w-full border rounded p-2 text-sm bg-white">
+              <option value="S2">S2</option>
+              <option value="S3">S3</option>
+              <option value="S4">S4</option>
+              <option value="S5">S5</option>
+              <option value="S6">S6</option>
+              <option value="DRY BOX">DRY BOX</option>
+              <option value="clean room">clean room</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1">QTY 底表數量</label>
+            <input type="number" id="addStockQty" value="1" min="0" class="w-full border rounded p-2 text-sm">
+          </div>
+        </div>
+
+        <!-- 庫房流水帳專用欄位 -->
+        <div id="logOnlyFields" class="hidden">
+          <div class="grid grid-cols-3 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 mb-1">Date 日期 *</label>
+              <input type="date" id="addDate" class="w-full border rounded p-2 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-emerald-600 mb-1">IN (入庫數)</label>
+              <input type="number" id="addInQty" min="0" value="0" class="w-full border rounded p-2 text-sm">
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-rose-500 mb-1">OUT (出庫數)</label>
+              <input type="number" id="addOutQty" min="0" value="0" class="w-full border rounded p-2 text-sm">
+            </div>
+          </div>
+        </div>
+
+        <!-- 通用欄位 -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">P/N 料號</label>
+          <input type="text" id="addPn" placeholder="例如 560-5521" class="w-full border rounded p-2 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Parts Name 零件品名 *</label>
+          <input type="text" id="addPartsName" placeholder="必填" class="w-full border rounded p-2 text-sm" required>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Model 機種/型號</label>
+          <input type="text" id="addModel" placeholder="例如 CG4100" class="w-full border rounded p-2 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Remark 備註</label>
+          <input type="text" id="addRemark" placeholder="說明事由" class="w-full border rounded p-2 text-sm">
+        </div>
+
+        <div class="flex justify-end gap-2 pt-3 border-t border-slate-100">
+          <button type="button" onclick="closeAddModal()" class="px-4 py-2 border rounded-lg text-slate-600 hover:bg-slate-50 text-xs font-semibold">取消</button>
+          <button type="submit" id="btnSaveAdd" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow">確認儲存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 彈出式視窗：編輯視窗 (Edit Modal) -->
   <div id="editModal" class="fixed inset-0 bg-slate-900 bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
       <div class="flex justify-between items-center pb-3 border-b border-slate-100">
         <h3 class="font-bold text-base text-slate-800 flex items-center gap-2">
-          <i class="fa-solid fa-pen-to-square text-indigo-600"></i> 編輯零件明細
+          <i class="fa-solid fa-pen-to-square text-indigo-600"></i> 編輯明細資料
         </h3>
         <button onclick="closeEditModal()" class="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
       </div>
@@ -221,16 +269,16 @@
 
   <script>
     /**
-     * 【重要】請將下方換成您的 Google Apps Script Web App URL (結尾必須是 /exec)
+     * 【重要】請將下方引號內替換成您的 Google Apps Script Web App URL (結尾必須是 /exec)
      */
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyxGM6bSRozXbCljk5rJ20bGvB1C1vGLkNsOcRvqQ_6ISkzFwGGt-YJgDw4pQBRGyWY7g/exec";
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbz8HWHle1UcmEqQDYsj19Igy27xPpBURxOjQX7rgTvRx79HlHWosE4XjMimgwIPYE2AVQ/exec";
 
     let currentTab = "Stock in TW";
     let rawDataList = [];
 
     window.onload = () => {
-      document.getElementById("inputDate").value = new Date().toISOString().split("T")[0];
-      fetchCurrentTab();
+      document.getElementById("addDate").value = new Date().toISOString().split("T")[0];
+      switchTab("Stock in TW");
     };
 
     // JSONP 呼叫 (保證不被 CORS 阻擋)
@@ -276,14 +324,18 @@
         activeBtn.className = "tab-btn px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition bg-indigo-50 text-indigo-700 border border-indigo-200";
       }
 
-      const actionCard = document.getElementById("actionCard");
-      if (currentTab === "Stock in TW") {
-        actionCard.classList.add("hidden");
-      } else {
-        actionCard.classList.remove("hidden");
-        document.getElementById("activeTabNameTitle").innerText = currentTab;
-      }
       document.getElementById("statCurrentTab").innerText = currentTab;
+      document.getElementById("bannerTabName").innerText = currentTab;
+      document.getElementById("importTargetLabel").innerText = currentTab;
+
+      if (currentTab === "Stock in TW") {
+        document.getElementById("btnAddBtnText").innerText = "＋ 新增庫存品項";
+        document.getElementById("importColsHint").innerText = "支援欄位：Location, P/N, parts name, QTY, model, remark";
+      } else {
+        document.getElementById("btnAddBtnText").innerText = `＋ 新增 ${currentTab} 零件紀錄`;
+        document.getElementById("importColsHint").innerText = "支援欄位：Date, P/N (If any), Parts Name, Model, IN, OUT, Remark";
+      }
+
       fetchCurrentTab();
     }
 
@@ -329,13 +381,14 @@
             <th class="px-4 py-3">Location</th>
             <th class="px-4 py-3">P/N</th>
             <th class="px-4 py-3">Parts Name</th>
-            <th class="px-4 py-3">QTY (在庫數 = IN - OUT)</th>
+            <th class="px-4 py-3">QTY (最新在庫數)</th>
             <th class="px-4 py-3">Model</th>
             <th class="px-4 py-3">Remark</th>
+            <th class="px-4 py-3 text-right">操作</th>
           </tr>
         `;
         if (data.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400">目前尚無庫存資料</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-slate-400">目前尚無庫存資料，請點擊上方按鈕「新增庫存品項」或「批次 CSV 匯入」。</td></tr>`;
           return;
         }
         tbody.innerHTML = data.map(r => `
@@ -346,6 +399,12 @@
             <td class="px-4 py-3 font-bold ${r.qty > 0 ? 'text-emerald-600' : 'text-rose-500'}">${r.qty}</td>
             <td class="px-4 py-3 text-slate-500 text-xs">${r.model || '-'}</td>
             <td class="px-4 py-3 text-slate-500 text-xs">${r.remark || '-'}</td>
+            <td class="px-4 py-3 text-right">
+              ${r.rowId > 0 ? `
+              <button onclick="deleteRecord(${r.rowId})" class="text-rose-500 hover:text-rose-700 text-xs font-semibold px-2 py-1 rounded hover:bg-rose-50 transition">
+                <i class="fa-solid fa-trash-can"></i> 刪除
+              </button>` : `<span class="text-[10px] text-slate-400">自動累算</span>`}
+            </td>
           </tr>
         `).join('');
       } else {
@@ -362,7 +421,7 @@
           </tr>
         `;
         if (data.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-400">此分頁尚無進出明細紀錄</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-400">此分頁尚無進出紀錄，請點擊上方「新增 ${currentTab} 零件紀錄」按鈕。</td></tr>`;
           return;
         }
         tbody.innerHTML = data.map(r => `
@@ -400,7 +459,7 @@
       renderTable(filtered);
     }
 
-    // 更新資訊卡
+    // 資訊統計
     function updateStatistics(data) {
       document.getElementById("statTotalItems").innerText = data.length;
       if (currentTab === "Stock in TW") {
@@ -419,24 +478,59 @@
       }
     }
 
-    // 新增紀錄 (Add)
-    async function handleRecordSubmit(e) {
-      e.preventDefault();
-      const btn = document.getElementById("btnSubmitForm");
-      btn.disabled = true;
-      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> 儲存中...`;
+    // 開啟新增視窗 (Add Modal)
+    function openAddModal() {
+      document.getElementById("addForm").reset();
+      document.getElementById("addDate").value = new Date().toISOString().split("T")[0];
 
-      const payload = {
-        action: "addRecord",
-        sheet: currentTab,
-        date: document.getElementById("inputDate").value,
-        pn: document.getElementById("inputPn").value.trim(),
-        partsName: document.getElementById("inputPartsName").value.trim(),
-        model: document.getElementById("inputModel").value.trim(),
-        inQty: Number(document.getElementById("inputInQty").value) || 0,
-        outQty: Number(document.getElementById("inputOutQty").value) || 0,
-        remark: document.getElementById("inputRemark").value.trim()
-      };
+      if (currentTab === "Stock in TW") {
+        document.getElementById("addModalTitle").innerText = "新增庫存品項 (Stock in TW)";
+        document.getElementById("stockOnlyFields").classList.remove("hidden");
+        document.getElementById("logOnlyFields").classList.add("hidden");
+      } else {
+        document.getElementById("addModalTitle").innerText = `新增明細紀錄 (${currentTab})`;
+        document.getElementById("stockOnlyFields").classList.add("hidden");
+        document.getElementById("logOnlyFields").classList.remove("hidden");
+      }
+      document.getElementById("addModal").classList.remove("hidden");
+    }
+
+    function closeAddModal() {
+      document.getElementById("addModal").classList.add("hidden");
+    }
+
+    // 儲存新增紀錄
+    async function handleAddSubmit(e) {
+      e.preventDefault();
+      const btn = document.getElementById("btnSaveAdd");
+      btn.disabled = true;
+      btn.innerText = "儲存中...";
+
+      let payload = {};
+      if (currentTab === "Stock in TW") {
+        payload = {
+          action: "addStockPart",
+          sheet: "Stock in TW",
+          location: document.getElementById("addLocation").value,
+          pn: document.getElementById("addPn").value.trim(),
+          partsName: document.getElementById("addPartsName").value.trim(),
+          qty: Number(document.getElementById("addStockQty").value) || 0,
+          model: document.getElementById("addModel").value.trim(),
+          remark: document.getElementById("addRemark").value.trim()
+        };
+      } else {
+        payload = {
+          action: "addRecord",
+          sheet: currentTab,
+          date: document.getElementById("addDate").value,
+          pn: document.getElementById("addPn").value.trim(),
+          partsName: document.getElementById("addPartsName").value.trim(),
+          model: document.getElementById("addModel").value.trim(),
+          inQty: Number(document.getElementById("addInQty").value) || 0,
+          outQty: Number(document.getElementById("addOutQty").value) || 0,
+          remark: document.getElementById("addRemark").value.trim()
+        };
+      }
 
       try {
         await fetch(GAS_API_URL, {
@@ -445,19 +539,18 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
+        closeAddModal();
         alert("新增成功！");
-        document.getElementById("recordForm").reset();
-        document.getElementById("inputDate").value = new Date().toISOString().split("T")[0];
         setTimeout(fetchCurrentTab, 1500);
       } catch (err) {
         alert("新增失敗：" + err.message);
       } finally {
         btn.disabled = false;
-        btn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> 儲存此筆紀錄`;
+        btn.innerText = "確認儲存";
       }
     }
 
-    // 開啟編輯視窗 (Edit)
+    // 開啟編輯視窗 (Edit Modal)
     function openEditModal(record) {
       document.getElementById("editRowId").value = record.rowId;
       document.getElementById("editDate").value = record.date || new Date().toISOString().split("T")[0];
@@ -474,7 +567,7 @@
       document.getElementById("editModal").classList.add("hidden");
     }
 
-    // 儲存編輯 (Update)
+    // 儲存修改
     async function handleEditSubmit(e) {
       e.preventDefault();
       const btn = document.getElementById("btnSaveEdit");
@@ -512,9 +605,9 @@
       }
     }
 
-    // 刪除 (Delete)
+    // 刪除紀錄
     async function deleteRecord(rowId) {
-      if (!confirm(`確定要刪除第 ${rowId} 列這筆明細嗎？`)) return;
+      if (!confirm(`確定要刪除此筆紀錄嗎？`)) return;
       try {
         await fetch(GAS_API_URL, {
           method: "POST",
@@ -528,7 +621,7 @@
       }
     }
 
-    // 批次 CSV 上傳
+    // 批次 CSV 匯入 (依據當前分頁自動切換欄位格式)
     function handleCSVFile(e) {
       const file = e.target.files[0];
       if (!file) return;
@@ -537,29 +630,49 @@
         header: true,
         skipEmptyLines: true,
         complete: async function(results) {
-          const records = results.data.map(r => ({
-            date: r["Date"] || r["date"] || "",
-            pn: r["P/N (If any)"] || r["P/N"] || r["pn"] || "",
-            partsName: r["Parts Name"] || r["partsName"] || "",
-            model: r["Model"] || r["model"] || "",
-            inQty: Number(r["IN"] || r["in"] || 0),
-            outQty: Number(r["OUT"] || r["out"] || 0),
-            remark: r["Remark"] || r["remark"] || ""
-          })).filter(r => r.partsName !== "");
+          let payload = {};
 
-          if (records.length === 0) {
-            alert("CSV 內容為空或欄位不符！");
-            return;
+          if (currentTab === "Stock in TW") {
+            const records = results.data.map(r => ({
+              location: r["Location"] || r["location"] || "",
+              pn: r["P/N"] || r["P/N (If any)"] || r["pn"] || "",
+              partsName: r["parts name"] || r["Parts Name"] || r["partsName"] || "",
+              qty: Number(r["QTY"] || r["qty"] || 0),
+              model: r["model"] || r["Model"] || "",
+              remark: r["remark"] || r["Remark"] || ""
+            })).filter(r => r.partsName !== "");
+
+            if (records.length === 0) {
+              alert("CSV 內容為空或欄位不符 (需包含 Location, P/N, parts name, QTY 等欄位)");
+              return;
+            }
+            payload = { action: "batchImportStock", sheet: "Stock in TW", records: records };
+          } else {
+            const records = results.data.map(r => ({
+              date: r["Date"] || r["date"] || "",
+              pn: r["P/N (If any)"] || r["P/N"] || r["pn"] || "",
+              partsName: r["Parts Name"] || r["partsName"] || "",
+              model: r["Model"] || r["model"] || "",
+              inQty: Number(r["IN"] || r["in"] || 0),
+              outQty: Number(r["OUT"] || r["out"] || 0),
+              remark: r["Remark"] || r["remark"] || ""
+            })).filter(r => r.partsName !== "");
+
+            if (records.length === 0) {
+              alert("CSV 內容為空或欄位不符 (需包含 Date, Parts Name, IN, OUT 等欄位)");
+              return;
+            }
+            payload = { action: "batchImport", sheet: currentTab, records: records };
           }
 
           await fetch(GAS_API_URL, {
             method: "POST",
             mode: "no-cors",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action: "batchImport", sheet: currentTab, records: records })
+            body: JSON.stringify(payload)
           });
 
-          alert(`已匯入 ${records.length} 筆資料！`);
+          alert(`已成功送出匯入請求！`);
           e.target.value = "";
           setTimeout(fetchCurrentTab, 2000);
         }
