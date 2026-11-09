@@ -3,549 +3,208 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>零件進出庫房管理系統</title>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 20px; background: #f5f6f8; color: #333; }
-    .container { max-width: 1200px; margin: auto; background: white; padding: 24px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
-    h2 { margin-top: 0; color: #1a1a1a; }
-    
-    .tabs { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 2px solid #e0e0e0; padding-bottom: 8px; }
-    .tab-btn { padding: 9px 18px; border: none; background: #eaecef; cursor: pointer; border-radius: 4px; font-weight: 600; font-size: 14px; }
-    .tab-btn.active { background: #0066cc; color: white; }
-    
-    .panel { display: none; }
-    .panel.active { display: block; }
-    
-    table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
-    th, td { border: 1px solid #e1e4e8; padding: 10px 12px; text-align: left; }
-    th { background: #f6f8fa; font-weight: 600; }
-    tr:nth-child(even) { background-color: #fafbfc; }
-    
-    .form-group { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 15px; align-items: center; }
-    .form-group input, .form-group select { padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 14px; }
-    
-    .btn { padding: 8px 16px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500; }
-    .btn-blue { background: #0066cc; }
-    .btn-edit { background: #ffc107; color: #212529; padding: 4px 10px; font-size: 12px; border-radius: 3px; border: none; cursor: pointer; font-weight: bold; }
-    .btn-import { background: #6f42c1; }
-    .btn:hover, .btn-edit:hover { opacity: 0.88; }
-    
-    .modal-backdrop { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
-    .modal-backdrop.show { display: flex; }
-    .modal { background: white; padding: 24px; border-radius: 8px; width: 440px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-    .modal h3 { margin-top: 0; }
-    .modal-field { margin-bottom: 12px; }
-    .modal-field label { display: block; font-size: 12px; font-weight: bold; margin-bottom: 4px; color: #555; }
-    .modal-field input { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
-    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
-    .btn-cancel { background: #6c757d; }
-  </style>
+  <title>零件庫房進出管理系統</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 </head>
-<body>
-
-<div class="container">
-  <h2>零件進出庫房管理系統</h2>
-  
-  <div class="tabs">
-    <button class="tab-btn active" onclick="switchTab('stock', event)">庫存總覽</button>
-    <button class="tab-btn" onclick="switchTab('history', event)">歷史紀錄查詢與編輯</button>
-    <button class="tab-btn" onclick="switchTab('entry', event)">進出庫登記</button>
-    <button class="tab-btn" onclick="switchTab('import', event)">批次匯入資料 (覆寫)</button>
-  </div>
-
-  <!-- 1. 總庫存總覽 -->
-  <div id="stockPanel" class="panel active">
-    <div class="form-group">
-      <label><strong>庫房位置 (Location)：</strong></label>
-      <select id="stockLocationSelect" onchange="filterStockTable()">
-        <option value="ALL">全部庫房 (All Locations)</option>
-        <option value="S2">S2</option>
-        <option value="S3">S3</option>
-        <option value="S4">S4</option>
-        <option value="S5">S5</option>
-        <option value="S6">S6</option>
-        <option value="DRY BOX">DRY BOX</option>
-        <option value="clean room">clean room</option>
-      </select>
-      <input type="text" id="stockSearchInput" placeholder="搜尋料號 P/N 或品名..." oninput="filterStockTable()">
-      <button class="btn btn-blue" onclick="loadStockFrontend()">前端直接計算並重新整理</button>
+<body class="bg-gray-50 min-h-screen text-gray-800">
+  <div class="max-w-7xl mx-auto p-4 md:p-6">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center pb-4 mb-4 border-b border-gray-200 gap-4">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">零件庫存與進出管理系統</h1>
+        <p class="text-xs text-gray-500 mt-1">Google Sheets 即時連動平台</p>
+      </div>
+      <button onclick="fetchCurrentTab()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded shadow">重新載入資料</button>
     </div>
 
-    <table id="stockTable">
-      <thead>
-        <tr>
-          <th>Location</th><th>P/N</th><th>Parts Name</th><th>QTY (即時庫存)</th><th>Model</th><th>Remark</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
-
-  <!-- 2. 歷史紀錄查詢與編輯面板 -->
-  <div id="historyPanel" class="panel">
-    <div class="form-group">
-      <label><strong>選擇分頁：</strong></label>
-      <select id="histSheetSelect" onchange="loadHistory()">
-        <option value="S2">S2</option>
-        <option value="S3">S3</option>
-        <option value="S4">S4</option>
-        <option value="S5">S5</option>
-        <option value="S6">S6</option>
-        <option value="DRY BOX">DRY BOX</option>
-        <option value="clean room">clean room</option>
-      </select>
-      <input type="text" id="histSearchInput" placeholder="搜尋料號 / 品名 / 型號..." oninput="filterHistoryTable()">
-      <button class="btn btn-blue" onclick="loadHistory()">查詢 / 重新整理</button>
+    <!-- 8 分頁標籤 -->
+    <div class="flex overflow-x-auto border-b border-gray-200 mb-6 gap-1" id="tabContainer">
+      <button class="tab-btn px-4 py-2 font-medium border-b-2 border-blue-600 text-blue-600" onclick="switchTab('Stock in TW')">Stock in TW (總庫存)</button>
+      <button class="tab-btn px-4 py-2 font-medium border-b-2 border-transparent text-gray-500 hover:text-blue-600" onclick="switchTab('S2')">S2</button>
+      <button class="tab-btn px-4 py-2 font-medium border-b-2 border-transparent text-gray-500 hover:text-blue-600" onclick="switchTab('S3')">S3</button>
+      <button class="tab-btn px-4 py-2 font-medium border-b-2 border-transparent text-gray-500 hover:text-blue-600" onclick="switchTab('S4')">S4</button>
+      <button class="tab-btn px-4 py-2 font-medium border-b-2 border-transparent text-gray-500 hover:text-blue-600" onclick="switchTab('S5')">S5</button>
+      <button class="tab-btn px-4 py-2 font-medium border-b-2 border-transparent text-gray-500 hover:text-blue-600" onclick="switchTab('S6')">S6</button>
+      <button class="tab-btn px-4 py-2 font-medium border-b-2 border-transparent text-gray-500 hover:text-blue-600" onclick="switchTab('DRY BOX')">DRY BOX</button>
+      <button class="tab-btn px-4 py-2 font-medium border-b-2 border-transparent text-gray-500 hover:text-blue-600" onclick="switchTab('clean room')">clean room</button>
     </div>
-    
-    <table id="historyTable">
-      <thead>
-        <tr>
-          <th>Date</th><th>P/N</th><th>Parts Name</th><th>Model</th><th>IN</th><th>OUT</th><th>Remark</th><th>操作</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
 
-  <!-- 3. 單筆進出庫登記 -->
-  <div id="entryPanel" class="panel">
-    <h3>新增進出庫記錄</h3>
-    <div class="form-group">
-      <select id="targetSheet">
-        <option value="S2">S2</option>
-        <option value="S3">S3</option>
-        <option value="S4">S4</option>
-        <option value="S5">S5</option>
-        <option value="S6">S6</option>
-        <option value="DRY BOX">DRY BOX</option>
-        <option value="clean room">clean room</option>
-      </select>
-      <input type="date" id="recDate">
-      <input type="text" id="recPN" placeholder="P/N (If any)">
-      <input type="text" id="recName" placeholder="Parts Name">
-      <input type="text" id="recModel" placeholder="Model">
-      <input type="number" id="recIn" placeholder="IN 數量 (留空為無)">
-      <input type="number" id="recOut" placeholder="OUT 數量 (留空為無)">
-      <input type="text" id="recRemark" placeholder="Remark">
-      <button class="btn" onclick="submitRecord()">提交記錄</button>
+    <!-- 錄入與匯入操作面板 (總庫存頁面隱藏) -->
+    <div id="actionBox" class="hidden bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
+      <h2 class="text-sm font-bold text-gray-700 mb-3" id="panelTitle">新增進出紀錄</h2>
+      <form id="recordForm" onsubmit="submitSingleRecord(event)" class="grid grid-cols-1 md:grid-cols-7 gap-2">
+        <input type="date" id="rDate" class="border p-2 text-sm rounded" required>
+        <input type="text" id="rPn" placeholder="P/N (If any)" class="border p-2 text-sm rounded">
+        <input type="text" id="rName" placeholder="Parts Name" class="border p-2 text-sm rounded" required>
+        <input type="text" id="rModel" placeholder="Model" class="border p-2 text-sm rounded">
+        <input type="number" id="rIn" placeholder="IN 數量" min="0" value="0" class="border p-2 text-sm rounded">
+        <input type="number" id="rOut" placeholder="OUT 數量" min="0" value="0" class="border p-2 text-sm rounded">
+        <input type="text" id="rRemark" placeholder="Remark" class="border p-2 text-sm rounded">
+        <button type="submit" class="md:col-span-7 bg-emerald-600 hover:bg-emerald-700 text-white py-2 text-sm font-semibold rounded mt-2">儲存至該庫房</button>
+      </form>
+
+      <div class="mt-4 pt-3 border-t border-gray-100 flex flex-wrap items-center gap-3">
+        <span class="text-xs font-semibold text-gray-600">批次 CSV 檔案匯入至目前分頁：</span>
+        <input type="file" id="csvFile" accept=".csv" onchange="uploadCSV(event)" class="text-xs">
+      </div>
+    </div>
+
+    <!-- 搜尋工具 -->
+    <div class="mb-4">
+      <input type="text" id="filterInput" oninput="applyFilter()" placeholder="快速搜尋零件料號、名稱、型號..." class="w-full md:w-96 border p-2 text-sm rounded bg-white shadow-sm">
+    </div>
+
+    <!-- 資料呈現清單 -->
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-auto">
+      <table class="w-full text-left text-sm" id="mainTable">
+        <thead class="bg-gray-100 text-gray-600 uppercase text-xs" id="tableHead"></thead>
+        <tbody id="tableBody" class="divide-y divide-gray-100"></tbody>
+      </table>
     </div>
   </div>
 
-  <!-- 4. CSV 批次匯入（覆寫模式） -->
-  <div id="importPanel" class="panel">
-    <h3>批次匯入 CSV 資料（覆寫模式）</h3>
-    <div class="form-group">
-      <select id="importSheet">
-        <option value="S2">S2</option>
-        <option value="S3">S3</option>
-        <option value="S4">S4</option>
-        <option value="S5">S5</option>
-        <option value="S6">S6</option>
-        <option value="DRY BOX">DRY BOX</option>
-        <option value="clean room">clean room</option>
-      </select>
-      <input type="file" id="csvFile" accept=".csv">
-      <button class="btn btn-import" onclick="handleCSVUpload()">開始覆寫匯入</button>
-    </div>
-    <small style="color: #c82333;">⚠️ 注意：匯入時會自動清空該分頁舊有的歷史資料，並以新 CSV 檔案全數覆寫！</small>
-  </div>
-</div>
+  <script>
+    // 部署 GAS 後取得的網頁應用程式 URL
+    const GAS_ENDPOINT = "YOUR_APPS_SCRIPT_WEB_APP_URL";
+    let activeTab = "Stock in TW";
+    let cachedData = [];
 
-<!-- 線上修改視窗 -->
-<div class="modal-backdrop" id="editModal">
-  <div class="modal">
-    <h3>修改進出庫記錄</h3>
-    <input type="hidden" id="editRowId">
-    <div class="modal-field">
-      <label>日期 (Date)</label>
-      <input type="date" id="editDate">
-    </div>
-    <div class="modal-field">
-      <label>料號 (P/N)</label>
-      <input type="text" id="editPN">
-    </div>
-    <div class="modal-field">
-      <label>零件品名 (Parts Name)</label>
-      <input type="text" id="editPartsName">
-    </div>
-    <div class="modal-field">
-      <label>型號 (Model)</label>
-      <input type="text" id="editModel">
-    </div>
-    <div class="modal-field">
-      <label>入庫 (IN)</label>
-      <input type="number" id="editIn" placeholder="留空為無">
-    </div>
-    <div class="modal-field">
-      <label>出庫 (OUT)</label>
-      <input type="number" id="editOut" placeholder="留空為無">
-    </div>
-    <div class="modal-field">
-      <label>備註 (Remark)</label>
-      <input type="text" id="editRemark">
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-cancel" onclick="closeModal()">取消</button>
-      <button class="btn btn-blue" onclick="saveEditedRecord()">儲存更新</button>
-    </div>
-  </div>
-</div>
-
-<script>
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbyIklqSEpYdKMYN_f16rgAc2--Jm37AEHlIcjWRSAHj06XPIZ50sOv_sYBPb9J4ILMQ3g/exec";
-  const WAREHOUSES = ["S2", "S3", "S4", "S5", "S6", "DRY BOX", "clean room"];
-  
-  let currentStockData = [];
-  let currentHistoryData = [];
-
-  function switchTab(tab, evt) {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    
-    if (tab === 'stock') {
-      document.getElementById('stockPanel').classList.add('active');
-      evt.target.classList.add('active');
-      loadStockFrontend();
-    } else if (tab === 'history') {
-      document.getElementById('historyPanel').classList.add('active');
-      evt.target.classList.add('active');
-      loadHistory();
-    } else if (tab === 'entry') {
-      document.getElementById('entryPanel').classList.add('active');
-      evt.target.classList.add('active');
-    } else {
-      document.getElementById('importPanel').classList.add('active');
-      evt.target.classList.add('active');
-    }
-  }
-
-  // 【核心功能】：前端非同步並行抓取 7 個分頁，在瀏覽器端直接計算 IN - OUT
-  async function loadStockFrontend() {
-    const tbody = document.querySelector("#stockTable tbody");
-    tbody.innerHTML = "<tr><td colspan='6'>正在抓取各庫房資料並進行前端運算...</td></tr>";
-
-    try {
-      // 同時向後端發出 7 個分頁的請求
-      const fetchPromises = WAREHOUSES.map(sheetName =>
-        fetch(`${GAS_URL}?action=getHistory&sheet=${encodeURIComponent(sheetName)}`)
-          .then(res => res.json())
-          .then(res => ({ sheetName, data: res.status === 'success' ? res.data : [] }))
-          .catch(() => ({ sheetName, data: [] }))
-      );
-
-      const results = await Promise.all(fetchPromises);
-      const inventoryMap = {};
-
-      // 遍歷所有庫房回傳的明細並進行加總
-      results.forEach(({ sheetName, data }) => {
-        data.forEach(item => {
-          const pn = String(item.pn || "").trim();
-          const partsName = String(item.partsName || "").trim();
-          const model = String(item.model || "").trim();
-          const inQty = Number(item.inQty) || 0;
-          const outQty = Number(item.outQty) || 0;
-          const remark = String(item.remark || "").trim();
-
-          if (!pn && !partsName) return;
-
-          // 以 (庫房 + 料號/品名) 作為唯一鍵值，忽略大小寫
-          const keyIdentifier = (pn !== "" ? pn : partsName).toLowerCase();
-          const mapKey = sheetName.toLowerCase() + "____" + keyIdentifier;
-
-          if (!inventoryMap[mapKey]) {
-            inventoryMap[mapKey] = {
-              location: sheetName,
-              pn: pn,
-              partsName: partsName,
-              model: model,
-              qty: 0,
-              remark: remark
-            };
-          }
-
-          // 核心相差數量計算：IN - OUT
-          inventoryMap[mapKey].qty += (inQty - outQty);
-          if (partsName && !inventoryMap[mapKey].partsName) inventoryMap[mapKey].partsName = partsName;
-          if (model && !inventoryMap[mapKey].model) inventoryMap[mapKey].model = model;
-        });
-      });
-
-      // 整理成陣列
-      currentStockData = Object.values(inventoryMap).map(item => ({
-        location: item.location,
-        "P/N": item.pn,
-        "parts name": item.partsName,
-        QTY: item.qty,
-        model: item.model,
-        remark: item.remark
-      }));
-
-      filterStockTable();
-    } catch (err) {
-      tbody.innerHTML = `<tr><td colspan='6' style='color:red;'>計算失敗：${err.toString()}</td></tr>`;
-    }
-  }
-
-  // 庫存過濾邏輯（忽略大小寫與前後空白）
-  function filterStockTable() {
-    const selectedLoc = document.getElementById("stockLocationSelect").value.trim().toLowerCase();
-    const query = document.getElementById("stockSearchInput").value.trim().toLowerCase();
-    const tbody = document.querySelector("#stockTable tbody");
-
-    const filtered = currentStockData.filter(row => {
-      const rowLoc = String(row.location || "").trim().toLowerCase();
-      const locMatch = (selectedLoc === "all") || (rowLoc === selectedLoc);
-      
-      const searchMatch = !query || 
-        String(row["P/N"] || "").toLowerCase().includes(query) ||
-        String(row["parts name"] || "").toLowerCase().includes(query) ||
-        String(row.model || "").toLowerCase().includes(query);
-      return locMatch && searchMatch;
-    });
-
-    tbody.innerHTML = "";
-    if (filtered.length === 0) {
-      tbody.innerHTML = `<tr><td colspan='6'>查無符合條件的庫存資料 (總庫存項目數: ${currentStockData.length})</td></tr>`;
-      return;
-    }
-
-    filtered.forEach(row => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td><strong>${row.location || ""}</strong></td>
-        <td>${row["P/N"] || ""}</td>
-        <td>${row["parts name"] || ""}</td>
-        <td><strong style="color: ${row.QTY < 0 ? '#dc3545' : '#0066cc'}; font-size: 15px;">${row.QTY}</strong></td>
-        <td>${row.model || ""}</td>
-        <td>${row.remark || ""}</td>
-      `;
-      tbody.appendChild(tr);
-    });
-  }
-
-  // 2. 讀取指定分頁歷史資料
-  async function loadHistory() {
-    const sheetName = document.getElementById("histSheetSelect").value;
-    const tbody = document.querySelector("#historyTable tbody");
-    tbody.innerHTML = "<tr><td colspan='8'>歷史紀錄載入中...</td></tr>";
-    
-    try {
-      const res = await fetch(`${GAS_URL}?action=getHistory&sheet=${encodeURIComponent(sheetName)}`);
-      const result = await res.json();
-      if (result.status === "success") {
-        currentHistoryData = result.data || [];
-        renderHistoryTable(currentHistoryData);
-      } else {
-        tbody.innerHTML = `<tr><td colspan='8' style='color:red;'>讀取失敗：${result.message}</td></tr>`;
-      }
-    } catch(err) {
-      tbody.innerHTML = `<tr><td colspan='8' style='color:red;'>無法連接後端：${err.toString()}</td></tr>`;
-    }
-  }
-
-  function renderHistoryTable(dataList) {
-    const tbody = document.querySelector("#historyTable tbody");
-    tbody.innerHTML = "";
-    if (dataList.length === 0) {
-      tbody.innerHTML = "<tr><td colspan='8'>此分頁查無任何進出庫記錄</td></tr>";
-      return;
-    }
-
-    dataList.forEach(item => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${item.date}</td>
-        <td>${item.pn}</td>
-        <td>${item.partsName}</td>
-        <td>${item.model}</td>
-        <td style="color: #28a745; font-weight: bold;">${item.inQty !== "" ? item.inQty : ""}</td>
-        <td style="color: #dc3545; font-weight: bold;">${item.outQty !== "" ? item.outQty : ""}</td>
-        <td>${item.remark}</td>
-        <td><button class="btn-edit" onclick="openEditModal(${item.rowId})">修改</button></td>
-      `;
-      tbody.appendChild(tr);
-    });
-  }
-
-  function filterHistoryTable() {
-    const query = document.getElementById("histSearchInput").value.trim().toLowerCase();
-    if (!query) {
-      renderHistoryTable(currentHistoryData);
-      return;
-    }
-    const filtered = currentHistoryData.filter(item => 
-      String(item.pn).toLowerCase().includes(query) ||
-      String(item.partsName).toLowerCase().includes(query) ||
-      String(item.model).toLowerCase().includes(query) ||
-      String(item.remark).toLowerCase().includes(query)
-    );
-    renderHistoryTable(filtered);
-  }
-
-  function openEditModal(rowId) {
-    const record = currentHistoryData.find(r => r.rowId === rowId);
-    if (!record) return;
-
-    document.getElementById("editRowId").value = record.rowId;
-    document.getElementById("editDate").value = record.date;
-    document.getElementById("editPN").value = record.pn;
-    document.getElementById("editPartsName").value = record.partsName;
-    document.getElementById("editModel").value = record.model;
-    document.getElementById("editIn").value = record.inQty;
-    document.getElementById("editOut").value = record.outQty;
-    document.getElementById("editRemark").value = record.remark;
-
-    document.getElementById("editModal").classList.add("show");
-  }
-
-  function closeModal() {
-    document.getElementById("editModal").classList.remove("show");
-  }
-
-  async function saveEditedRecord() {
-    const sheetName = document.getElementById("histSheetSelect").value;
-    const payload = {
-      action: "updateRecord",
-      sheet: sheetName,
-      rowId: document.getElementById("editRowId").value,
-      date: document.getElementById("editDate").value,
-      pn: document.getElementById("editPN").value,
-      partsName: document.getElementById("editPartsName").value,
-      model: document.getElementById("editModel").value,
-      in: document.getElementById("editIn").value,
-      out: document.getElementById("editOut").value,
-      remark: document.getElementById("editRemark").value
+    window.onload = () => {
+      document.getElementById("rDate").value = new Date().toISOString().split("T")[0];
+      fetchCurrentTab();
     };
 
-    try {
-      const res = await fetch(GAS_URL, {
-        method: "POST",
-        body: JSON.stringify(payload)
+    function switchTab(name) {
+      activeTab = name;
+      document.querySelectorAll(".tab-btn").forEach(btn => {
+        const selected = btn.innerText.includes(name);
+        btn.className = `tab-btn px-4 py-2 font-medium border-b-2 ${selected ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-blue-600"}`;
       });
-      const result = await res.json();
-      if (result.status === "success") {
-        alert("資料修改成功！");
-        closeModal();
-        loadHistory();
+
+      const actionBox = document.getElementById("actionBox");
+      if (activeTab === "Stock in TW") {
+        actionBox.classList.add("hidden");
       } else {
-        alert("儲存失敗: " + result.message);
+        actionBox.classList.remove("hidden");
+        document.getElementById("panelTitle").innerText = `新增進出紀錄（分頁：${activeTab}）`;
       }
-    } catch(err) {
-      alert("儲存發生錯誤，請檢查網路。");
-    }
-  }
-
-  // 3. 單筆新增提交
-  async function submitRecord() {
-    const payload = {
-      action: "addRecord",
-      sheet: document.getElementById("targetSheet").value,
-      date: document.getElementById("recDate").value,
-      pn: document.getElementById("recPN").value,
-      partsName: document.getElementById("recName").value,
-      model: document.getElementById("recModel").value,
-      in: document.getElementById("recIn").value,
-      out: document.getElementById("recOut").value,
-      remark: document.getElementById("recRemark").value
-    };
-
-    try {
-      const res = await fetch(GAS_URL, {
-        method: "POST",
-        body: JSON.stringify(payload)
-      });
-      const result = await res.json();
-      if(result.status === "success") {
-        alert("記錄新增成功！");
-        document.querySelectorAll('#entryPanel input:not(#recDate)').forEach(i => i.value = "");
-      } else {
-        alert("提交失敗: " + result.message);
-      }
-    } catch(err) {
-      alert("提交失敗，請檢查網路。");
-    }
-  }
-
-  // 4. CSV 批次匯入（覆寫模式）
-  function handleCSVUpload() {
-    const file = document.getElementById("csvFile").files[0];
-    const sheetName = document.getElementById("importSheet").value;
-    if (!file) return alert("請先選擇 CSV 檔案");
-
-    if (!confirm(`確定要以 ${file.name} 覆寫【${sheetName}】分頁的全部歷史資料嗎？舊資料將會被取代！`)) {
-      return;
+      fetchCurrentTab();
     }
 
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-      const text = e.target.result;
-      const lines = text.split(/\r?\n/).filter(line => line.trim() !== "");
-      
-      if (lines.length === 0) return alert("檔案內容為空！");
+    async function fetchCurrentTab() {
+      const tbody = document.getElementById("tableBody");
+      tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-gray-400">正在讀取 Google Sheets 資料...</td></tr>`;
 
-      if (lines[0].toLowerCase().includes("date")) {
-        lines.shift();
-      }
-
-      const cleanRows = [];
-
-      lines.forEach(line => {
-        const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.trim().replace(/^"|"$/g, ''));
-        
-        const dateVal = cols[0] || "";
-        const pnVal = cols[1] || "";
-        const nameVal = cols[2] || "";
-        const modelVal = cols[3] || "";
-        const inRaw = cols[4] !== undefined ? cols[4].trim() : "";
-        const outRaw = cols[5] !== undefined ? cols[5].trim() : "";
-        const remarkVal = cols[6] || "";
-
-        if (!pnVal && !nameVal && !inRaw && !outRaw) {
-          return;
-        }
-
-        const inQty = inRaw !== "" && !isNaN(inRaw) ? Number(inRaw) : "";
-        const outQty = outRaw !== "" && !isNaN(outRaw) ? Number(outRaw) : "";
-
-        cleanRows.push([
-          dateVal,
-          pnVal,
-          nameVal,
-          modelVal,
-          inQty,
-          outQty,
-          remarkVal
-        ]);
-      });
-
-      if (cleanRows.length === 0) {
-        return alert("未偵測到任何有效資料列！");
-      }
+      const targetUrl = activeTab === "Stock in TW" 
+        ? `${GAS_ENDPOINT}?action=getStock` 
+        : `${GAS_ENDPOINT}?action=getLogs&sheet=${encodeURIComponent(activeTab)}`;
 
       try {
-        const res = await fetch(GAS_URL, {
-          method: "POST",
-          body: JSON.stringify({ action: "batchImport", sheet: sheetName, rows: cleanRows })
-        });
+        const res = await fetch(targetUrl);
         const result = await res.json();
-        if (result.status === "success") {
-          alert(`已成功覆寫 ${sheetName} 分頁！共匯入 ${result.count} 筆資料。`);
-          document.getElementById("csvFile").value = "";
-        } else {
-          alert("匯入失敗: " + result.message);
-        }
-      } catch (err) {
-        alert("傳送失敗，請確認網路連線。");
+        cachedData = result.data || [];
+        renderTable(cachedData);
+      } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-red-500">無法連線至 Google Sheets，請確認 GAS 部署授權已設為「所有人」。</td></tr>`;
       }
-    };
-    reader.readAsText(file);
-  }
+    }
 
-  // 初始化預設值
-  document.getElementById("recDate").value = new Date().toISOString().split('T')[0];
-  loadStockFrontend();
-</script>
+    function renderTable(rows) {
+      const thead = document.getElementById("tableHead");
+      const tbody = document.getElementById("tableBody");
 
+      if (activeTab === "Stock in TW") {
+        thead.innerHTML = `
+          <tr>
+            <th class="p-3">Location</th><th class="p-3">P/N</th><th class="p-3">Parts Name</th>
+            <th class="p-3">QTY</th><th class="p-3">Model</th><th class="p-3">Remark</th>
+          </tr>
+        `;
+        tbody.innerHTML = rows.map(r => `
+          <tr class="hover:bg-gray-50">
+            <td class="p-3 font-semibold">${r.location || '-'}</td>
+            <td class="p-3 font-mono">${r.pn || '-'}</td>
+            <td class="p-3">${r.partsName || '-'}</td>
+            <td class="p-3 font-bold ${r.qty > 0 ? 'text-green-600' : 'text-red-500'}">${r.qty}</td>
+            <td class="p-3 text-gray-500">${r.model || '-'}</td>
+            <td class="p-3 text-gray-500">${r.remark || '-'}</td>
+          </tr>
+        `).join('');
+      } else {
+        thead.innerHTML = `
+          <tr>
+            <th class="p-3">Date</th><th class="p-3">P/N (If any)</th><th class="p-3">Parts Name</th>
+            <th class="p-3">Model</th><th class="p-3 text-green-700">IN</th><th class="p-3 text-red-700">OUT</th><th class="p-3">Remark</th>
+          </tr>
+        `;
+        tbody.innerHTML = rows.map(r => `
+          <tr class="hover:bg-gray-50">
+            <td class="p-3 text-gray-600">${r.date ? r.date.toString().substring(0, 10) : '-'}</td>
+            <td class="p-3 font-mono">${r.pn || '-'}</td>
+            <td class="p-3 font-medium">${r.partsName || '-'}</td>
+            <td class="p-3 text-gray-500">${r.model || '-'}</td>
+            <td class="p-3 text-green-600 font-semibold">${r.inQty}</td>
+            <td class="p-3 text-red-600 font-semibold">${r.outQty}</td>
+            <td class="p-3 text-gray-500">${r.remark || '-'}</td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    function applyFilter() {
+      const q = document.getElementById("filterInput").value.trim().toLowerCase();
+      const filtered = cachedData.filter(item => Object.values(item).some(val => String(val).toLowerCase().includes(q)));
+      renderTable(filtered);
+    }
+
+    async function submitSingleRecord(e) {
+      e.preventDefault();
+      const payload = {
+        action: "addRecord",
+        sheet: activeTab,
+        date: document.getElementById("rDate").value,
+        pn: document.getElementById("rPn").value,
+        partsName: document.getElementById("rName").value,
+        model: document.getElementById("rModel").value,
+        inQty: document.getElementById("rIn").value,
+        outQty: document.getElementById("rOut").value,
+        remark: document.getElementById("rRemark").value
+      };
+
+      await fetch(GAS_ENDPOINT, { method: "POST", body: JSON.stringify(payload) });
+      alert("儲存成功！");
+      document.getElementById("recordForm").reset();
+      document.getElementById("rDate").value = new Date().toISOString().split("T")[0];
+      fetchCurrentTab();
+    }
+
+    function uploadCSV(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: async function(res) {
+          const records = res.data.map(row => ({
+            date: row["Date"] || row["date"],
+            pn: row["P/N (If any)"] || row["P/N"] || row["pn"],
+            partsName: row["Parts Name"] || row["partsName"],
+            model: row["Model"] || row["model"],
+            inQty: row["IN"] || row["in"] || 0,
+            outQty: row["OUT"] || row["out"] || 0,
+            remark: row["Remark"] || row["remark"]
+          }));
+
+          await fetch(GAS_ENDPOINT, {
+            method: "POST",
+            body: JSON.stringify({ action: "batchImport", sheet: activeTab, records })
+          });
+          alert(`成功匯入 ${records.length} 筆資料！`);
+          fetchCurrentTab();
+        }
+      });
+    }
+  </script>
 </body>
 </html>
