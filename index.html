@@ -4,206 +4,416 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>零件庫房進出管理系統</title>
+  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome 圖示 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- PapaParse CSV 解析庫 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <!-- SheetJS Excel 匯出庫 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
-<body class="bg-gray-50 min-h-screen text-gray-800">
-  <div class="max-w-7xl mx-auto p-4 md:p-6">
-    <div class="flex flex-col md:flex-row justify-between items-start md:items-center pb-4 mb-4 border-b border-gray-200 gap-4">
-      <div>
-        <h1 class="text-2xl font-bold text-gray-900">零件庫存與進出管理系統</h1>
-        <p class="text-xs text-gray-500 mt-1">Google Sheets 即時連動平台</p>
+<body class="bg-slate-100 min-h-screen text-slate-800">
+
+  <!-- 頂部導航列 -->
+  <nav class="bg-slate-900 text-white shadow-md sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-3">
+      <div class="flex items-center space-x-3">
+        <i class="fa-solid fa-boxes-stacked text-indigo-400 text-2xl"></i>
+        <div>
+          <h1 class="text-lg font-bold leading-tight">零件庫房進出管理系統</h1>
+          <p class="text-xs text-slate-400">Google Sheets + GitHub 雲端即時連線</p>
+        </div>
       </div>
-      <button onclick="fetchCurrentTab()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded shadow">重新載入資料</button>
+      <div class="flex items-center gap-2">
+        <button onclick="fetchCurrentTab()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-xs font-medium rounded shadow flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-rotate"></i> 重新載入
+        </button>
+        <button onclick="exportToExcel()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-xs font-medium rounded shadow flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-file-excel"></i> 匯出目前分頁 Excel
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="max-w-7xl mx-auto p-4 md:p-6 space-y-6">
+
+    <!-- 8 大分頁標籤按鈕 -->
+    <div class="bg-white p-2 rounded-xl shadow-sm border border-slate-200 overflow-x-auto flex gap-1.5" id="tabGroup">
+      <button onclick="switchTab('Stock in TW')" id="tab-Stock-in-TW" class="tab-btn px-4 py-2 rounded-lg text-sm font-semibold transition bg-indigo-50 text-indigo-700 border border-indigo-200">
+        <i class="fa-solid fa-warehouse mr-1.5"></i>Stock in TW (總庫存)
+      </button>
+      <button onclick="switchTab('S2')" id="tab-S2" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition">S2</button>
+      <button onclick="switchTab('S3')" id="tab-S3" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition">S3</button>
+      <button onclick="switchTab('S4')" id="tab-S4" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition">S4</button>
+      <button onclick="switchTab('S5')" id="tab-S5" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition">S5</button>
+      <button onclick="switchTab('S6')" id="tab-S6" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition">S6</button>
+      <button onclick="switchTab('DRY BOX')" id="tab-DRY-BOX" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition">DRY BOX</button>
+      <button onclick="switchTab('clean room')" id="tab-clean-room" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition">clean room</button>
     </div>
 
-    <!-- 8 分頁標籤 -->
-    <div class="flex overflow-x-auto border-b border-gray-200 mb-6 gap-1" id="tabContainer">
-      <button class="tab-btn px-4 py-2 font-medium border-b-2 border-blue-600 text-blue-600" onclick="switchTab('Stock in TW')">Stock in TW (總庫存)</button>
-      <button class="tab-btn px-4 py-2 font-medium border-b-2 border-transparent text-gray-500 hover:text-blue-600" onclick="switchTab('S2')">S2</button>
-      <button class="tab-btn px-4 py-2 font-medium border-b-2 border-transparent text-gray-500 hover:text-blue-600" onclick="switchTab('S3')">S3</button>
-      <button class="tab-btn px-4 py-2 font-medium border-b-2 border-transparent text-gray-500 hover:text-blue-600" onclick="switchTab('S4')">S4</button>
-      <button class="tab-btn px-4 py-2 font-medium border-b-2 border-transparent text-gray-500 hover:text-blue-600" onclick="switchTab('S5')">S5</button>
-      <button class="tab-btn px-4 py-2 font-medium border-b-2 border-transparent text-gray-500 hover:text-blue-600" onclick="switchTab('S6')">S6</button>
-      <button class="tab-btn px-4 py-2 font-medium border-b-2 border-transparent text-gray-500 hover:text-blue-600" onclick="switchTab('DRY BOX')">DRY BOX</button>
-      <button class="tab-btn px-4 py-2 font-medium border-b-2 border-transparent text-gray-500 hover:text-blue-600" onclick="switchTab('clean room')">clean room</button>
+    <!-- 概況摘要卡片 -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="statsRow">
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-500">目前項目總數</p>
+          <p class="text-2xl font-bold text-slate-800" id="statTotalItems">0</p>
+        </div>
+        <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-lg"><i class="fa-solid fa-list-ol"></i></div>
+      </div>
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-500" id="statLabel2">在席在庫數量</p>
+          <p class="text-2xl font-bold text-emerald-600" id="statInStock">0</p>
+        </div>
+        <div class="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg"><i class="fa-solid fa-cubes"></i></div>
+      </div>
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-500" id="statLabel3">缺料 / 歸零筆數</p>
+          <p class="text-2xl font-bold text-rose-500" id="statOutStock">0</p>
+        </div>
+        <div class="w-10 h-10 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center text-lg"><i class="fa-solid fa-triangle-exclamation"></i></div>
+      </div>
+      <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-500">當前分頁</p>
+          <p class="text-lg font-bold text-indigo-600 truncate" id="statCurrentTab">Stock in TW</p>
+        </div>
+        <div class="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg"><i class="fa-solid fa-tag"></i></div>
+      </div>
     </div>
 
-    <!-- 錄入與匯入操作面板 (總庫存頁面隱藏) -->
-    <div id="actionBox" class="hidden bg-white p-4 rounded-lg shadow-sm border border-gray-200 mb-6">
-      <h2 class="text-sm font-bold text-gray-700 mb-3" id="panelTitle">新增進出紀錄</h2>
-      <form id="recordForm" onsubmit="submitSingleRecord(event)" class="grid grid-cols-1 md:grid-cols-7 gap-2">
-        <input type="date" id="rDate" class="border p-2 text-sm rounded" required>
-        <input type="text" id="rPn" placeholder="P/N (If any)" class="border p-2 text-sm rounded">
-        <input type="text" id="rName" placeholder="Parts Name" class="border p-2 text-sm rounded" required>
-        <input type="text" id="rModel" placeholder="Model" class="border p-2 text-sm rounded">
-        <input type="number" id="rIn" placeholder="IN 數量" min="0" value="0" class="border p-2 text-sm rounded">
-        <input type="number" id="rOut" placeholder="OUT 數量" min="0" value="0" class="border p-2 text-sm rounded">
-        <input type="text" id="rRemark" placeholder="Remark" class="border p-2 text-sm rounded">
-        <button type="submit" class="md:col-span-7 bg-emerald-600 hover:bg-emerald-700 text-white py-2 text-sm font-semibold rounded mt-2">儲存至該庫房</button>
+    <!-- 操作面板：僅在各庫房分頁顯示，總表隱藏 -->
+    <div id="actionCard" class="hidden bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
+      <div class="flex justify-between items-center pb-3 border-b border-slate-100">
+        <h3 class="font-bold text-sm text-slate-700 flex items-center gap-2">
+          <i class="fa-solid fa-circle-plus text-indigo-600"></i> 新增進出明細（<span id="activeTabNameTitle" class="text-indigo-600">S2</span>）
+        </h3>
+        <span class="text-xs text-slate-400">儲存後即時連動 Stock in TW</span>
+      </div>
+
+      <!-- 新增表單 -->
+      <form id="recordForm" onsubmit="handleRecordSubmit(event)" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-7 gap-3 text-sm">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Date 日期</label>
+          <input type="date" id="inputDate" class="w-full border border-slate-300 rounded px-2.5 py-1.5 focus:outline-none focus:border-indigo-500" required>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">P/N (料號)</label>
+          <input type="text" id="inputPn" placeholder="若無可留空" class="w-full border border-slate-300 rounded px-2.5 py-1.5 focus:outline-none focus:border-indigo-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Parts Name (品名) *</label>
+          <input type="text" id="inputPartsName" placeholder="必填" class="w-full border border-slate-300 rounded px-2.5 py-1.5 focus:outline-none focus:border-indigo-500" required>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Model (型號)</label>
+          <input type="text" id="inputModel" placeholder="例如 CG4100" class="w-full border border-slate-300 rounded px-2.5 py-1.5 focus:outline-none focus:border-indigo-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1 text-emerald-600">IN (入庫數)</label>
+          <input type="number" id="inputInQty" min="0" value="0" class="w-full border border-slate-300 rounded px-2.5 py-1.5 focus:outline-none focus:border-indigo-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1 text-rose-500">OUT (出庫數)</label>
+          <input type="number" id="inputOutQty" min="0" value="0" class="w-full border border-slate-300 rounded px-2.5 py-1.5 focus:outline-none focus:border-indigo-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Remark (備註)</label>
+          <input type="text" id="inputRemark" placeholder="事由 / 來源" class="w-full border border-slate-300 rounded px-2.5 py-1.5 focus:outline-none focus:border-indigo-500">
+        </div>
+        <div class="sm:col-span-2 md:col-span-7 flex justify-end gap-2 pt-2">
+          <button type="submit" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs rounded-lg shadow transition flex items-center gap-1.5">
+            <i class="fa-solid fa-floppy-disk"></i> 儲存此筆資料
+          </button>
+        </div>
       </form>
 
-      <div class="mt-4 pt-3 border-t border-gray-100 flex flex-wrap items-center gap-3">
-        <span class="text-xs font-semibold text-gray-600">批次 CSV 檔案匯入至目前分頁：</span>
-        <input type="file" id="csvFile" accept=".csv" onchange="uploadCSV(event)" class="text-xs">
+      <!-- CSV 批次匯入區塊 -->
+      <div class="pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-3 rounded-lg">
+        <div class="flex items-center gap-2">
+          <i class="fa-solid fa-file-csv text-slate-500"></i>
+          <span class="text-xs font-semibold text-slate-700">批次 CSV 檔案匯入：</span>
+          <input type="file" id="csvFileInput" accept=".csv" onchange="handleCSVFile(event)" class="text-xs text-slate-600 file:mr-2 file:py-1 file:px-2.5 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+        </div>
+        <p class="text-[11px] text-slate-400">支援欄位：Date, P/N (If any), Parts Name, Model, IN, OUT, Remark</p>
       </div>
     </div>
 
-    <!-- 搜尋工具 -->
-    <div class="mb-4">
-      <input type="text" id="filterInput" oninput="applyFilter()" placeholder="快速搜尋零件料號、名稱、型號..." class="w-full md:w-96 border p-2 text-sm rounded bg-white shadow-sm">
+    <!-- 搜尋與篩選工具列 -->
+    <div class="flex flex-col sm:flex-row justify-between items-center gap-3">
+      <div class="relative w-full sm:w-96">
+        <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-sm"></i>
+        <input type="text" id="searchKeyword" oninput="applyFilter()" placeholder="快速搜尋料號、零件品名、型號、備註..." class="w-full pl-9 pr-4 py-2 text-sm bg-white border border-slate-200 rounded-lg shadow-sm focus:outline-none focus:border-indigo-500">
+      </div>
+      <div class="text-xs text-slate-500 font-medium self-end sm:self-center">
+        共符合 <span id="filteredCount" class="font-bold text-slate-800">0</span> 筆資料
+      </div>
     </div>
 
-    <!-- 資料呈現清單 -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-x-auto">
-      <table class="w-full text-left text-sm" id="mainTable">
-        <thead class="bg-gray-100 text-gray-600 uppercase text-xs" id="tableHead"></thead>
-        <tbody id="tableBody" class="divide-y divide-gray-100"></tbody>
-      </table>
+    <!-- 資料呈現表格 -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm" id="mainDataTable">
+          <thead class="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider" id="tableHeader"></thead>
+          <tbody class="divide-y divide-slate-100" id="tableContent">
+            <tr>
+              <td colspan="7" class="text-center py-12 text-slate-400">
+                <i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-indigo-500 block"></i>
+                正在載入資料中，請稍候...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
-  </div>
+
+  </main>
 
   <script>
-    // 部署 GAS 後取得的網頁應用程式 URL
-    const GAS_ENDPOINT = "YOUR_APPS_SCRIPT_WEB_APP_URL";
-    let activeTab = "Stock in TW";
-    let cachedData = [];
+    /**
+     * 【設定區】請填入您部署的 Google Apps Script 網頁應用程式網址 (Web App URL)
+     */
+    const GAS_API_URL = "YOUR_GOOGLE_APPS_SCRIPT_URL_HERE";
+
+    let currentTab = "Stock in TW";
+    let rawDataList = [];
+    let stockDataTW = []; // 快取總庫存以便計算
 
     window.onload = () => {
-      document.getElementById("rDate").value = new Date().toISOString().split("T")[0];
+      document.getElementById("inputDate").value = new Date().toISOString().split("T")[0];
       fetchCurrentTab();
     };
 
-    function switchTab(name) {
-      activeTab = name;
+    // 切換分頁標籤
+    function switchTab(sheetName) {
+      currentTab = sheetName;
       document.querySelectorAll(".tab-btn").forEach(btn => {
-        const selected = btn.innerText.includes(name);
-        btn.className = `tab-btn px-4 py-2 font-medium border-b-2 ${selected ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-blue-600"}`;
+        btn.className = "tab-btn px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition";
       });
-
-      const actionBox = document.getElementById("actionBox");
-      if (activeTab === "Stock in TW") {
-        actionBox.classList.add("hidden");
-      } else {
-        actionBox.classList.remove("hidden");
-        document.getElementById("panelTitle").innerText = `新增進出紀錄（分頁：${activeTab}）`;
+      const activeId = "tab-" + sheetName.replace(/\s+/g, '-');
+      const activeBtn = document.getElementById(activeId);
+      if (activeBtn) {
+        activeBtn.className = "tab-btn px-4 py-2 rounded-lg text-sm font-semibold transition bg-indigo-50 text-indigo-700 border border-indigo-200";
       }
+
+      const actionCard = document.getElementById("actionCard");
+      if (currentTab === "Stock in TW") {
+        actionCard.classList.add("hidden");
+      } else {
+        actionCard.classList.remove("hidden");
+        document.getElementById("activeTabNameTitle").innerText = currentTab;
+      }
+      document.getElementById("statCurrentTab").innerText = currentTab;
       fetchCurrentTab();
     }
 
+    // 取得資料
     async function fetchCurrentTab() {
-      const tbody = document.getElementById("tableBody");
-      tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-gray-400">正在讀取 Google Sheets 資料...</td></tr>`;
+      const tbody = document.getElementById("tableContent");
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center py-12 text-slate-400"><i class="fa-solid fa-spinner fa-spin text-2xl mb-2 text-indigo-500 block"></i>正在從 Google Sheets 同步資料...</td></tr>`;
 
-      const targetUrl = activeTab === "Stock in TW" 
-        ? `${GAS_ENDPOINT}?action=getStock` 
-        : `${GAS_ENDPOINT}?action=getLogs&sheet=${encodeURIComponent(activeTab)}`;
+      const endpoint = currentTab === "Stock in TW"
+        ? `${GAS_API_URL}?action=getStock`
+        : `${GAS_API_URL}?action=getLogs&sheet=${encodeURIComponent(currentTab)}`;
 
       try {
-        const res = await fetch(targetUrl);
+        const res = await fetch(endpoint);
         const result = await res.json();
-        cachedData = result.data || [];
-        renderTable(cachedData);
-      } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-red-500">無法連線至 Google Sheets，請確認 GAS 部署授權已設為「所有人」。</td></tr>`;
+        rawDataList = result.data || [];
+        renderTable(rawDataList);
+        updateStatistics(rawDataList);
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-10 text-rose-500 font-medium"><i class="fa-solid fa-triangle-exclamation text-xl mb-1 block"></i>無法連線至 API，請確認 Apps Script 權限設為「所有人」。</td></tr>`;
       }
     }
 
-    function renderTable(rows) {
-      const thead = document.getElementById("tableHead");
-      const tbody = document.getElementById("tableBody");
+    // 渲染資料表
+    function renderTable(data) {
+      const thead = document.getElementById("tableHeader");
+      const tbody = document.getElementById("tableContent");
+      document.getElementById("filteredCount").innerText = data.length;
 
-      if (activeTab === "Stock in TW") {
+      if (currentTab === "Stock in TW") {
         thead.innerHTML = `
           <tr>
-            <th class="p-3">Location</th><th class="p-3">P/N</th><th class="p-3">Parts Name</th>
-            <th class="p-3">QTY</th><th class="p-3">Model</th><th class="p-3">Remark</th>
+            <th class="px-4 py-3">Location</th>
+            <th class="px-4 py-3">P/N</th>
+            <th class="px-4 py-3">Parts Name</th>
+            <th class="px-4 py-3">QTY (在庫數)</th>
+            <th class="px-4 py-3">Model</th>
+            <th class="px-4 py-3">Remark</th>
           </tr>
         `;
-        tbody.innerHTML = rows.map(r => `
-          <tr class="hover:bg-gray-50">
-            <td class="p-3 font-semibold">${r.location || '-'}</td>
-            <td class="p-3 font-mono">${r.pn || '-'}</td>
-            <td class="p-3">${r.partsName || '-'}</td>
-            <td class="p-3 font-bold ${r.qty > 0 ? 'text-green-600' : 'text-red-500'}">${r.qty}</td>
-            <td class="p-3 text-gray-500">${r.model || '-'}</td>
-            <td class="p-3 text-gray-500">${r.remark || '-'}</td>
+        if (data.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400">目前尚無庫存資料</td></tr>`;
+          return;
+        }
+        tbody.innerHTML = data.map(r => `
+          <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+            <td class="px-4 py-3 font-semibold text-slate-700">${r.location || '-'}</td>
+            <td class="px-4 py-3 font-mono text-xs text-slate-600">${r.pn || '-'}</td>
+            <td class="px-4 py-3 font-medium text-slate-900">${r.partsName || '-'}</td>
+            <td class="px-4 py-3 font-bold ${r.qty > 0 ? 'text-emerald-600' : 'text-rose-500'}">${r.qty}</td>
+            <td class="px-4 py-3 text-slate-500 text-xs">${r.model || '-'}</td>
+            <td class="px-4 py-3 text-slate-500 text-xs">${r.remark || '-'}</td>
           </tr>
         `).join('');
       } else {
         thead.innerHTML = `
           <tr>
-            <th class="p-3">Date</th><th class="p-3">P/N (If any)</th><th class="p-3">Parts Name</th>
-            <th class="p-3">Model</th><th class="p-3 text-green-700">IN</th><th class="p-3 text-red-700">OUT</th><th class="p-3">Remark</th>
+            <th class="px-4 py-3">Date</th>
+            <th class="px-4 py-3">P/N (If any)</th>
+            <th class="px-4 py-3">Parts Name</th>
+            <th class="px-4 py-3">Model</th>
+            <th class="px-4 py-3 text-emerald-600 font-bold">IN</th>
+            <th class="px-4 py-3 text-rose-500 font-bold">OUT</th>
+            <th class="px-4 py-3">Remark</th>
+            <th class="px-4 py-3 text-right">操作</th>
           </tr>
         `;
-        tbody.innerHTML = rows.map(r => `
-          <tr class="hover:bg-gray-50">
-            <td class="p-3 text-gray-600">${r.date ? r.date.toString().substring(0, 10) : '-'}</td>
-            <td class="p-3 font-mono">${r.pn || '-'}</td>
-            <td class="p-3 font-medium">${r.partsName || '-'}</td>
-            <td class="p-3 text-gray-500">${r.model || '-'}</td>
-            <td class="p-3 text-green-600 font-semibold">${r.inQty}</td>
-            <td class="p-3 text-red-600 font-semibold">${r.outQty}</td>
-            <td class="p-3 text-gray-500">${r.remark || '-'}</td>
+        if (data.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-slate-400">此分頁尚無進出明細紀錄</td></tr>`;
+          return;
+        }
+        tbody.innerHTML = data.map(r => `
+          <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+            <td class="px-4 py-3 text-xs text-slate-500 font-mono">${r.date || '-'}</td>
+            <td class="px-4 py-3 font-mono text-xs text-slate-600">${r.pn || '-'}</td>
+            <td class="px-4 py-3 font-medium text-slate-900">${r.partsName || '-'}</td>
+            <td class="px-4 py-3 text-slate-500 text-xs">${r.model || '-'}</td>
+            <td class="px-4 py-3 font-bold text-emerald-600">${r.inQty}</td>
+            <td class="px-4 py-3 font-bold text-rose-500">${r.outQty}</td>
+            <td class="px-4 py-3 text-slate-500 text-xs">${r.remark || '-'}</td>
+            <td class="px-4 py-3 text-right">
+              <button onclick="deleteRecord(${r.rowId})" class="text-rose-500 hover:text-rose-700 text-xs font-semibold px-2 py-1 rounded hover:bg-rose-50 transition">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </td>
           </tr>
         `).join('');
       }
     }
 
+    // 關鍵字即時篩選
     function applyFilter() {
-      const q = document.getElementById("filterInput").value.trim().toLowerCase();
-      const filtered = cachedData.filter(item => Object.values(item).some(val => String(val).toLowerCase().includes(q)));
+      const kw = document.getElementById("searchKeyword").value.trim().toLowerCase();
+      if (!kw) {
+        renderTable(rawDataList);
+        return;
+      }
+      const filtered = rawDataList.filter(item => 
+        Object.values(item).some(v => String(v).toLowerCase().includes(kw))
+      );
       renderTable(filtered);
     }
 
-    async function submitSingleRecord(e) {
+    // 更新資訊小卡
+    function updateStatistics(data) {
+      document.getElementById("statTotalItems").innerText = data.length;
+      if (currentTab === "Stock in TW") {
+        document.getElementById("statLabel2").innerText = "在席有庫存筆數";
+        document.getElementById("statLabel3").innerText = "缺料 / 零庫存筆數";
+        const inStockCount = data.filter(d => Number(d.qty) > 0).length;
+        document.getElementById("statInStock").innerText = inStockCount;
+        document.getElementById("statOutStock").innerText = data.length - inStockCount;
+      } else {
+        document.getElementById("statLabel2").innerText = "累計入庫數 (IN)";
+        document.getElementById("statLabel3").innerText = "累計出庫數 (OUT)";
+        const totalIn = data.reduce((acc, cur) => acc + (Number(cur.inQty) || 0), 0);
+        const totalOut = data.reduce((acc, cur) => acc + (Number(cur.outQty) || 0), 0);
+        document.getElementById("statInStock").innerText = totalIn;
+        document.getElementById("statOutStock").innerText = totalOut;
+      }
+    }
+
+    // 單筆新增表單送出
+    async function handleRecordSubmit(e) {
       e.preventDefault();
       const payload = {
         action: "addRecord",
-        sheet: activeTab,
-        date: document.getElementById("rDate").value,
-        pn: document.getElementById("rPn").value,
-        partsName: document.getElementById("rName").value,
-        model: document.getElementById("rModel").value,
-        inQty: document.getElementById("rIn").value,
-        outQty: document.getElementById("rOut").value,
-        remark: document.getElementById("rRemark").value
+        sheet: currentTab,
+        date: document.getElementById("inputDate").value,
+        pn: document.getElementById("inputPn").value.trim(),
+        partsName: document.getElementById("inputPartsName").value.trim(),
+        model: document.getElementById("inputModel").value.trim(),
+        inQty: Number(document.getElementById("inputInQty").value) || 0,
+        outQty: Number(document.getElementById("inputOutQty").value) || 0,
+        remark: document.getElementById("inputRemark").value.trim()
       };
 
-      await fetch(GAS_ENDPOINT, { method: "POST", body: JSON.stringify(payload) });
-      alert("儲存成功！");
-      document.getElementById("recordForm").reset();
-      document.getElementById("rDate").value = new Date().toISOString().split("T")[0];
-      fetchCurrentTab();
+      try {
+        await fetch(GAS_API_URL, { method: "POST", body: JSON.stringify(payload) });
+        alert("儲存成功！");
+        document.getElementById("recordForm").reset();
+        document.getElementById("inputDate").value = new Date().toISOString().split("T")[0];
+        fetchCurrentTab();
+      } catch (err) {
+        alert("儲存失敗：" + err.message);
+      }
     }
 
-    function uploadCSV(e) {
+    // 刪除單筆紀錄
+    async function deleteRecord(rowId) {
+      if (!confirm(`確定要刪除第 ${rowId} 列這筆紀錄嗎？`)) return;
+      try {
+        await fetch(GAS_API_URL, {
+          method: "POST",
+          body: JSON.stringify({ action: "deleteRow", sheet: currentTab, rowId: rowId })
+        });
+        fetchCurrentTab();
+      } catch (err) {
+        alert("刪除失敗：" + err.message);
+      }
+    }
+
+    // 批次 CSV 上傳
+    function handleCSVFile(e) {
       const file = e.target.files[0];
       if (!file) return;
 
       Papa.parse(file, {
         header: true,
         skipEmptyLines: true,
-        complete: async function(res) {
-          const records = res.data.map(row => ({
-            date: row["Date"] || row["date"],
-            pn: row["P/N (If any)"] || row["P/N"] || row["pn"],
-            partsName: row["Parts Name"] || row["partsName"],
-            model: row["Model"] || row["model"],
-            inQty: row["IN"] || row["in"] || 0,
-            outQty: row["OUT"] || row["out"] || 0,
-            remark: row["Remark"] || row["remark"]
-          }));
+        complete: async function(results) {
+          const records = results.data.map(r => ({
+            date: r["Date"] || r["date"] || "",
+            pn: r["P/N (If any)"] || r["P/N"] || r["pn"] || "",
+            partsName: r["Parts Name"] || r["partsName"] || "",
+            model: r["Model"] || r["model"] || "",
+            inQty: Number(r["IN"] || r["in"] || 0),
+            outQty: Number(r["OUT"] || r["out"] || 0),
+            remark: r["Remark"] || r["remark"] || ""
+          })).filter(r => r.partsName !== "");
 
-          await fetch(GAS_ENDPOINT, {
+          if (records.length === 0) {
+            alert("CSV 內容為空或欄位名稱不符！");
+            return;
+          }
+
+          await fetch(GAS_API_URL, {
             method: "POST",
-            body: JSON.stringify({ action: "batchImport", sheet: activeTab, records })
+            body: JSON.stringify({ action: "batchImport", sheet: currentTab, records: records })
           });
+
           alert(`成功匯入 ${records.length} 筆資料！`);
+          e.target.value = "";
           fetchCurrentTab();
         }
       });
+    }
+
+    // 匯出目前分頁為 Excel
+    function exportToExcel() {
+      if (rawDataList.length === 0) {
+        alert("無資料可匯出！");
+        return;
+      }
+      const ws = XLSX.utils.json_to_sheet(rawDataList);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, currentTab);
+      XLSX.writeFile(wb, `${currentTab}_${new Date().toISOString().split("T")[0]}.xlsx`);
     }
   </script>
 </body>
