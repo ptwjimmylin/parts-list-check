@@ -17,7 +17,6 @@
   <style>
     body { font-family: 'Inter', sans-serif; }
     .font-mono { font-family: 'JetBrains Mono', monospace; }
-    /* 自訂下拉自動補全選單樣式 */
     .autocomplete-list {
       max-height: 200px;
       overflow-y: auto;
@@ -39,7 +38,7 @@
             零件庫房進出管理系統
             <span class="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">Pro</span>
           </h1>
-          <p class="text-xs text-slate-400">智慧 P/N & 品名聯想輸入 ｜ 跨庫房同件歸併 ｜ 覆寫匯入</p>
+          <p class="text-xs text-slate-400">智慧 P/N & 品名聯想 ｜ QTY 多維篩選 ｜ 最低安全水位預警</p>
         </div>
       </div>
       <div class="flex items-center gap-2">
@@ -55,7 +54,7 @@
 
   <main class="max-w-7xl mx-auto p-4 sm:p-6 space-y-6 flex-1 w-full">
 
-    <!-- 8 大分頁切換按鈕 (膠囊分段樣式) -->
+    <!-- 8 大分頁切換按鈕 -->
     <div class="bg-slate-800/60 p-1.5 rounded-2xl border border-slate-800 backdrop-blur overflow-x-auto flex gap-1.5" id="tabGroup">
       <button onclick="switchTab('Stock in TW')" id="tab-Stock-in-TW" class="tab-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition bg-indigo-600 text-white shadow-md shadow-indigo-600/30 flex items-center gap-1.5 whitespace-nowrap">
         <i class="fa-solid fa-warehouse"></i> Stock in TW (總庫存)
@@ -69,31 +68,31 @@
       <button onclick="switchTab('clean room')" id="tab-clean-room" class="tab-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition whitespace-nowrap">clean room</button>
     </div>
 
-    <!-- 摘要指標卡片 (現代暗色玻璃卡片) -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <div class="bg-slate-800/40 border border-slate-700/60 p-4 rounded-2xl backdrop-blur relative overflow-hidden">
+    <!-- 摘要指標卡片 (可直接點擊進行快速 QTY 篩選) -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div onclick="setQtyFilter('all')" class="bg-slate-800/40 border border-slate-700/60 hover:border-indigo-500/50 p-4 rounded-2xl backdrop-blur relative overflow-hidden cursor-pointer transition">
         <div class="absolute -right-3 -bottom-3 text-slate-700/20 text-6xl"><i class="fa-solid fa-list-ol"></i></div>
         <p class="text-xs font-medium text-slate-400 mb-1">分頁項目總數</p>
         <p class="text-2xl sm:text-3xl font-extrabold text-white" id="statTotalItems">0</p>
       </div>
-      <div class="bg-slate-800/40 border border-slate-700/60 p-4 rounded-2xl backdrop-blur relative overflow-hidden">
+      <div onclick="setQtyFilter('inStock')" class="bg-slate-800/40 border border-slate-700/60 hover:border-emerald-500/50 p-4 rounded-2xl backdrop-blur relative overflow-hidden cursor-pointer transition">
         <div class="absolute -right-3 -bottom-3 text-emerald-500/10 text-6xl"><i class="fa-solid fa-cubes"></i></div>
-        <p class="text-xs font-medium text-slate-400 mb-1" id="statLabel2">在庫品項數</p>
+        <p class="text-xs font-medium text-slate-400 mb-1" id="statLabel2">在席在庫數量 (QTY > 0)</p>
         <p class="text-2xl sm:text-3xl font-extrabold text-emerald-400" id="statInStock">0</p>
       </div>
-      <div class="bg-slate-800/40 border border-slate-700/60 p-4 rounded-2xl backdrop-blur relative overflow-hidden">
+      <div onclick="setQtyFilter('zeroStock')" class="bg-slate-800/40 border border-slate-700/60 hover:border-rose-500/50 p-4 rounded-2xl backdrop-blur relative overflow-hidden cursor-pointer transition">
         <div class="absolute -right-3 -bottom-3 text-rose-500/10 text-6xl"><i class="fa-solid fa-triangle-exclamation"></i></div>
-        <p class="text-xs font-medium text-slate-400 mb-1" id="statLabel3">缺料 / 零庫存品項</p>
+        <p class="text-xs font-medium text-slate-400 mb-1" id="statLabel3">缺料 / 零庫存 (QTY ≤ 0)</p>
         <p class="text-2xl sm:text-3xl font-extrabold text-rose-400" id="statOutStock">0</p>
       </div>
-      <div class="bg-slate-800/40 border border-slate-700/60 p-4 rounded-2xl backdrop-blur relative overflow-hidden">
-        <div class="absolute -right-3 -bottom-3 text-indigo-500/10 text-6xl"><i class="fa-solid fa-folder-open"></i></div>
-        <p class="text-xs font-medium text-slate-400 mb-1">當前檢視庫房</p>
-        <p class="text-xl sm:text-2xl font-extrabold text-indigo-400 truncate" id="statCurrentTab">Stock in TW</p>
+      <div onclick="setQtyFilter('belowSafety')" class="bg-slate-800/40 border border-slate-700/60 hover:border-amber-500/50 p-4 rounded-2xl backdrop-blur relative overflow-hidden cursor-pointer transition">
+        <div class="absolute -right-3 -bottom-3 text-amber-500/10 text-6xl"><i class="fa-solid fa-bell"></i></div>
+        <p class="text-xs font-medium text-slate-400 mb-1">低於最低安全水位</p>
+        <p class="text-2xl sm:text-3xl font-extrabold text-amber-400" id="statSafetyAlert">0</p>
       </div>
     </div>
 
-    <!-- 頂部快捷操作面板 -->
+    <!-- 頂部操作專區 -->
     <div class="bg-slate-800/50 border border-slate-700/80 rounded-2xl p-5 shadow-lg backdrop-blur space-y-4">
       <div class="flex flex-wrap justify-between items-center pb-3 border-b border-slate-700 gap-3">
         <div class="flex items-center gap-2.5">
@@ -117,25 +116,39 @@
             <p class="text-xs font-bold text-slate-200">
               批次 CSV 檔案匯入（<span class="text-amber-400 font-extrabold">直接覆寫舊資料，不疊加</span>）至 <span id="importTargetLabel" class="text-indigo-400 font-mono font-bold">Stock in TW</span>
             </p>
-            <p class="text-[11px] text-slate-400" id="importColsHint">支援欄位：Location, P/N, parts name, QTY, model, remark</p>
+            <p class="text-[11px] text-slate-400" id="importColsHint">支援欄位：Location, P/N, parts name, QTY, model, remark, MinQTY</p>
           </div>
         </div>
         <input type="file" id="csvFileInput" accept=".csv" onchange="handleCSVFile(event)" class="text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-amber-600 file:text-white hover:file:bg-amber-500 cursor-pointer">
       </div>
     </div>
 
-    <!-- 搜尋工具列 -->
-    <div class="flex flex-col sm:flex-row justify-between items-center gap-3">
-      <div class="relative w-full sm:w-96">
-        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-xs"></i>
-        <input type="text" id="searchKeyword" oninput="applyFilter()" placeholder="快速過濾料號、品名、型號、備註..." class="w-full pl-9 pr-4 py-2 text-xs bg-slate-800/80 border border-slate-700 rounded-xl text-white placeholder-slate-400 shadow-inner focus:outline-none focus:border-indigo-500 transition">
+    <!-- 搜尋與 QTY Filter 工具列 -->
+    <div class="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3">
+      <div class="flex flex-wrap items-center gap-2">
+        <div class="relative w-full sm:w-80">
+          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-xs"></i>
+          <input type="text" id="searchKeyword" oninput="applyFilter()" placeholder="快速過濾料號、品名、型號、備註..." class="w-full pl-9 pr-4 py-2 text-xs bg-slate-800/80 border border-slate-700 rounded-xl text-white placeholder-slate-400 shadow-inner focus:outline-none focus:border-indigo-500 transition">
+        </div>
+
+        <!-- QTY 專用篩選下拉選單 -->
+        <div class="flex items-center gap-1.5">
+          <label class="text-xs text-slate-400 whitespace-nowrap"><i class="fa-solid fa-filter text-indigo-400 mr-1"></i>庫存篩選：</label>
+          <select id="qtyFilterSelect" onchange="applyFilter()" class="bg-slate-800 border border-slate-700 text-xs text-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-500 cursor-pointer">
+            <option value="all">全部品項 (All)</option>
+            <option value="inStock">有庫存 (QTY > 0)</option>
+            <option value="zeroStock">缺料 / 零庫存 (QTY ≤ 0)</option>
+            <option value="belowSafety">⚠️ 低於最低安全水位 (QTY ≤ Min)</option>
+          </select>
+        </div>
       </div>
-      <div class="text-xs text-slate-400 font-medium self-end sm:self-center">
+
+      <div class="text-xs text-slate-400 font-medium self-end md:self-center">
         共符合 <span id="filteredCount" class="font-bold text-indigo-400 font-mono text-sm">0</span> 筆資料
       </div>
     </div>
 
-    <!-- 資料呈現表格 (科技暗色風格) -->
+    <!-- 資料呈現表格 -->
     <div class="bg-slate-800/40 rounded-2xl shadow-xl border border-slate-700/80 overflow-hidden backdrop-blur">
       <div class="overflow-x-auto">
         <table class="w-full text-left text-xs" id="mainDataTable">
@@ -154,7 +167,7 @@
 
   </main>
 
-  <!-- 彈窗：新增項目 (含智慧 P/N & 品名自動下拉補全) -->
+  <!-- 彈窗：新增項目 -->
   <div id="addModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
     <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
       <div class="flex justify-between items-center pb-3 border-b border-slate-800">
@@ -165,8 +178,6 @@
       </div>
 
       <form id="addForm" onsubmit="handleAddSubmit(event)" class="space-y-3.5 text-xs">
-        
-        <!-- Stock in TW 專用欄位 -->
         <div id="stockOnlyFields" class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-slate-400 font-medium mb-1">Location 存放庫房 *</label>
@@ -186,7 +197,6 @@
           </div>
         </div>
 
-        <!-- 庫房流水帳專用欄位 (純數字日期) -->
         <div id="logOnlyFields" class="hidden">
           <div class="grid grid-cols-3 gap-3">
             <div>
@@ -204,7 +214,6 @@
           </div>
         </div>
 
-        <!-- 智慧 P/N 輸入框 (含即時快顯下拉清單) -->
         <div class="relative">
           <label class="block text-slate-400 font-medium mb-1 flex justify-between">
             <span>P/N 料號</span>
@@ -214,7 +223,6 @@
           <ul id="addPnSuggestions" class="autocomplete-list absolute left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl hidden z-50 divide-y divide-slate-700"></ul>
         </div>
 
-        <!-- 智慧 Parts Name 輸入框 (含即時快顯下拉清單) -->
         <div class="relative">
           <label class="block text-slate-400 font-medium mb-1 flex justify-between">
             <span>Parts Name 零件品名 *</span>
@@ -224,13 +232,17 @@
           <ul id="addNameSuggestions" class="autocomplete-list absolute left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl hidden z-50 divide-y divide-slate-700"></ul>
         </div>
 
-        <!-- Model 型號 -->
-        <div>
-          <label class="block text-slate-400 font-medium mb-1">Model 機種 / 型號</label>
-          <input type="text" id="addModel" placeholder="例如 CG4100 / 92xx" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-indigo-500">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-400 font-medium mb-1">Model 機種 / 型號</label>
+            <input type="text" id="addModel" placeholder="例如 CG4100 / 92xx" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="block text-amber-400 font-medium mb-1"><i class="fa-solid fa-shield-halved mr-1"></i>最低安全水位 (Min QTY)</label>
+            <input type="number" id="addMinQty" value="1" min="0" placeholder="低於此值警示" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white font-mono focus:outline-none focus:border-amber-500">
+          </div>
         </div>
 
-        <!-- Remark 備註 -->
         <div>
           <label class="block text-slate-400 font-medium mb-1">Remark 備註</label>
           <input type="text" id="addRemark" placeholder="事由 / 來源說明" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-indigo-500">
@@ -239,6 +251,41 @@
         <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
           <button type="button" onclick="closeAddModal()" class="px-4 py-2 border border-slate-700 rounded-xl text-slate-300 hover:bg-slate-800 font-medium transition">取消</button>
           <button type="submit" id="btnSaveAdd" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold shadow-lg shadow-indigo-600/30 transition">確認儲存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 彈窗：設定零件最低安全水位 (Safety Stock Modal) -->
+  <div id="safetyModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+      <div class="flex justify-between items-center pb-3 border-b border-slate-800">
+        <h3 class="font-bold text-sm text-white flex items-center gap-2">
+          <i class="fa-solid fa-shield-halved text-amber-400"></i> 設定零件最低安全水位
+        </h3>
+        <button onclick="closeSafetyModal()" class="text-slate-400 hover:text-white text-lg">&times;</button>
+      </div>
+
+      <form id="safetyForm" onsubmit="handleSafetySubmit(event)" class="space-y-3.5 text-xs">
+        <input type="hidden" id="safetyPn">
+        <input type="hidden" id="safetyPartsName">
+        <input type="hidden" id="safetyLocation">
+        <input type="hidden" id="safetyModel">
+
+        <div>
+          <p class="text-slate-400">零件品名：<span id="safetyPartTitle" class="text-white font-bold"></span></p>
+          <p class="text-slate-400">零件料號：<span id="safetyPnTitle" class="text-cyan-400 font-mono"></span></p>
+        </div>
+
+        <div>
+          <label class="block text-amber-400 font-medium mb-1">最低安全庫存量 (Min QTY) *</label>
+          <input type="number" id="safetyInputMin" min="0" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white font-mono text-sm focus:outline-none focus:border-amber-500" required>
+          <p class="text-[11px] text-slate-500 mt-1">當總庫存小於或等於此數值時，系統將主動發出缺料警告標籤。</p>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
+          <button type="button" onclick="closeSafetyModal()" class="px-4 py-2 border border-slate-700 rounded-xl text-slate-300 hover:bg-slate-800 font-medium transition">取消</button>
+          <button type="submit" id="btnSaveSafety" class="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-semibold shadow-lg shadow-amber-600/30 transition">儲存水位</button>
         </div>
       </form>
     </div>
@@ -299,13 +346,13 @@
 
   <script>
     /**
-     * 【設定區】請填入您部署的 Google Apps Script Web App URL (結尾必須是 /exec)
+     * 【重要】請將下方換成您的 Google Apps Script Web App URL (結尾必須是 /exec)
      */
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzOo9vzDRGMVsf1aivn6ZBlW-ecfea-Rud1izva7TFxlxX2oYmE5G6nE6hLYn-pyZyelQ/exec";
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbw458QRU7R_L2Md3d6kkdAd54j5I6ZAvf1KqUFMZjmCYbEbGsCk2FfZwGKXr7P36R-tTg/exec";
 
     let currentTab = "Stock in TW";
     let rawDataList = [];
-    let partsCatalog = []; // 快取的現有零件字典 (供自動下拉)
+    let partsCatalog = [];
 
     function cleanDateStr(val) {
       if (!val) return '';
@@ -324,10 +371,10 @@
     window.onload = () => {
       document.getElementById("addDate").value = new Date().toISOString().split("T")[0];
       switchTab("Stock in TW");
-      loadPartsCatalog(); // 背景載入零件資料庫索引
+      // 延遲 1 秒背景載入目錄，防止阻塞畫面
+      setTimeout(loadPartsCatalog, 1000);
     };
 
-    // 關閉點擊外部時的下拉建議選單
     document.addEventListener("click", function(e) {
       if (!e.target.closest("#addPn") && !e.target.closest("#addPnSuggestions")) {
         document.getElementById("addPnSuggestions").classList.add("hidden");
@@ -337,19 +384,17 @@
       }
     });
 
-    // 載入資料庫內所有零件目錄 (去重後字典)
     async function loadPartsCatalog() {
       try {
-        const res = await fetchJSONP(`${GAS_API_URL}?action=getPartsCatalog`);
-        if (res.status === 'success') {
+        const res = await fetchJSONP(`${GAS_API_URL}?action=getPartsCatalog`, 10000);
+        if (res && res.status === 'success') {
           partsCatalog = res.data || [];
         }
       } catch (err) {
-        console.warn("無法取得零件目錄快取", err);
+        console.warn("零件快取載入失敗", err);
       }
     }
 
-    // 智慧輸入即時快顯篩選
     function onInputSearch(inputElem, fieldType) {
       const val = inputElem.value.trim().toLowerCase();
       const listElem = fieldType === 'pn' 
@@ -362,14 +407,13 @@
         return;
       }
 
-      // 依據輸入前幾個字篩選
       const matches = partsCatalog.filter(item => {
         if (fieldType === 'pn') {
           return item.pn && item.pn.toLowerCase().includes(val);
         } else {
           return item.partsName && item.partsName.toLowerCase().includes(val);
         }
-      }).slice(0, 8); // 最多呈現 8 筆
+      }).slice(0, 8);
 
       if (matches.length === 0) {
         listElem.classList.add("hidden");
@@ -390,7 +434,6 @@
       listElem.classList.remove("hidden");
     }
 
-    // 點擊下拉項目後，自動帶入全部欄位
     function applyPartSuggestion(item) {
       if (item.pn) document.getElementById("addPn").value = item.pn;
       if (item.partsName) document.getElementById("addPartsName").value = item.partsName;
@@ -400,16 +443,15 @@
       document.getElementById("addNameSuggestions").classList.add("hidden");
     }
 
-    // JSONP 跨域呼叫
-    function fetchJSONP(url) {
+    function fetchJSONP(url, timeoutMs = 15000) {
       return new Promise((resolve, reject) => {
         const callbackName = 'gasCallback_' + Math.round(100000 * Math.random());
         const script = document.createElement('script');
         
         const timer = setTimeout(() => {
           cleanup();
-          reject(new Error("連線逾時，請確認 Apps Script 權限設為『所有人』"));
-        }, 15000);
+          reject(new Error("連線逾時，請確認 Apps Script 已重新發布為『新版本』且權限設為『所有人』"));
+        }, timeoutMs);
 
         function cleanup() {
           if (window[callbackName]) delete window[callbackName];
@@ -431,7 +473,6 @@
       });
     }
 
-    // 切換分頁標籤
     function switchTab(sheetName) {
       currentTab = sheetName;
       document.querySelectorAll(".tab-btn").forEach(btn => {
@@ -449,7 +490,7 @@
 
       if (currentTab === "Stock in TW") {
         document.getElementById("btnAddBtnText").innerText = "新增庫存品項";
-        document.getElementById("importColsHint").innerText = "支援欄位：Location, P/N, parts name, QTY, model, remark";
+        document.getElementById("importColsHint").innerText = "支援欄位：Location, P/N, parts name, QTY, model, remark, MinQTY";
       } else {
         document.getElementById("btnAddBtnText").innerText = `新增 ${currentTab} 零件紀錄`;
         document.getElementById("importColsHint").innerText = "支援欄位：Date, P/N (If any), Parts Name, Model, IN, OUT, Remark";
@@ -458,7 +499,6 @@
       fetchCurrentTab();
     }
 
-    // 取得當前分頁資料
     async function fetchCurrentTab() {
       const tbody = document.getElementById("tableContent");
       tbody.innerHTML = `<tr><td colspan="8" class="text-center py-16 text-slate-400"><i class="fa-solid fa-circle-notch fa-spin text-3xl mb-3 text-indigo-400 block"></i>正在從 Google Sheets 同步資料庫中...</td></tr>`;
@@ -469,26 +509,56 @@
 
       try {
         const result = await fetchJSONP(targetUrl);
-        if (result.status === 'success') {
+        if (result && result.status === 'success') {
           rawDataList = result.data || [];
-          renderTable(rawDataList);
+          applyFilter();
           updateStatistics(rawDataList);
         } else {
-          throw new Error(result.message || "讀取失敗");
+          throw new Error(result ? result.message : "讀取失敗");
         }
       } catch (err) {
         tbody.innerHTML = `
           <tr>
             <td colspan="8" class="text-center py-16 text-rose-400">
               <i class="fa-solid fa-triangle-exclamation text-3xl mb-2 block"></i>
-              <p class="font-bold">連線失敗：${err.message}</p>
+              <p class="font-bold text-sm">連線失敗：${err.message}</p>
+              <p class="text-xs text-slate-400 mt-2">請確認 Apps Script 部署作業中有點選「編輯」並建立「新版本」。</p>
             </td>
           </tr>
         `;
       }
     }
 
-    // 渲染表格
+    function setQtyFilter(type) {
+      document.getElementById("qtyFilterSelect").value = type;
+      applyFilter();
+    }
+
+    function applyFilter() {
+      const kw = document.getElementById("searchKeyword").value.trim().toLowerCase();
+      const filterMode = document.getElementById("qtyFilterSelect").value;
+
+      let filtered = rawDataList.slice();
+
+      if (currentTab === "Stock in TW") {
+        if (filterMode === 'inStock') {
+          filtered = filtered.filter(item => Number(item.qty) > 0);
+        } else if (filterMode === 'zeroStock') {
+          filtered = filtered.filter(item => Number(item.qty) <= 0);
+        } else if (filterMode === 'belowSafety') {
+          filtered = filtered.filter(item => Number(item.qty) <= (item.minQty !== undefined ? Number(item.minQty) : 1));
+        }
+      }
+
+      if (kw) {
+        filtered = filtered.filter(item => 
+          Object.values(item).some(v => String(v).toLowerCase().includes(kw))
+        );
+      }
+
+      renderTable(filtered);
+    }
+
     function renderTable(data) {
       const thead = document.getElementById("tableHeader");
       const tbody = document.getElementById("tableContent");
@@ -501,24 +571,49 @@
             <th class="px-5 py-3.5">P/N (料號)</th>
             <th class="px-5 py-3.5">Parts Name (品名)</th>
             <th class="px-5 py-3.5">QTY (總在庫數 = IN - OUT)</th>
+            <th class="px-5 py-3.5">最低安全水位 (Min)</th>
             <th class="px-5 py-3.5">Model</th>
             <th class="px-5 py-3.5">Remark</th>
+            <th class="px-5 py-3.5 text-right">設定水位</th>
           </tr>
         `;
         if (data.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="6" class="text-center py-12 text-slate-500">目前尚無庫存資料</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="8" class="text-center py-12 text-slate-500">無符合篩選條件的庫存資料</td></tr>`;
           return;
         }
-        tbody.innerHTML = data.map(r => `
-          <tr class="hover:bg-slate-800/60 transition group">
-            <td class="px-5 py-3 font-semibold text-slate-300">${r.location || '-'}</td>
-            <td class="px-5 py-3 font-mono text-cyan-400 font-medium">${r.pn || '-'}</td>
-            <td class="px-5 py-3 font-semibold text-white">${r.partsName || '-'}</td>
-            <td class="px-5 py-3 font-mono text-sm font-bold ${r.qty > 0 ? 'text-emerald-400' : 'text-rose-400'}">${r.qty}</td>
-            <td class="px-5 py-3 text-slate-400">${r.model || '-'}</td>
-            <td class="px-5 py-3 text-slate-400">${r.remark || '-'}</td>
-          </tr>
-        `).join('');
+        tbody.innerHTML = data.map(r => {
+          const qty = Number(r.qty) || 0;
+          const minQty = r.minQty !== undefined ? Number(r.minQty) : 1;
+          const isBelowSafety = qty <= minQty;
+
+          let badgeHtml = '';
+          if (qty <= 0) {
+            badgeHtml = `<span class="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30">缺料</span>`;
+          } else if (isBelowSafety) {
+            badgeHtml = `<span class="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">低於水位</span>`;
+          }
+
+          return `
+            <tr class="hover:bg-slate-800/60 transition group ${isBelowSafety ? 'bg-amber-950/10' : ''}">
+              <td class="px-5 py-3 font-semibold text-slate-300">${r.location || '-'}</td>
+              <td class="px-5 py-3 font-mono text-cyan-400 font-medium">${r.pn || '-'}</td>
+              <td class="px-5 py-3 font-semibold text-white">${r.partsName || '-'}</td>
+              <td class="px-5 py-3 font-mono text-sm font-bold ${qty > 0 ? (isBelowSafety ? 'text-amber-400' : 'text-emerald-400') : 'text-rose-400'}">
+                ${qty} ${badgeHtml}
+              </td>
+              <td class="px-5 py-3 font-mono text-xs text-slate-300">
+                <span class="px-2 py-0.5 bg-slate-800 rounded border border-slate-700 font-bold">${minQty}</span>
+              </td>
+              <td class="px-5 py-3 text-slate-400">${r.model || '-'}</td>
+              <td class="px-5 py-3 text-slate-400">${r.remark || '-'}</td>
+              <td class="px-5 py-3 text-right">
+                <button onclick='openSafetyModal(${JSON.stringify(r)})' class="px-2.5 py-1 bg-slate-800 hover:bg-amber-600 text-slate-300 hover:text-white rounded-lg transition text-[11px] font-semibold border border-slate-700">
+                  <i class="fa-solid fa-gear mr-1"></i>設定
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join('');
       } else {
         thead.innerHTML = `
           <tr>
@@ -558,28 +653,16 @@
       }
     }
 
-    // 關鍵字搜尋
-    function applyFilter() {
-      const kw = document.getElementById("searchKeyword").value.trim().toLowerCase();
-      if (!kw) {
-        renderTable(rawDataList);
-        return;
-      }
-      const filtered = rawDataList.filter(item => 
-        Object.values(item).some(v => String(v).toLowerCase().includes(kw))
-      );
-      renderTable(filtered);
-    }
-
-    // 更新資訊卡
     function updateStatistics(data) {
       document.getElementById("statTotalItems").innerText = data.length;
       if (currentTab === "Stock in TW") {
-        document.getElementById("statLabel2").innerText = "在庫品項數";
-        document.getElementById("statLabel3").innerText = "缺料 / 零庫存品項";
+        document.getElementById("statLabel2").innerText = "在席有庫存品項 (QTY > 0)";
+        document.getElementById("statLabel3").innerText = "缺料 / 零庫存 (QTY ≤ 0)";
         const inStockCount = data.filter(d => Number(d.qty) > 0).length;
+        const belowSafetyCount = data.filter(d => Number(d.qty) <= (d.minQty !== undefined ? Number(d.minQty) : 1)).length;
         document.getElementById("statInStock").innerText = inStockCount;
         document.getElementById("statOutStock").innerText = data.length - inStockCount;
+        document.getElementById("statSafetyAlert").innerText = belowSafetyCount;
       } else {
         document.getElementById("statLabel2").innerText = "累計入庫數 (IN)";
         document.getElementById("statLabel3").innerText = "累計出庫數 (OUT)";
@@ -587,10 +670,10 @@
         const totalOut = data.reduce((acc, cur) => acc + (Number(cur.outQty) || 0), 0);
         document.getElementById("statInStock").innerText = totalIn;
         document.getElementById("statOutStock").innerText = totalOut;
+        document.getElementById("statSafetyAlert").innerText = "-";
       }
     }
 
-    // 打開新增彈窗
     function openAddModal() {
       document.getElementById("addForm").reset();
       document.getElementById("addDate").value = new Date().toISOString().split("T")[0];
@@ -613,7 +696,6 @@
       document.getElementById("addModal").classList.add("hidden");
     }
 
-    // 儲存新增
     async function handleAddSubmit(e) {
       e.preventDefault();
       const btn = document.getElementById("btnSaveAdd");
@@ -630,6 +712,7 @@
           partsName: document.getElementById("addPartsName").value.trim(),
           qty: Number(document.getElementById("addStockQty").value) || 0,
           model: document.getElementById("addModel").value.trim(),
+          minQty: Number(document.getElementById("addMinQty").value) || 1,
           remark: document.getElementById("addRemark").value.trim()
         };
       } else {
@@ -655,7 +738,7 @@
         });
         closeAddModal();
         alert("新增成功！");
-        loadPartsCatalog(); // 刷新零件目錄快取
+        setTimeout(loadPartsCatalog, 1000);
         setTimeout(fetchCurrentTab, 1500);
       } catch (err) {
         alert("新增失敗：" + err.message);
@@ -665,7 +748,54 @@
       }
     }
 
-    // 打開編輯彈窗
+    function openSafetyModal(record) {
+      document.getElementById("safetyPartTitle").innerText = record.partsName || '-';
+      document.getElementById("safetyPnTitle").innerText = record.pn || '無 P/N';
+      document.getElementById("safetyPartsName").value = record.partsName || '';
+      document.getElementById("safetyPn").value = record.pn || '';
+      document.getElementById("safetyLocation").value = record.location || '';
+      document.getElementById("safetyModel").value = record.model || '';
+      document.getElementById("safetyInputMin").value = record.minQty !== undefined ? record.minQty : 1;
+      document.getElementById("safetyModal").classList.remove("hidden");
+    }
+
+    function closeSafetyModal() {
+      document.getElementById("safetyModal").classList.add("hidden");
+    }
+
+    async function handleSafetySubmit(e) {
+      e.preventDefault();
+      const btn = document.getElementById("btnSaveSafety");
+      btn.disabled = true;
+      btn.innerText = "儲存中...";
+
+      const payload = {
+        action: "updateSafetyStock",
+        partsName: document.getElementById("safetyPartsName").value,
+        pn: document.getElementById("safetyPn").value,
+        location: document.getElementById("safetyLocation").value,
+        model: document.getElementById("safetyModel").value,
+        minQty: Number(document.getElementById("safetyInputMin").value) || 1
+      };
+
+      try {
+        await fetch(GAS_API_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        closeSafetyModal();
+        alert("最低安全水位設定成功！");
+        setTimeout(fetchCurrentTab, 1500);
+      } catch (err) {
+        alert("設定失敗：" + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "儲存水位";
+      }
+    }
+
     function openEditModal(record) {
       document.getElementById("editRowId").value = record.rowId;
       document.getElementById("editDate").value = cleanDateStr(record.date) || new Date().toISOString().split("T")[0];
@@ -682,7 +812,6 @@
       document.getElementById("editModal").classList.add("hidden");
     }
 
-    // 儲存編輯
     async function handleEditSubmit(e) {
       e.preventDefault();
       const btn = document.getElementById("btnSaveEdit");
@@ -720,7 +849,6 @@
       }
     }
 
-    // 刪除紀錄
     async function deleteRecord(rowId) {
       if (!confirm(`確定要刪除此筆明細紀錄嗎？`)) return;
       try {
@@ -736,7 +864,6 @@
       }
     }
 
-    // 批次 CSV 覆寫匯入
     function handleCSVFile(e) {
       const file = e.target.files[0];
       if (!file) return;
@@ -759,6 +886,7 @@
               partsName: r["parts name"] || r["Parts Name"] || r["partsName"] || "",
               qty: Number(r["QTY"] || r["qty"] || 0),
               model: r["model"] || r["Model"] || "",
+              minQty: Number(r["MinQTY"] || r["minQty"] || 1),
               remark: r["remark"] || r["Remark"] || ""
             })).filter(r => r.partsName !== "");
           } else {
@@ -791,13 +919,12 @@
 
           alert(`已成功覆寫匯入 ${records.length} 筆資料！`);
           e.target.value = "";
-          loadPartsCatalog();
+          setTimeout(loadPartsCatalog, 1000);
           setTimeout(fetchCurrentTab, 2000);
         }
       });
     }
 
-    // 匯出 Excel
     function exportToExcel() {
       if (rawDataList.length === 0) {
         alert("目前分頁無資料可匯出！");
