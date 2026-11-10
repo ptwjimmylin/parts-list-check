@@ -26,7 +26,7 @@
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen antialiased flex flex-col">
 
-  <!-- 頂部高質感導航列 -->
+  <!-- 頂部導航列 -->
   <header class="bg-slate-900/80 backdrop-blur border-b border-slate-800 sticky top-0 z-40">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap justify-between items-center gap-3">
       <div class="flex items-center space-x-3">
@@ -126,13 +126,11 @@
     <!-- 搜尋與 QTY Filter 工具列 -->
     <div class="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3">
       <div class="flex flex-wrap items-center gap-2">
-        <!-- 搜尋列 -->
         <div class="relative w-full sm:w-80">
           <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-xs"></i>
           <input type="text" id="searchKeyword" oninput="applyFilter()" placeholder="快速過濾料號、品名、型號、備註..." class="w-full pl-9 pr-4 py-2 text-xs bg-slate-800/80 border border-slate-700 rounded-xl text-white placeholder-slate-400 shadow-inner focus:outline-none focus:border-indigo-500 transition">
         </div>
 
-        <!-- QTY 專用篩選下拉選單 (Filter) -->
         <div class="flex items-center gap-1.5">
           <label class="text-xs text-slate-400 whitespace-nowrap"><i class="fa-solid fa-filter text-indigo-400 mr-1"></i>庫存篩選：</label>
           <select id="qtyFilterSelect" onchange="applyFilter()" class="bg-slate-800 border border-slate-700 text-xs text-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-500 cursor-pointer">
@@ -377,7 +375,8 @@
     window.onload = () => {
       document.getElementById("addDate").value = new Date().toISOString().split("T")[0];
       switchTab("Stock in TW");
-      loadPartsCatalog();
+      // 延遲 1 秒後再背景加載零件目錄，避免同時向 Google 請求造成排隊卡住
+      setTimeout(loadPartsCatalog, 1000);
     };
 
     document.addEventListener("click", function(e) {
@@ -391,12 +390,12 @@
 
     async function loadPartsCatalog() {
       try {
-        const res = await fetchJSONP(`${GAS_API_URL}?action=getPartsCatalog`);
-        if (res.status === 'success') {
+        const res = await fetchJSONP(`${GAS_API_URL}?action=getPartsCatalog`, 10000);
+        if (res && res.status === 'success') {
           partsCatalog = res.data || [];
         }
       } catch (err) {
-        console.warn("零件快取載入失敗", err);
+        console.warn("零件快取載入失敗 (不影響主畫面運作)", err);
       }
     }
 
@@ -448,15 +447,16 @@
       document.getElementById("addNameSuggestions").classList.add("hidden");
     }
 
-    function fetchJSONP(url) {
+    // 支援超時控制的 JSONP
+    function fetchJSONP(url, timeoutMs = 15000) {
       return new Promise((resolve, reject) => {
         const callbackName = 'gasCallback_' + Math.round(100000 * Math.random());
         const script = document.createElement('script');
         
         const timer = setTimeout(() => {
           cleanup();
-          reject(new Error("連線逾時，請確認 Apps Script 權限設為『所有人』"));
-        }, 15000);
+          reject(new Error("連線逾時，請確認 Apps Script 已重新發布為『新版本』且權限設為『所有人』"));
+        }, timeoutMs);
 
         function cleanup() {
           if (window[callbackName]) delete window[callbackName];
@@ -472,7 +472,7 @@
         script.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + callbackName;
         script.onerror = function() {
           cleanup();
-          reject(new Error("載入失敗"));
+          reject(new Error("Google Apps Script 腳本載入失敗"));
         };
         document.body.appendChild(script);
       });
@@ -514,39 +514,37 @@
 
       try {
         const result = await fetchJSONP(targetUrl);
-        if (result.status === 'success') {
+        if (result && result.status === 'success') {
           rawDataList = result.data || [];
           applyFilter();
           updateStatistics(rawDataList);
         } else {
-          throw new Error(result.message || "讀取失敗");
+          throw new Error(result ? result.message : "讀取失敗");
         }
       } catch (err) {
         tbody.innerHTML = `
           <tr>
             <td colspan="8" class="text-center py-16 text-rose-400">
               <i class="fa-solid fa-triangle-exclamation text-3xl mb-2 block"></i>
-              <p class="font-bold">連線失敗：${err.message}</p>
+              <p class="font-bold text-sm">連線失敗：${err.message}</p>
+              <p class="text-xs text-slate-400 mt-2">請確認 Apps Script 部署作業中有點選「編輯」並建立「新版本」。</p>
             </td>
           </tr>
         `;
       }
     }
 
-    // 快捷設定 QTY 篩選
     function setQtyFilter(type) {
       document.getElementById("qtyFilterSelect").value = type;
       applyFilter();
     }
 
-    // 核心篩選：支援關鍵字 + QTY 多條件過濾 (Filter)
     function applyFilter() {
       const kw = document.getElementById("searchKeyword").value.trim().toLowerCase();
       const filterMode = document.getElementById("qtyFilterSelect").value;
 
       let filtered = rawDataList.slice();
 
-      // 1. QTY 篩選條件
       if (currentTab === "Stock in TW") {
         if (filterMode === 'inStock') {
           filtered = filtered.filter(item => Number(item.qty) > 0);
@@ -557,7 +555,6 @@
         }
       }
 
-      // 2. 關鍵字篩選
       if (kw) {
         filtered = filtered.filter(item => 
           Object.values(item).some(v => String(v).toLowerCase().includes(kw))
@@ -746,7 +743,7 @@
         });
         closeAddModal();
         alert("新增成功！");
-        loadPartsCatalog();
+        setTimeout(loadPartsCatalog, 1000);
         setTimeout(fetchCurrentTab, 1500);
       } catch (err) {
         alert("新增失敗：" + err.message);
@@ -756,7 +753,6 @@
       }
     }
 
-    // 打開最低安全水位設定視窗
     function openSafetyModal(record) {
       document.getElementById("safetyPartTitle").innerText = record.partsName || '-';
       document.getElementById("safetyPnTitle").innerText = record.pn || '無 P/N';
@@ -772,7 +768,6 @@
       document.getElementById("safetyModal").classList.add("hidden");
     }
 
-    // 儲存最低水位設定
     async function handleSafetySubmit(e) {
       e.preventDefault();
       const btn = document.getElementById("btnSaveSafety");
@@ -929,7 +924,7 @@
 
           alert(`已成功覆寫匯入 ${records.length} 筆資料！`);
           e.target.value = "";
-          loadPartsCatalog();
+          setTimeout(loadPartsCatalog, 1000);
           setTimeout(fetchCurrentTab, 2000);
         }
       });
