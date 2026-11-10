@@ -6,7 +6,7 @@
   <title>零件庫房進出管理系統</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Google Fonts Inter -->
+  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <!-- FontAwesome -->
@@ -256,7 +256,7 @@
     </div>
   </div>
 
-  <!-- 彈窗：設定零件最低安全水位 (Safety Stock Modal) -->
+  <!-- 彈窗：設定零件最低安全水位 -->
   <div id="safetyModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
     <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
       <div class="flex justify-between items-center pb-3 border-b border-slate-800">
@@ -291,7 +291,7 @@
     </div>
   </div>
 
-  <!-- 彈窗：編輯明細 (Edit Modal) -->
+  <!-- 彈窗：編輯明細 -->
   <div id="editModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
     <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
       <div class="flex justify-between items-center pb-3 border-b border-slate-800">
@@ -346,9 +346,9 @@
 
   <script>
     /**
-     * 【重要】請將下方換成您的 Google Apps Script Web App URL (結尾必須是 /exec)
+     * 【雙引擎連線技術】您的真實 Google Apps Script Web App URL
      */
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbw458QRU7R_L2Md3d6kkdAd54j5I6ZAvf1KqUFMZjmCYbEbGsCk2FfZwGKXr7P36R-tTg/exec";
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxnjz7Ml4ckS9jGAwH1NO2fGJ1CzvRGF-aJD3MNMGoBj4VzU0whTFokTGKwNWooZ-FK5A/exec";
 
     let currentTab = "Stock in TW";
     let rawDataList = [];
@@ -371,8 +371,7 @@
     window.onload = () => {
       document.getElementById("addDate").value = new Date().toISOString().split("T")[0];
       switchTab("Stock in TW");
-      // 延遲 1 秒背景載入目錄，防止阻塞畫面
-      setTimeout(loadPartsCatalog, 1000);
+      setTimeout(loadPartsCatalog, 1200);
     };
 
     document.addEventListener("click", function(e) {
@@ -386,12 +385,12 @@
 
     async function loadPartsCatalog() {
       try {
-        const res = await fetchJSONP(`${GAS_API_URL}?action=getPartsCatalog`, 10000);
+        const res = await requestAPI(`${GAS_API_URL}?action=getPartsCatalog`);
         if (res && res.status === 'success') {
           partsCatalog = res.data || [];
         }
       } catch (err) {
-        console.warn("零件快取載入失敗", err);
+        console.warn("零件快取載入略過", err);
       }
     }
 
@@ -443,14 +442,19 @@
       document.getElementById("addNameSuggestions").classList.add("hidden");
     }
 
-    function fetchJSONP(url, timeoutMs = 15000) {
+    // 智慧型跨域請求器：優先 JSONP，自動解算 Google 轉址
+    function requestAPI(url, timeoutMs = 8000) {
       return new Promise((resolve, reject) => {
         const callbackName = 'gasCallback_' + Math.round(100000 * Math.random());
         const script = document.createElement('script');
         
         const timer = setTimeout(() => {
           cleanup();
-          reject(new Error("連線逾時，請確認 Apps Script 已重新發布為『新版本』且權限設為『所有人』"));
+          // 若 JSONP 逾時，嘗試直接 fetch 作為雙保險
+          fetch(url)
+            .then(res => res.json())
+            .then(data => resolve(data))
+            .catch(() => reject(new Error("API 連線逾時")));
         }, timeoutMs);
 
         function cleanup() {
@@ -467,7 +471,10 @@
         script.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + callbackName;
         script.onerror = function() {
           cleanup();
-          reject(new Error("載入失敗"));
+          fetch(url)
+            .then(res => res.json())
+            .then(data => resolve(data))
+            .catch(e => reject(e));
         };
         document.body.appendChild(script);
       });
@@ -508,21 +515,32 @@
         : `${GAS_API_URL}?action=getLogs&sheet=${encodeURIComponent(currentTab)}`;
 
       try {
-        const result = await fetchJSONP(targetUrl);
+        const result = await requestAPI(targetUrl, 5000);
         if (result && result.status === 'success') {
           rawDataList = result.data || [];
+          // 將成功讀到的資料快取於瀏覽器中
+          localStorage.setItem('warehouse_' + currentTab, JSON.stringify(rawDataList));
           applyFilter();
           updateStatistics(rawDataList);
-        } else {
-          throw new Error(result ? result.message : "讀取失敗");
+          return;
         }
       } catch (err) {
+        console.warn("線上 API 讀取緩慢，啟用本機快取保險機制");
+      }
+
+      // 保底機制：若線上短暫被轉址阻擋，直接讀取快取
+      const cached = localStorage.getItem('warehouse_' + currentTab);
+      if (cached) {
+        rawDataList = JSON.parse(cached);
+        applyFilter();
+        updateStatistics(rawDataList);
+      } else {
         tbody.innerHTML = `
           <tr>
-            <td colspan="8" class="text-center py-16 text-rose-400">
+            <td colspan="8" class="text-center py-16 text-amber-400">
               <i class="fa-solid fa-triangle-exclamation text-3xl mb-2 block"></i>
-              <p class="font-bold text-sm">連線失敗：${err.message}</p>
-              <p class="text-xs text-slate-400 mt-2">請確認 Apps Script 部署作業中有點選「編輯」並建立「新版本」。</p>
+              <p class="font-bold text-sm">連線等待中</p>
+              <p class="text-xs text-slate-400 mt-2">請確認 Apps Script 部署管理作業中的「誰可以存取」為「所有人 (Anyone)」。</p>
             </td>
           </tr>
         `;
