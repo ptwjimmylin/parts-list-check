@@ -788,7 +788,1019 @@
               records: records
             })
           });
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>零件庫房進出管理系統</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- PapaParse & SheetJS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    .autocomplete-list {
+      max-height: 200px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen antialiased flex flex-col">
 
+  <!-- 頂部導航列 -->
+  <header class="bg-slate-900/80 backdrop-blur border-b border-slate-800 sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap justify-between items-center gap-3">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+          <i class="fa-solid fa-boxes-stacked text-white text-lg"></i>
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-bold tracking-tight text-white flex items-center gap-2">
+            零件庫房進出管理系統
+            <span class="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">Pro</span>
+          </h1>
+          <p class="text-xs text-slate-400">智慧 P/N 聯想 ｜ 水位監控預警 ｜ 跨庫房歸併</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="fetchCurrentTab()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs font-medium text-slate-200 rounded-lg border border-slate-700 shadow-sm transition flex items-center gap-2">
+          <i class="fa-solid fa-rotate text-cyan-400"></i> 重新載入
+        </button>
+        <button onclick="exportToExcel()" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-xs font-semibold text-white rounded-lg shadow-md shadow-emerald-900/30 transition flex items-center gap-2">
+          <i class="fa-solid fa-file-excel"></i> 匯出 Excel
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto p-4 sm:p-6 space-y-6 flex-1 w-full">
+
+    <!-- 8 大分頁切換按鈕 -->
+    <div class="bg-slate-800/60 p-1.5 rounded-2xl border border-slate-800 backdrop-blur overflow-x-auto flex gap-1.5" id="tabGroup">
+      <button onclick="switchTab('Stock in TW')" id="tab-Stock-in-TW" class="tab-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition bg-indigo-600 text-white shadow-md shadow-indigo-600/30 flex items-center gap-1.5 whitespace-nowrap">
+        <i class="fa-solid fa-warehouse"></i> Stock in TW (總庫存)
+      </button>
+      <button onclick="switchTab('S2')" id="tab-S2" class="tab-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition whitespace-nowrap">S2</button>
+      <button onclick="switchTab('S3')" id="tab-S3" class="tab-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition whitespace-nowrap">S3</button>
+      <button onclick="switchTab('S4')" id="tab-S4" class="tab-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition whitespace-nowrap">S4</button>
+      <button onclick="switchTab('S5')" id="tab-S5" class="tab-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition whitespace-nowrap">S5</button>
+      <button onclick="switchTab('S6')" id="tab-S6" class="tab-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition whitespace-nowrap">S6</button>
+      <button onclick="switchTab('DRY BOX')" id="tab-DRY-BOX" class="tab-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition whitespace-nowrap">DRY BOX</button>
+      <button onclick="switchTab('clean room')" id="tab-clean-room" class="tab-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition whitespace-nowrap">clean room</button>
+    </div>
+
+    <!-- 摘要指標卡片 -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="bg-slate-800/40 border border-slate-700/60 p-4 rounded-2xl backdrop-blur relative overflow-hidden">
+        <div class="absolute -right-3 -bottom-3 text-slate-700/20 text-6xl"><i class="fa-solid fa-list-ol"></i></div>
+        <p class="text-xs font-medium text-slate-400 mb-1">分頁項目總數</p>
+        <p class="text-2xl sm:text-3xl font-extrabold text-white" id="statTotalItems">0</p>
+      </div>
+      <div class="bg-slate-800/40 border border-slate-700/60 p-4 rounded-2xl backdrop-blur relative overflow-hidden">
+        <div class="absolute -right-3 -bottom-3 text-emerald-500/10 text-6xl"><i class="fa-solid fa-cubes"></i></div>
+        <p class="text-xs font-medium text-slate-400 mb-1" id="statLabel2">在庫品項數</p>
+        <p class="text-2xl sm:text-3xl font-extrabold text-emerald-400" id="statInStock">0</p>
+      </div>
+      <div class="bg-slate-800/40 border border-slate-700/60 p-4 rounded-2xl backdrop-blur relative overflow-hidden">
+        <div class="absolute -right-3 -bottom-3 text-amber-500/10 text-6xl"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <p class="text-xs font-medium text-slate-400 mb-1" id="statLabel3">低於安全水位品項</p>
+        <p class="text-2xl sm:text-3xl font-extrabold text-amber-400" id="statLowStock">0</p>
+      </div>
+      <div class="bg-slate-800/40 border border-slate-700/60 p-4 rounded-2xl backdrop-blur relative overflow-hidden">
+        <div class="absolute -right-3 -bottom-3 text-indigo-500/10 text-6xl"><i class="fa-solid fa-folder-open"></i></div>
+        <p class="text-xs font-medium text-slate-400 mb-1">當前檢視庫房</p>
+        <p class="text-xl sm:text-2xl font-extrabold text-indigo-400 truncate" id="statCurrentTab">Stock in TW</p>
+      </div>
+    </div>
+
+    <!-- 頂部操作面板 -->
+    <div class="bg-slate-800/50 border border-slate-700/80 rounded-2xl p-5 shadow-lg backdrop-blur space-y-4">
+      <div class="flex flex-wrap justify-between items-center pb-3 border-b border-slate-700 gap-3">
+        <div class="flex items-center gap-2.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
+          <h3 class="font-bold text-sm text-slate-200">
+            庫房操作專區：<span id="bannerTabName" class="text-cyan-400 font-mono">Stock in TW</span>
+          </h3>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="openThresholdModal()" id="btnThresholdSetting" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-amber-400 border border-amber-500/30 rounded-xl text-xs font-semibold transition flex items-center gap-2">
+            <i class="fa-solid fa-sliders"></i> 水位設定
+          </button>
+          <button onclick="openAddModal()" class="px-4 py-2 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-indigo-600/30 transition flex items-center gap-2 active:scale-95">
+            <i class="fa-solid fa-plus-circle text-sm"></i> <span id="btnAddBtnText">新增庫存品項</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- CSV 批次覆寫匯入 -->
+      <div class="flex flex-wrap items-center justify-between gap-4 bg-slate-900/60 p-4 rounded-xl border border-slate-700/60">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-lg">
+            <i class="fa-solid fa-file-arrow-up"></i>
+          </div>
+          <div>
+            <p class="text-xs font-bold text-slate-200">
+              批次 CSV 檔案匯入（<span class="text-amber-400 font-extrabold">覆寫舊資料，不疊加</span>）至 <span id="importTargetLabel" class="text-indigo-400 font-mono font-bold">Stock in TW</span>
+            </p>
+            <p class="text-[11px] text-slate-400" id="importColsHint">支援欄位：Location, P/N, parts name, QTY, model, remark</p>
+          </div>
+        </div>
+        <input type="file" id="csvFileInput" accept=".csv" onchange="handleCSVFile(event)" class="text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-amber-600 file:text-white hover:file:bg-amber-500 cursor-pointer">
+      </div>
+    </div>
+
+    <!-- 搜尋與 QTY Filter 工具列 -->
+    <div class="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3">
+      <div class="flex flex-1 flex-col sm:flex-row items-center gap-2">
+        <div class="relative w-full sm:w-80">
+          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-xs"></i>
+          <input type="text" id="searchKeyword" oninput="applyFilter()" placeholder="過濾料號、品名、型號、備註..." class="w-full pl-9 pr-4 py-2 text-xs bg-slate-800/80 border border-slate-700 rounded-xl text-white placeholder-slate-400 shadow-inner focus:outline-none focus:border-indigo-500 transition">
+        </div>
+        
+        <!-- QTY 專用篩選器 (僅在 Stock in TW 分頁顯示) -->
+        <div id="qtyFilterContainer" class="flex items-center gap-2 w-full sm:w-auto">
+          <label class="text-xs text-slate-400 whitespace-nowrap font-medium"><i class="fa-solid fa-filter text-indigo-400 mr-1"></i>QTY 篩選:</label>
+          <select id="qtyFilterSelect" onchange="applyFilter()" class="w-full sm:w-auto bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 font-medium">
+            <option value="ALL">全部數量 (ALL)</option>
+            <option value="LOW">⚠️ 低於安全水位 (含缺料)</option>
+            <option value="OUT">🚨 缺料 (QTY ≤ 0)</option>
+            <option value="SAFE">✅ 充足 (大於水位)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="text-xs text-slate-400 font-medium self-end sm:self-center">
+        共符合 <span id="filteredCount" class="font-bold text-indigo-400 font-mono text-sm">0</span> 筆資料
+      </div>
+    </div>
+
+    <!-- 表格區塊 -->
+    <div class="bg-slate-800/40 rounded-2xl shadow-xl border border-slate-700/80 overflow-hidden backdrop-blur">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs" id="mainDataTable">
+          <thead class="bg-slate-900/80 border-b border-slate-700 text-slate-400 uppercase tracking-wider font-semibold" id="tableHeader"></thead>
+          <tbody class="divide-y divide-slate-800/80" id="tableContent">
+            <tr>
+              <td colspan="8" class="text-center py-16 text-slate-400">
+                <i class="fa-solid fa-circle-notch fa-spin text-3xl mb-3 text-indigo-400 block"></i>
+                正在連線至 Google Sheets 同步資料庫中...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- 彈窗：安全水位設定 -->
+  <div id="thresholdModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+      <div class="flex justify-between items-center pb-3 border-b border-slate-800">
+        <h3 class="font-bold text-sm text-white flex items-center gap-2">
+          <i class="fa-solid fa-sliders text-amber-400"></i> 零件庫存安全水位設定
+        </h3>
+        <button onclick="closeThresholdModal()" class="text-slate-400 hover:text-white text-lg">&times;</button>
+      </div>
+
+      <div class="space-y-4 text-xs">
+        <div>
+          <label class="block text-slate-300 font-semibold mb-1">系統全域預設安全水位</label>
+          <p class="text-[11px] text-slate-400 mb-2">未個別設定的零件，低於或等於此數值時將會標記為黃色警戒。</p>
+          <input type="number" id="globalThresholdInput" min="0" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white font-mono focus:outline-none focus:border-amber-500">
+        </div>
+
+        <div class="pt-3 border-t border-slate-800">
+          <label class="block text-slate-300 font-semibold mb-1">個別零件指定水位</label>
+          <div class="flex gap-2 mb-2">
+            <input type="text" id="customPnInput" placeholder="輸入 P/N 料號" class="flex-1 bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-amber-500 text-xs">
+            <input type="number" id="customThresholdInput" placeholder="水位" min="0" class="w-20 bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-amber-500 text-xs">
+            <button onclick="addCustomThreshold()" class="px-3 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-semibold text-xs transition">新增/設定</button>
+          </div>
+          
+          <div class="max-h-36 overflow-y-auto space-y-1 rounded-lg border border-slate-800 p-2 bg-slate-950/40" id="customThresholdList">
+            <!-- 動態填入自訂列表 -->
+          </div>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
+          <button type="button" onclick="closeThresholdModal()" class="px-4 py-2 border border-slate-700 rounded-xl text-slate-300 hover:bg-slate-800 font-medium transition">關閉</button>
+          <button type="button" onclick="saveGlobalThreshold()" class="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl font-semibold shadow-lg shadow-amber-600/30 transition">套用儲存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 彈窗：新增項目 -->
+  <div id="addModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+      <div class="flex justify-between items-center pb-3 border-b border-slate-800">
+        <h3 class="font-bold text-sm text-white flex items-center gap-2">
+          <i class="fa-solid fa-plus-circle text-indigo-400"></i> <span id="addModalTitle">新增項目</span>
+        </h3>
+        <button onclick="closeAddModal()" class="text-slate-400 hover:text-white text-lg">&times;</button>
+      </div>
+
+      <form id="addForm" onsubmit="handleAddSubmit(event)" class="space-y-3.5 text-xs">
+        <div id="stockOnlyFields" class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-400 font-medium mb-1">Location 存放庫房 *</label>
+            <select id="addLocation" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-indigo-500">
+              <option value="S2">S2</option>
+              <option value="S3">S3</option>
+              <option value="S4">S4</option>
+              <option value="S5">S5</option>
+              <option value="S6">S6</option>
+              <option value="DRY BOX">DRY BOX</option>
+              <option value="clean room">clean room</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-slate-400 font-medium mb-1">QTY 底表數量</label>
+            <input type="number" id="addStockQty" value="1" min="0" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white font-mono focus:outline-none focus:border-indigo-500">
+          </div>
+        </div>
+
+        <div id="logOnlyFields" class="hidden">
+          <div class="grid grid-cols-3 gap-3">
+            <div>
+              <label class="block text-slate-400 font-medium mb-1">Date 日期</label>
+              <input type="date" id="addDate" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-indigo-500">
+            </div>
+            <div>
+              <label class="block text-emerald-400 font-medium mb-1">IN (入庫數)</label>
+              <input type="number" id="addInQty" min="0" value="0" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-indigo-500">
+            </div>
+            <div>
+              <label class="block text-rose-400 font-medium mb-1">OUT (出庫數)</label>
+              <input type="number" id="addOutQty" min="0" value="0" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-indigo-500">
+            </div>
+          </div>
+        </div>
+
+        <div class="relative">
+          <label class="block text-slate-400 font-medium mb-1 flex justify-between">
+            <span>P/N 料號</span>
+            <span class="text-[10px] text-cyan-400"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>輸入自動帶入</span>
+          </label>
+          <input type="text" id="addPn" placeholder="例如 560-5521" autocomplete="off" oninput="onInputSearch(this, 'pn')" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white font-mono focus:outline-none focus:border-indigo-500">
+          <ul id="addPnSuggestions" class="autocomplete-list absolute left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl hidden z-50 divide-y divide-slate-700"></ul>
+        </div>
+
+        <div class="relative">
+          <label class="block text-slate-400 font-medium mb-1 flex justify-between">
+            <span>Parts Name 零件品名 *</span>
+            <span class="text-[10px] text-cyan-400"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>支援品名聯想</span>
+          </label>
+          <input type="text" id="addPartsName" placeholder="例如 Power supply" autocomplete="off" oninput="onInputSearch(this, 'partsName')" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white font-medium focus:outline-none focus:border-indigo-500" required>
+          <ul id="addNameSuggestions" class="autocomplete-list absolute left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl hidden z-50 divide-y divide-slate-700"></ul>
+        </div>
+
+        <div>
+          <label class="block text-slate-400 font-medium mb-1">Model 機種 / 型號</label>
+          <input type="text" id="addModel" placeholder="例如 CG4100 / 92xx" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-indigo-500">
+        </div>
+
+        <div>
+          <label class="block text-slate-400 font-medium mb-1">Remark 備註</label>
+          <input type="text" id="addRemark" placeholder="事由 / 來源說明" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-indigo-500">
+        </div>
+
+        <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
+          <button type="button" onclick="closeAddModal()" class="px-4 py-2 border border-slate-700 rounded-xl text-slate-300 hover:bg-slate-800 font-medium transition">取消</button>
+          <button type="submit" id="btnSaveAdd" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold shadow-lg shadow-indigo-600/30 transition">確認儲存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 彈窗：編輯明細 -->
+  <div id="editModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+      <div class="flex justify-between items-center pb-3 border-b border-slate-800">
+        <h3 class="font-bold text-sm text-white flex items-center gap-2">
+          <i class="fa-solid fa-pen-to-square text-cyan-400"></i> 編輯明細資料
+        </h3>
+        <button onclick="closeEditModal()" class="text-slate-400 hover:text-white text-lg">&times;</button>
+      </div>
+
+      <form id="editForm" onsubmit="handleEditSubmit(event)" class="space-y-3.5 text-xs">
+        <input type="hidden" id="editRowId">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-400 font-medium mb-1">Date 日期</label>
+            <input type="date" id="editDate" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-cyan-500" required>
+          </div>
+          <div>
+            <label class="block text-slate-400 font-medium mb-1">P/N 料號</label>
+            <input type="text" id="editPn" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-cyan-500">
+          </div>
+        </div>
+        <div>
+          <label class="block text-slate-400 font-medium mb-1">Parts Name 品名 *</label>
+          <input type="text" id="editPartsName" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white font-medium focus:outline-none focus:border-cyan-500" required>
+        </div>
+        <div>
+          <label class="block text-slate-400 font-medium mb-1">Model 型號</label>
+          <input type="text" id="editModel" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-cyan-500">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-emerald-400 font-medium mb-1">IN (入庫數)</label>
+            <input type="number" id="editInQty" min="0" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-cyan-500">
+          </div>
+          <div>
+            <label class="block text-rose-400 font-medium mb-1">OUT (出庫數)</label>
+            <input type="number" id="editOutQty" min="0" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-cyan-500">
+          </div>
+        </div>
+        <div>
+          <label class="block text-slate-400 font-medium mb-1">Remark 備註</label>
+          <input type="text" id="editRemark" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-cyan-500">
+        </div>
+
+        <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
+          <button type="button" onclick="closeEditModal()" class="px-4 py-2 border border-slate-700 rounded-xl text-slate-300 hover:bg-slate-800 font-medium transition">取消</button>
+          <button type="submit" id="btnSaveEdit" class="px-5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-semibold shadow-lg shadow-cyan-600/30 transition">儲存修改</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzOo9vzDRGMVsf1aivn6ZBlW-ecfea-Rud1izva7TFxlxX2oYmE5G6nE6hLYn-pyZyelQ/exec";
+
+    let currentTab = "Stock in TW";
+    let rawDataList = [];
+    let partsCatalog = [];
+
+    // 水位設定核心 (LocalStorage)
+    let globalThreshold = Number(localStorage.getItem('GLOBAL_PARTS_THRESHOLD')) || 5;
+    let customThresholds = JSON.parse(localStorage.getItem('CUSTOM_PARTS_THRESHOLDS') || '{}');
+
+    function getPartThreshold(pn) {
+      if (pn && customThresholds[pn.trim()] !== undefined) {
+        return Number(customThresholds[pn.trim()]);
+      }
+      return globalThreshold;
+    }
+
+    function cleanDateStr(val) {
+      if (!val) return '';
+      const s = String(val).trim();
+      if (!s || s.toLowerCase() === 'nan' || s.toLowerCase() === 'nat') return '';
+      const d = new Date(s);
+      if (!isNaN(d.getTime())) {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+      }
+      return s.substring(0, 10).replace(/\//g, '-');
+    }
+
+    window.onload = () => {
+      document.getElementById("addDate").value = new Date().toISOString().split("T")[0];
+      switchTab("Stock in TW");
+      loadPartsCatalog();
+    };
+
+    document.addEventListener("click", function(e) {
+      if (!e.target.closest("#addPn") && !e.target.closest("#addPnSuggestions")) {
+        document.getElementById("addPnSuggestions").classList.add("hidden");
+      }
+      if (!e.target.closest("#addPartsName") && !e.target.closest("#addNameSuggestions")) {
+        document.getElementById("addNameSuggestions").classList.add("hidden");
+      }
+    });
+
+    async function loadPartsCatalog() {
+      try {
+        const res = await fetchJSONP(`${GAS_API_URL}?action=getPartsCatalog`);
+        if (res.status === 'success') {
+          partsCatalog = res.data || [];
+        }
+      } catch (err) {
+        console.warn("無法取得零件目錄快取", err);
+      }
+    }
+
+    function onInputSearch(inputElem, fieldType) {
+      const val = inputElem.value.trim().toLowerCase();
+      const listElem = fieldType === 'pn' 
+        ? document.getElementById("addPnSuggestions") 
+        : document.getElementById("addNameSuggestions");
+
+      if (!val || partsCatalog.length === 0) {
+        listElem.classList.add("hidden");
+        listElem.innerHTML = '';
+        return;
+      }
+
+      const matches = partsCatalog.filter(item => {
+        if (fieldType === 'pn') {
+          return item.pn && item.pn.toLowerCase().includes(val);
+        } else {
+          return item.partsName && item.partsName.toLowerCase().includes(val);
+        }
+      }).slice(0, 8);
+
+      if (matches.length === 0) {
+        listElem.classList.add("hidden");
+        listElem.innerHTML = '';
+        return;
+      }
+
+      listElem.innerHTML = matches.map(item => `
+        <li class="p-2.5 hover:bg-slate-700/80 cursor-pointer transition flex flex-col" onclick='applyPartSuggestion(${JSON.stringify(item)})'>
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-white text-xs">${item.partsName}</span>
+            <span class="font-mono text-[11px] text-cyan-400">${item.pn || '無P/N'}</span>
+          </div>
+          <span class="text-[10px] text-slate-400 mt-0.5">${item.model ? 'Model: ' + item.model : ''}</span>
+        </li>
+      `).join('');
+
+      listElem.classList.remove("hidden");
+    }
+
+    function applyPartSuggestion(item) {
+      if (item.pn) document.getElementById("addPn").value = item.pn;
+      if (item.partsName) document.getElementById("addPartsName").value = item.partsName;
+      if (item.model) document.getElementById("addModel").value = item.model;
+      
+      document.getElementById("addPnSuggestions").classList.add("hidden");
+      document.getElementById("addNameSuggestions").classList.add("hidden");
+    }
+
+    function fetchJSONP(url) {
+      return new Promise((resolve, reject) => {
+        const callbackName = 'gasCallback_' + Math.round(100000 * Math.random());
+        const script = document.createElement('script');
+        
+        const timer = setTimeout(() => {
+          cleanup();
+          reject(new Error("連線逾時，請確認 Apps Script 權限已設為『所有人』"));
+        }, 15000);
+
+        function cleanup() {
+          if (window[callbackName]) delete window[callbackName];
+          if (script.parentNode) script.parentNode.removeChild(script);
+          clearTimeout(timer);
+        }
+
+        window[callbackName] = function(data) {
+          cleanup();
+          resolve(data);
+        };
+
+        script.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + callbackName;
+        script.onerror = function() {
+          cleanup();
+          reject(new Error("載入失敗"));
+        };
+        document.body.appendChild(script);
+      });
+    }
+
+    function switchTab(sheetName) {
+      currentTab = sheetName;
+      document.querySelectorAll(".tab-btn").forEach(btn => {
+        btn.className = "tab-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition whitespace-nowrap";
+      });
+      const activeId = "tab-" + sheetName.replace(/\s+/g, '-');
+      const activeBtn = document.getElementById(activeId);
+      if (activeBtn) {
+        activeBtn.className = "tab-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition bg-indigo-600 text-white shadow-md shadow-indigo-600/30 flex items-center gap-1.5 whitespace-nowrap";
+      }
+
+      document.getElementById("statCurrentTab").innerText = currentTab;
+      document.getElementById("bannerTabName").innerText = currentTab;
+      document.getElementById("importTargetLabel").innerText = currentTab;
+
+      // 根據分頁切換控制 QTY 篩選器與水位按鈕的顯示/隱藏
+      const qtyFilterBox = document.getElementById("qtyFilterContainer");
+      const btnThreshold = document.getElementById("btnThresholdSetting");
+
+      if (currentTab === "Stock in TW") {
+        document.getElementById("btnAddBtnText").innerText = "新增庫存品項";
+        document.getElementById("importColsHint").innerText = "支援欄位：Location, P/N, parts name, QTY, model, remark";
+        if (qtyFilterBox) qtyFilterBox.classList.remove("hidden");
+        if (btnThreshold) btnThreshold.classList.remove("hidden");
+      } else {
+        document.getElementById("btnAddBtnText").innerText = `新增 ${currentTab} 零件紀錄`;
+        document.getElementById("importColsHint").innerText = "支援欄位：Date, P/N (If any), Parts Name, Model, IN, OUT, Remark";
+        if (qtyFilterBox) qtyFilterBox.classList.add("hidden");
+        if (btnThreshold) btnThreshold.classList.add("hidden");
+      }
+
+      fetchCurrentTab();
+    }
+
+    async function fetchCurrentTab() {
+      const tbody = document.getElementById("tableContent");
+      tbody.innerHTML = `<tr><td colspan="8" class="text-center py-16 text-slate-400"><i class="fa-solid fa-circle-notch fa-spin text-3xl mb-3 text-indigo-400 block"></i>正在從 Google Sheets 同步資料庫中...</td></tr>`;
+
+      const targetUrl = currentTab === "Stock in TW"
+        ? `${GAS_API_URL}?action=getStock`
+        : `${GAS_API_URL}?action=getLogs&sheet=${encodeURIComponent(currentTab)}`;
+
+      try {
+        const result = await fetchJSONP(targetUrl);
+        if (result.status === 'success') {
+          rawDataList = result.data || [];
+          applyFilter();
+          updateStatistics(rawDataList);
+        } else {
+          throw new Error(result.message || "讀取失敗");
+        }
+      } catch (err) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8" class="text-center py-16 text-rose-400">
+              <i class="fa-solid fa-triangle-exclamation text-3xl mb-2 block"></i>
+              <p class="font-bold">連線失敗：${err.message}</p>
+            </td>
+          </tr>
+        `;
+      }
+    }
+
+    // 結合文字搜尋與 QTY 條件的複合過濾
+    function applyFilter() {
+      const kw = document.getElementById("searchKeyword").value.trim().toLowerCase();
+      const qtyFilter = document.getElementById("qtyFilterSelect") ? document.getElementById("qtyFilterSelect").value : 'ALL';
+
+      let filtered = rawDataList;
+
+      // 1. 文字關鍵字過濾
+      if (kw) {
+        filtered = filtered.filter(item => 
+          Object.values(item).some(v => String(v).toLowerCase().includes(kw))
+        );
+      }
+
+      // 2. QTY 庫存水位過濾 (僅限 Stock in TW)
+      if (currentTab === "Stock in TW" && qtyFilter !== 'ALL') {
+        filtered = filtered.filter(item => {
+          const qty = Number(item.qty) || 0;
+          const threshold = getPartThreshold(item.pn);
+
+          if (qtyFilter === 'LOW') {
+            return qty <= threshold;
+          } else if (qtyFilter === 'OUT') {
+            return qty <= 0;
+          } else if (qtyFilter === 'SAFE') {
+            return qty > threshold;
+          }
+          return true;
+        });
+      }
+
+      renderTable(filtered);
+    }
+
+    function renderTable(data) {
+      const thead = document.getElementById("tableHeader");
+      const tbody = document.getElementById("tableContent");
+      document.getElementById("filteredCount").innerText = data.length;
+
+      if (currentTab === "Stock in TW") {
+        thead.innerHTML = `
+          <tr>
+            <th class="px-5 py-3.5">Location (庫房)</th>
+            <th class="px-5 py-3.5">P/N (料號)</th>
+            <th class="px-5 py-3.5">Parts Name (品名)</th>
+            <th class="px-5 py-3.5">QTY (在庫數)</th>
+            <th class="px-5 py-3.5">安全水位</th>
+            <th class="px-5 py-3.5">狀態</th>
+            <th class="px-5 py-3.5">Model</th>
+            <th class="px-5 py-3.5">Remark</th>
+          </tr>
+        `;
+        if (data.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="8" class="text-center py-12 text-slate-500">目前尚無符合條件的庫存資料</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = data.map(r => {
+          const qty = Number(r.qty) || 0;
+          const threshold = getPartThreshold(r.pn);
+
+          let statusBadge = '';
+          let qtyColor = 'text-emerald-400';
+
+          if (qty <= 0) {
+            qtyColor = 'text-rose-400 font-extrabold';
+            statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20"><i class="fa-solid fa-triangle-exclamation mr-1"></i>缺料 (0)</span>';
+          } else if (qty <= threshold) {
+            qtyColor = 'text-amber-400 font-extrabold';
+            statusBadge = `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20"><i class="fa-solid fa-bell mr-1"></i>低於水位</span>`;
+          } else {
+            statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><i class="fa-solid fa-check mr-1"></i>充足</span>';
+          }
+
+          return `
+            <tr class="hover:bg-slate-800/60 transition group">
+              <td class="px-5 py-3 font-semibold text-slate-300">${r.location || '-'}</td>
+              <td class="px-5 py-3 font-mono text-cyan-400 font-medium">${r.pn || '-'}</td>
+              <td class="px-5 py-3 font-semibold text-white">${r.partsName || '-'}</td>
+              <td class="px-5 py-3 font-mono text-sm ${qtyColor}">${qty}</td>
+              <td class="px-5 py-3 font-mono text-slate-400">
+                <span class="inline-flex items-center gap-1.5 cursor-pointer hover:text-amber-400 transition" onclick="quickEditThreshold('${r.pn}')" title="點擊修改此料號水位">
+                  ${threshold}
+                  <i class="fa-solid fa-pen text-[10px] opacity-40 group-hover:opacity-100"></i>
+                </span>
+              </td>
+              <td class="px-5 py-3">${statusBadge}</td>
+              <td class="px-5 py-3 text-slate-400">${r.model || '-'}</td>
+              <td class="px-5 py-3 text-slate-400">${r.remark || '-'}</td>
+            </tr>
+          `;
+        }).join('');
+
+      } else {
+        thead.innerHTML = `
+          <tr>
+            <th class="px-5 py-3.5">Date (日期)</th>
+            <th class="px-5 py-3.5">P/N (If any)</th>
+            <th class="px-5 py-3.5">Parts Name</th>
+            <th class="px-5 py-3.5">Model</th>
+            <th class="px-5 py-3.5 text-emerald-400">IN</th>
+            <th class="px-5 py-3.5 text-rose-400">OUT</th>
+            <th class="px-5 py-3.5">Remark</th>
+            <th class="px-5 py-3.5 text-right">操作</th>
+          </tr>
+        `;
+        if (data.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="8" class="text-center py-12 text-slate-500">此分頁尚無進出明細紀錄</td></tr>`;
+          return;
+        }
+        tbody.innerHTML = data.map(r => `
+          <tr class="hover:bg-slate-800/60 transition group">
+            <td class="px-5 py-3 font-mono text-slate-400">${cleanDateStr(r.date) || '-'}</td>
+            <td class="px-5 py-3 font-mono text-cyan-400">${r.pn || '-'}</td>
+            <td class="px-5 py-3 font-semibold text-white">${r.partsName || '-'}</td>
+            <td class="px-5 py-3 text-slate-400">${r.model || '-'}</td>
+            <td class="px-5 py-3 font-mono font-bold text-emerald-400">${r.inQty}</td>
+            <td class="px-5 py-3 font-mono font-bold text-rose-400">${r.outQty}</td>
+            <td class="px-5 py-3 text-slate-400">${r.remark || '-'}</td>
+            <td class="px-5 py-3 text-right space-x-1 whitespace-nowrap">
+              <button onclick='openEditModal(${JSON.stringify(r)})' class="px-2.5 py-1 bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white rounded-lg transition text-[11px] font-semibold border border-slate-700">
+                <i class="fa-solid fa-pen mr-1"></i>編輯
+              </button>
+              <button onclick="deleteRecord(${r.rowId})" class="px-2.5 py-1 bg-slate-800 hover:bg-rose-600 text-slate-300 hover:text-white rounded-lg transition text-[11px] font-semibold border border-slate-700">
+                <i class="fa-solid fa-trash mr-1"></i>刪除
+              </button>
+            </td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    function updateStatistics(data) {
+      document.getElementById("statTotalItems").innerText = data.length;
+      if (currentTab === "Stock in TW") {
+        document.getElementById("statLabel2").innerText = "在庫充足品項";
+        document.getElementById("statLabel3").innerText = "低於安全水位 / 缺料";
+
+        let lowStockCount = 0;
+        let safeCount = 0;
+
+        data.forEach(d => {
+          const qty = Number(d.qty) || 0;
+          const th = getPartThreshold(d.pn);
+          if (qty <= th) {
+            lowStockCount++;
+          } else {
+            safeCount++;
+          }
+        });
+
+        document.getElementById("statInStock").innerText = safeCount;
+        document.getElementById("statLowStock").innerText = lowStockCount;
+      } else {
+        document.getElementById("statLabel2").innerText = "累計入庫數 (IN)";
+        document.getElementById("statLabel3").innerText = "累計出庫數 (OUT)";
+        const totalIn = data.reduce((acc, cur) => acc + (Number(cur.inQty) || 0), 0);
+        const totalOut = data.reduce((acc, cur) => acc + (Number(cur.outQty) || 0), 0);
+        document.getElementById("statInStock").innerText = totalIn;
+        document.getElementById("statLowStock").innerText = totalOut;
+      }
+    }
+
+    // ====== 水位設定邏輯 ======
+    function openThresholdModal() {
+      document.getElementById("globalThresholdInput").value = globalThreshold;
+      renderCustomThresholdList();
+      document.getElementById("thresholdModal").classList.remove("hidden");
+    }
+
+    function closeThresholdModal() {
+      document.getElementById("thresholdModal").classList.add("hidden");
+    }
+
+    function renderCustomThresholdList() {
+      const container = document.getElementById("customThresholdList");
+      const keys = Object.keys(customThresholds);
+      if (keys.length === 0) {
+        container.innerHTML = `<div class="text-[11px] text-slate-500 text-center py-3">尚無個別零件水位設定（使用全域水位）</div>`;
+        return;
+      }
+      container.innerHTML = keys.map(k => `
+        <div class="flex items-center justify-between bg-slate-900 px-3 py-1.5 rounded border border-slate-800 text-[11px]">
+          <span class="font-mono text-cyan-400 font-bold">${k}</span>
+          <div class="flex items-center gap-2">
+            <span class="text-slate-300 font-mono">水位: <b class="text-amber-400">${customThresholds[k]}</b></span>
+            <button onclick="removeCustomThreshold('${k}')" class="text-rose-400 hover:text-rose-300 text-xs ml-2"><i class="fa-solid fa-trash"></i></button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function addCustomThreshold() {
+      const pn = document.getElementById("customPnInput").value.trim();
+      const val = parseInt(document.getElementById("customThresholdInput").value, 10);
+      if (!pn) {
+        alert("請輸入料號 P/N");
+        return;
+      }
+      if (isNaN(val) || val < 0) {
+        alert("請輸入有效的水位數值");
+        return;
+      }
+      customThresholds[pn] = val;
+      localStorage.setItem('CUSTOM_PARTS_THRESHOLDS', JSON.stringify(customThresholds));
+      document.getElementById("customPnInput").value = '';
+      document.getElementById("customThresholdInput").value = '';
+      renderCustomThresholdList();
+      applyFilter();
+      updateStatistics(rawDataList);
+    }
+
+    function removeCustomThreshold(pn) {
+      delete customThresholds[pn];
+      localStorage.setItem('CUSTOM_PARTS_THRESHOLDS', JSON.stringify(customThresholds));
+      renderCustomThresholdList();
+      applyFilter();
+      updateStatistics(rawDataList);
+    }
+
+    function quickEditThreshold(pn) {
+      if (!pn || pn === '-') return;
+      const current = getPartThreshold(pn);
+      const val = prompt(`請輸入料號 [${pn}] 的安全水位數量：`, current);
+      if (val !== null) {
+        const num = parseInt(val.trim(), 10);
+        if (!isNaN(num) && num >= 0) {
+          customThresholds[pn] = num;
+          localStorage.setItem('CUSTOM_PARTS_THRESHOLDS', JSON.stringify(customThresholds));
+          applyFilter();
+          updateStatistics(rawDataList);
+        }
+      }
+    }
+
+    function saveGlobalThreshold() {
+      const val = parseInt(document.getElementById("globalThresholdInput").value, 10);
+      if (isNaN(val) || val < 0) {
+        alert("請輸入有效的正整數水位數值");
+        return;
+      }
+      globalThreshold = val;
+      localStorage.setItem('GLOBAL_PARTS_THRESHOLD', globalThreshold);
+      closeThresholdModal();
+      applyFilter();
+      updateStatistics(rawDataList);
+      alert("安全水位設定已更新！");
+    }
+
+    // ====== 新增彈窗邏輯 ======
+    function openAddModal() {
+      document.getElementById("addForm").reset();
+      document.getElementById("addDate").value = new Date().toISOString().split("T")[0];
+      document.getElementById("addPnSuggestions").classList.add("hidden");
+      document.getElementById("addNameSuggestions").classList.add("hidden");
+
+      if (currentTab === "Stock in TW") {
+        document.getElementById("addModalTitle").innerText = "新增庫存品項 (Stock in TW)";
+        document.getElementById("stockOnlyFields").classList.remove("hidden");
+        document.getElementById("logOnlyFields").classList.add("hidden");
+      } else {
+        document.getElementById("addModalTitle").innerText = `新增明細紀錄 (${currentTab})`;
+        document.getElementById("stockOnlyFields").classList.add("hidden");
+        document.getElementById("logOnlyFields").classList.remove("hidden");
+      }
+      document.getElementById("addModal").classList.remove("hidden");
+    }
+
+    function closeAddModal() {
+      document.getElementById("addModal").classList.add("hidden");
+    }
+
+    async function handleAddSubmit(e) {
+      e.preventDefault();
+      const btn = document.getElementById("btnSaveAdd");
+      btn.disabled = true;
+      btn.innerText = "儲存中...";
+
+      let payload = {};
+      if (currentTab === "Stock in TW") {
+        payload = {
+          action: "addRecord",
+          sheet: "Stock in TW",
+          location: document.getElementById("addLocation").value,
+          pn: document.getElementById("addPn").value.trim(),
+          partsName: document.getElementById("addPartsName").value.trim(),
+          qty: Number(document.getElementById("addStockQty").value) || 0,
+          model: document.getElementById("addModel").value.trim(),
+          remark: document.getElementById("addRemark").value.trim()
+        };
+      } else {
+        payload = {
+          action: "addRecord",
+          sheet: currentTab,
+          date: cleanDateStr(document.getElementById("addDate").value),
+          pn: document.getElementById("addPn").value.trim(),
+          partsName: document.getElementById("addPartsName").value.trim(),
+          model: document.getElementById("addModel").value.trim(),
+          inQty: Number(document.getElementById("addInQty").value) || 0,
+          outQty: Number(document.getElementById("addOutQty").value) || 0,
+          remark: document.getElementById("addRemark").value.trim()
+        };
+      }
+
+      try {
+        await fetch(GAS_API_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        closeAddModal();
+        alert("新增成功！");
+        loadPartsCatalog();
+        setTimeout(fetchCurrentTab, 1500);
+      } catch (err) {
+        alert("新增失敗：" + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "確認儲存";
+      }
+    }
+
+    // ====== 編輯彈窗邏輯 ======
+    function openEditModal(record) {
+      document.getElementById("editRowId").value = record.rowId;
+      document.getElementById("editDate").value = cleanDateStr(record.date) || new Date().toISOString().split("T")[0];
+      document.getElementById("editPn").value = record.pn || '';
+      document.getElementById("editPartsName").value = record.partsName || '';
+      document.getElementById("editModel").value = record.model || '';
+      document.getElementById("editInQty").value = record.inQty || 0;
+      document.getElementById("editOutQty").value = record.outQty || 0;
+      document.getElementById("editRemark").value = record.remark || '';
+      document.getElementById("editModal").classList.remove("hidden");
+    }
+
+    function closeEditModal() {
+      document.getElementById("editModal").classList.add("hidden");
+    }
+
+    async function handleEditSubmit(e) {
+      e.preventDefault();
+      const btn = document.getElementById("btnSaveEdit");
+      btn.disabled = true;
+      btn.innerText = "儲存中...";
+
+      const payload = {
+        action: "updateRecord",
+        sheet: currentTab,
+        rowId: document.getElementById("editRowId").value,
+        date: cleanDateStr(document.getElementById("editDate").value),
+        pn: document.getElementById("editPn").value.trim(),
+        partsName: document.getElementById("editPartsName").value.trim(),
+        model: document.getElementById("editModel").value.trim(),
+        inQty: Number(document.getElementById("editInQty").value) || 0,
+        outQty: Number(document.getElementById("editOutQty").value) || 0,
+        remark: document.getElementById("editRemark").value.trim()
+      };
+
+      try {
+        await fetch(GAS_API_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        closeEditModal();
+        alert("修改成功！");
+        setTimeout(fetchCurrentTab, 1500);
+      } catch (err) {
+        alert("修改失敗：" + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "儲存修改";
+      }
+    }
+
+    async function deleteRecord(rowId) {
+      if (!confirm(`確定要刪除此筆明細紀錄嗎？`)) return;
+      try {
+        await fetch(GAS_API_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "deleteRow", sheet: currentTab, rowId: rowId })
+        });
+        setTimeout(fetchCurrentTab, 1500);
+      } catch (err) {
+        alert("刪除失敗：" + err.message);
+      }
+    }
+
+    // ====== CSV 批次覆寫匯入 ======
+    function handleCSVFile(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      if (!confirm(`⚠️ 注意：匯入 CSV 將會「直接覆寫」目前【${currentTab}】分頁的全部資料，不進行疊加，確定繼續？`)) {
+        e.target.value = "";
+        return;
+      }
+
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: async function(results) {
+          let records = [];
+
+          if (currentTab === "Stock in TW") {
+            records = results.data.map(r => ({
+              location: r["Location"] || r["location"] || "",
+              pn: r["P/N"] || r["P/N (If any)"] || r["pn"] || "",
+              partsName: r["parts name"] || r["Parts Name"] || r["partsName"] || "",
+              qty: Number(r["QTY"] || r["qty"] || 0),
+              model: r["model"] || r["Model"] || "",
+              remark: r["remark"] || r["Remark"] || ""
+            })).filter(r => r.partsName !== "");
+          } else {
+            records = results.data.map(r => ({
+              date: cleanDateStr(r["Date"] || r["date"] || ""),
+              pn: r["P/N (If any)"] || r["P/N"] || r["pn"] || "",
+              partsName: r["Parts Name"] || r["partsName"] || "",
+              model: r["Model"] || r["model"] || "",
+              inQty: Number(r["IN"] || r["in"] || 0),
+              outQty: Number(r["OUT"] || r["out"] || 0),
+              remark: r["Remark"] || r["remark"] || ""
+            })).filter(r => r.partsName !== "");
+          }
+
+          if (records.length === 0) {
+            alert("CSV 內容為空或欄位不符！");
+            return;
+          }
+
+          await fetch(GAS_API_URL, {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "batchImportOverwrite",
+              sheet: currentTab,
+              records: records
+            })
+          });
+
+          alert(`已成功覆寫匯入 ${records.length} 筆資料！`);
+          e.target.value = "";
+          loadPartsCatalog();
+          setTimeout(fetchCurrentTab, 2000);
+        }
+      });
+    }
+
+    function exportToExcel() {
+      if (rawDataList.length === 0) {
+        alert("目前分頁無資料可匯出！");
+        return;
+      }
+      const ws = XLSX.utils.json_to_sheet(rawDataList);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, currentTab);
+      XLSX.writeFile(wb, `${currentTab}_${new Date().toISOString().split("T")[0]}.xlsx`);
+    }
+  </script>
+</body>
+</html>
           alert(`已成功覆寫匯入 ${records.length} 筆資料！`);
           e.target.value = "";
           loadPartsCatalog();
