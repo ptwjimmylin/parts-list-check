@@ -22,7 +22,6 @@
       overflow-y: auto;
       scrollbar-width: thin;
     }
-    /* 動態字級縮放等級 */
     body.font-sm { font-size: 13px; }
     body.font-md { font-size: 15px; }
     body.font-lg { font-size: 17px; }
@@ -47,9 +46,8 @@
         </div>
       </div>
       
-      <!-- 工具按鈕群（含字型大小切換） -->
+      <!-- 工具按鈕群 -->
       <div class="flex items-center gap-2.5 flex-wrap">
-        <!-- 字型調整按鈕 -->
         <div class="flex items-center bg-slate-800 border border-slate-700 rounded-lg p-1 text-slate-300">
           <button onclick="adjustFontSize(-1)" title="字型縮小" class="px-2.5 py-1 hover:bg-slate-700 rounded text-xs font-bold transition">A-</button>
           <span class="px-2 text-xs font-medium text-slate-400" id="currentFontSizeLabel">標準</span>
@@ -116,7 +114,6 @@
           </h3>
         </div>
         <div class="flex items-center gap-2.5">
-          <!-- 水位設定按鍵 -->
           <button type="button" onclick="openThresholdModal()" id="btnThresholdSetting" class="px-4 py-2.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center gap-2 active:scale-95 shadow-sm">
             <i class="fa-solid fa-sliders"></i> 水位設定
           </button>
@@ -143,19 +140,25 @@
       </div>
     </div>
 
-    <!-- 搜尋與 QTY 篩選列 -->
-    <div class="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3">
-      <div class="flex flex-1 flex-col sm:flex-row items-center gap-3">
-        <div class="relative w-full sm:w-80">
+    <!-- 搜尋與 QTY 篩選列（含一鍵篩選在庫按鈕） -->
+    <div class="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-3">
+      <div class="flex flex-1 flex-col sm:flex-row items-center gap-3 flex-wrap">
+        <div class="relative w-full sm:w-72">
           <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3.5 text-slate-400 text-sm"></i>
-          <input type="text" id="searchKeyword" oninput="applyFilter()" placeholder="過濾料號、品名、型號、備註..." class="w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm bg-slate-800/80 border border-slate-700 rounded-xl text-white placeholder-slate-400 shadow-inner focus:outline-none focus:border-indigo-500 transition">
+          <input type="text" id="searchKeyword" oninput="applyFilter()" placeholder="過濾料號、品名、型號..." class="w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm bg-slate-800/80 border border-slate-700 rounded-xl text-white placeholder-slate-400 shadow-inner focus:outline-none focus:border-indigo-500 transition">
         </div>
         
+        <!-- 一鍵在庫按鈕 -->
+        <button id="btnQuickInStock" onclick="toggleQuickInStock()" class="w-full sm:w-auto px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-boxes-packing text-emerald-400"></i> 
+          <span id="quickInStockText">僅看在庫品項 (QTY > 0)</span>
+        </button>
+
         <!-- QTY 專用篩選下拉選單 -->
         <div id="qtyFilterContainer" class="flex items-center gap-2 w-full sm:w-auto">
-          <label class="text-xs sm:text-sm text-slate-400 whitespace-nowrap font-medium"><i class="fa-solid fa-filter text-indigo-400 mr-1"></i>QTY 篩選:</label>
+          <label class="text-xs sm:text-sm text-slate-400 whitespace-nowrap font-medium"><i class="fa-solid fa-filter text-indigo-400 mr-1"></i>QTY 狀態:</label>
           <select id="qtyFilterSelect" onchange="applyFilter()" class="w-full sm:w-auto bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-indigo-500 font-medium">
-            <option value="ALL">全部數量 (ALL)</option>
+            <option value="ALL">全部狀態 (ALL)</option>
             <option value="LOW">⚠️ 低於安全水位 (含缺料)</option>
             <option value="OUT">🚨 缺料 (QTY ≤ 0)</option>
             <option value="SAFE">✅ 充足 (大於水位)</option>
@@ -163,7 +166,7 @@
         </div>
       </div>
 
-      <div class="text-xs sm:text-sm text-slate-400 font-medium self-end sm:self-center">
+      <div class="text-xs sm:text-sm text-slate-400 font-medium self-end lg:self-center">
         共符合 <span id="filteredCount" class="font-bold text-indigo-400 font-mono text-base">0</span> 筆資料
       </div>
     </div>
@@ -200,7 +203,7 @@
       <div class="space-y-4 text-xs sm:text-sm">
         <div class="bg-slate-800/60 p-3.5 rounded-xl border border-slate-700/50">
           <label class="block text-slate-200 font-bold mb-1">系統預設通用安全水位</label>
-          <p class="text-xs text-slate-400 mb-2">未個別指定水位的零件，將套用此門檻（低於或等於此數值時顯示黃色預警）。</p>
+          <p class="text-xs text-slate-400 mb-2">未個別設定的零件，將統一套用此門檻。</p>
           <div class="flex gap-2">
             <input type="number" id="globalThresholdInput" min="0" class="flex-1 bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white font-mono focus:outline-none focus:border-amber-500">
             <button type="button" onclick="saveGlobalThreshold()" class="px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-semibold transition whitespace-nowrap">儲存預設值</button>
@@ -208,16 +211,14 @@
         </div>
 
         <div>
-          <label class="block text-slate-200 font-bold mb-1">指定特定料號安全水位</label>
+          <label class="block text-slate-200 font-bold mb-1">個別指定料號 / 品名安全水位</label>
           <div class="flex gap-2 mb-2">
-            <input type="text" id="customPnInput" placeholder="輸入 P/N 料號" class="flex-1 bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-amber-500">
+            <input type="text" id="customPnInput" placeholder="輸入 P/N 或品名" class="flex-1 bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-amber-500">
             <input type="number" id="customThresholdInput" placeholder="水位" min="0" class="w-24 bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-amber-500">
             <button type="button" onclick="addCustomThreshold()" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-semibold transition whitespace-nowrap">加入/修改</button>
           </div>
           
-          <div class="max-h-40 overflow-y-auto space-y-1 rounded-xl border border-slate-800 p-2.5 bg-slate-950/60" id="customThresholdList">
-            <!-- 動態填入自訂列表 -->
-          </div>
+          <div class="max-h-40 overflow-y-auto space-y-1 rounded-xl border border-slate-800 p-2.5 bg-slate-950/60" id="customThresholdList"></div>
         </div>
 
         <div class="flex justify-end pt-3 border-t border-slate-800">
@@ -369,15 +370,32 @@
     let currentTab = "Stock in TW";
     let rawDataList = [];
     let partsCatalog = [];
+    let isOnlyInStockActive = false; // 一鍵在庫按鈕狀態
 
     // 水位設定核心 (LocalStorage)
     let globalThreshold = Number(localStorage.getItem('GLOBAL_PARTS_THRESHOLD')) || 5;
     let customThresholds = JSON.parse(localStorage.getItem('CUSTOM_PARTS_THRESHOLDS') || '{}');
 
+    // 取得零件專屬識別 Key（優先使用 P/N，若無則改用品名）
+    function getPartStorageKey(pn, partsName) {
+      const cleanPn = (pn || '').trim();
+      const cleanName = (partsName || '').trim();
+      if (cleanPn && cleanPn !== '-') return cleanPn;
+      return cleanName;
+    }
+
+    function getPartThreshold(pn, partsName) {
+      const key = getPartStorageKey(pn, partsName);
+      if (key && customThresholds[key] !== undefined) {
+        return Number(customThresholds[key]);
+      }
+      return globalThreshold;
+    }
+
     // 字型大小切換邏輯
     const fontSizes = ['font-sm', 'font-md', 'font-lg', 'font-xl'];
     const fontLabels = ['較小', '標準', '中等', '特大'];
-    let currentFontIdx = Number(localStorage.getItem('APP_FONT_IDX')) || 1; // 預設標準 (font-md)
+    let currentFontIdx = Number(localStorage.getItem('APP_FONT_IDX')) || 1;
 
     function updateFontSize() {
       const body = document.getElementById("appBody");
@@ -390,13 +408,6 @@
     function adjustFontSize(delta) {
       currentFontIdx = Math.max(0, Math.min(fontSizes.length - 1, currentFontIdx + delta));
       updateFontSize();
-    }
-
-    function getPartThreshold(pn) {
-      if (pn && customThresholds[pn.trim()] !== undefined) {
-        return Number(customThresholds[pn.trim()]);
-      }
-      return globalThreshold;
     }
 
     function cleanDateStr(val) {
@@ -535,17 +546,20 @@
 
       const qtyFilterBox = document.getElementById("qtyFilterContainer");
       const btnThreshold = document.getElementById("btnThresholdSetting");
+      const btnQuick = document.getElementById("btnQuickInStock");
 
       if (currentTab === "Stock in TW") {
         document.getElementById("btnAddBtnText").innerText = "新增庫存品項";
         document.getElementById("importColsHint").innerText = "支援欄位：Location, P/N, parts name, QTY, model, remark";
         if (qtyFilterBox) qtyFilterBox.classList.remove("hidden");
         if (btnThreshold) btnThreshold.classList.remove("hidden");
+        if (btnQuick) btnQuick.classList.remove("hidden");
       } else {
         document.getElementById("btnAddBtnText").innerText = `新增 ${currentTab} 零件紀錄`;
         document.getElementById("importColsHint").innerText = "支援欄位：Date, P/N (If any), Parts Name, Model, IN, OUT, Remark";
         if (qtyFilterBox) qtyFilterBox.classList.add("hidden");
         if (btnThreshold) btnThreshold.classList.add("hidden");
+        if (btnQuick) btnQuick.classList.add("hidden");
       }
 
       fetchCurrentTab();
@@ -580,22 +594,43 @@
       }
     }
 
+    // 一鍵切換「僅看在庫品項 (QTY > 0)」
+    function toggleQuickInStock() {
+      isOnlyInStockActive = !isOnlyInStockActive;
+      const btn = document.getElementById("btnQuickInStock");
+      if (isOnlyInStockActive) {
+        btn.className = "w-full sm:w-auto px-4 py-2.5 bg-emerald-600/30 hover:bg-emerald-600/40 border border-emerald-500/60 text-emerald-300 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-2 shadow-sm";
+        document.getElementById("quickInStockText").innerText = "正在檢視：僅在庫品項 (點擊恢復)";
+      } else {
+        btn.className = "w-full sm:w-auto px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-2";
+        document.getElementById("quickInStockText").innerText = "僅看在庫品項 (QTY > 0)";
+      }
+      applyFilter();
+    }
+
     function applyFilter() {
       const kw = document.getElementById("searchKeyword").value.trim().toLowerCase();
       const qtyFilter = document.getElementById("qtyFilterSelect") ? document.getElementById("qtyFilterSelect").value : 'ALL';
 
       let filtered = rawDataList;
 
+      // 1. 關鍵字搜尋
       if (kw) {
         filtered = filtered.filter(item => 
           Object.values(item).some(v => String(v).toLowerCase().includes(kw))
         );
       }
 
+      // 2. 一鍵在庫篩選 (QTY > 0)
+      if (currentTab === "Stock in TW" && isOnlyInStockActive) {
+        filtered = filtered.filter(item => (Number(item.qty) || 0) > 0);
+      }
+
+      // 3. QTY 狀態過濾
       if (currentTab === "Stock in TW" && qtyFilter !== 'ALL') {
         filtered = filtered.filter(item => {
           const qty = Number(item.qty) || 0;
-          const threshold = getPartThreshold(item.pn);
+          const threshold = getPartThreshold(item.pn, item.partsName);
 
           if (qtyFilter === 'LOW') {
             return qty <= threshold;
@@ -636,7 +671,8 @@
 
         tbody.innerHTML = data.map(r => {
           const qty = Number(r.qty) || 0;
-          const threshold = getPartThreshold(r.pn);
+          const threshold = getPartThreshold(r.pn, r.partsName);
+          const safeKey = encodeURIComponent(getPartStorageKey(r.pn, r.partsName));
 
           let statusBadge = '';
           let qtyColor = 'text-emerald-400 font-bold';
@@ -658,9 +694,9 @@
               <td class="px-5 py-3.5 font-semibold text-white">${r.partsName || '-'}</td>
               <td class="px-5 py-3.5 font-mono ${qtyColor}">${qty}</td>
               <td class="px-5 py-3.5 font-mono text-slate-300">
-                <span class="inline-flex items-center gap-1.5 cursor-pointer hover:text-amber-400 transition" onclick="quickEditThreshold('${r.pn}')" title="點擊直接修改此料號水位">
+                <span class="inline-flex items-center gap-1.5 cursor-pointer hover:text-amber-400 transition" onclick="quickEditThreshold('${safeKey}')" title="點擊修改水位">
                   ${threshold}
-                  <i class="fa-solid fa-pen text-xs opacity-50 group-hover:opacity-100"></i>
+                  <i class="fa-solid fa-pen text-xs opacity-50 group-hover:opacity-100 text-amber-400"></i>
                 </span>
               </td>
               <td class="px-5 py-3.5">${statusBadge}</td>
@@ -720,7 +756,7 @@
 
         data.forEach(d => {
           const qty = Number(d.qty) || 0;
-          const th = getPartThreshold(d.pn);
+          const th = getPartThreshold(d.pn, d.partsName);
           if (qty <= th) {
             lowStockCount++;
           } else {
@@ -743,10 +779,7 @@
     // ====== 水位設定彈窗邏輯 ======
     function openThresholdModal() {
       const modal = document.getElementById("thresholdModal");
-      if (!modal) {
-        alert("找不到設定視窗元素，請確認代碼已完整替換！");
-        return;
-      }
+      if (!modal) return;
       document.getElementById("globalThresholdInput").value = globalThreshold;
       renderCustomThresholdList();
       modal.classList.remove("hidden");
@@ -769,24 +802,24 @@
           <span class="font-mono text-cyan-400 font-bold">${k}</span>
           <div class="flex items-center gap-2">
             <span class="text-slate-300 font-mono">水位: <b class="text-amber-400">${customThresholds[k]}</b></span>
-            <button onclick="removeCustomThreshold('${k}')" class="text-rose-400 hover:text-rose-300 text-xs ml-2"><i class="fa-solid fa-trash"></i></button>
+            <button onclick="removeCustomThreshold('${encodeURIComponent(k)}')" class="text-rose-400 hover:text-rose-300 text-xs ml-2"><i class="fa-solid fa-trash"></i></button>
           </div>
         </div>
       `).join('');
     }
 
     function addCustomThreshold() {
-      const pn = document.getElementById("customPnInput").value.trim();
+      const key = document.getElementById("customPnInput").value.trim();
       const val = parseInt(document.getElementById("customThresholdInput").value, 10);
-      if (!pn) {
-        alert("請輸入料號 P/N");
+      if (!key) {
+        alert("請輸入料號 P/N 或品名");
         return;
       }
       if (isNaN(val) || val < 0) {
         alert("請輸入有效的水位數值");
         return;
       }
-      customThresholds[pn] = val;
+      customThresholds[key] = val;
       localStorage.setItem('CUSTOM_PARTS_THRESHOLDS', JSON.stringify(customThresholds));
       document.getElementById("customPnInput").value = '';
       document.getElementById("customThresholdInput").value = '';
@@ -795,22 +828,24 @@
       updateStatistics(rawDataList);
     }
 
-    function removeCustomThreshold(pn) {
-      delete customThresholds[pn];
+    function removeCustomThreshold(encodedKey) {
+      const key = decodeURIComponent(encodedKey);
+      delete customThresholds[key];
       localStorage.setItem('CUSTOM_PARTS_THRESHOLDS', JSON.stringify(customThresholds));
       renderCustomThresholdList();
       applyFilter();
       updateStatistics(rawDataList);
     }
 
-    function quickEditThreshold(pn) {
-      if (!pn || pn === '-') return;
-      const current = getPartThreshold(pn);
-      const val = prompt(`請輸入料號 [${pn}] 的安全水位數量：`, current);
+    function quickEditThreshold(encodedKey) {
+      const key = decodeURIComponent(encodedKey);
+      if (!key) return;
+      const current = customThresholds[key] !== undefined ? customThresholds[key] : globalThreshold;
+      const val = prompt(`請輸入項目【${key}】的安全水位數量：`, current);
       if (val !== null) {
         const num = parseInt(val.trim(), 10);
         if (!isNaN(num) && num >= 0) {
-          customThresholds[pn] = num;
+          customThresholds[key] = num;
           localStorage.setItem('CUSTOM_PARTS_THRESHOLDS', JSON.stringify(customThresholds));
           applyFilter();
           updateStatistics(rawDataList);
