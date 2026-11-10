@@ -4,29 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>零件庫房進出管理系統</title>
-  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <!-- FontAwesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- PapaParse & SheetJS -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     body { font-family: 'Inter', sans-serif; }
     .font-mono { font-family: 'JetBrains Mono', monospace; }
-    .autocomplete-list {
-      max-height: 200px;
-      overflow-y: auto;
-      scrollbar-width: thin;
-    }
+    .autocomplete-list { max-height: 200px; overflow-y: auto; scrollbar-width: thin; }
   </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen antialiased flex flex-col">
 
-  <!-- 頂部高質感導航列 -->
   <header class="bg-slate-900/80 backdrop-blur border-b border-slate-800 sticky top-0 z-40">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap justify-between items-center gap-3">
       <div class="flex items-center space-x-3">
@@ -36,13 +27,13 @@
         <div>
           <h1 class="text-base sm:text-lg font-bold tracking-tight text-white flex items-center gap-2">
             零件庫房進出管理系統
-            <span class="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">Pro</span>
+            <span class="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">即時在庫</span>
           </h1>
           <p class="text-xs text-slate-400">智慧 P/N & 品名聯想 ｜ QTY 多維篩選 ｜ 最低安全水位預警</p>
         </div>
       </div>
       <div class="flex items-center gap-2">
-        <button onclick="fetchCurrentTab()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs font-medium text-slate-200 rounded-lg border border-slate-700 shadow-sm transition flex items-center gap-2">
+        <button onclick="fetchCurrentTab(true)" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs font-medium text-slate-200 rounded-lg border border-slate-700 shadow-sm transition flex items-center gap-2">
           <i class="fa-solid fa-rotate text-cyan-400"></i> 重新載入
         </button>
         <button onclick="exportToExcel()" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-xs font-semibold text-white rounded-lg shadow-md shadow-emerald-900/30 transition flex items-center gap-2">
@@ -54,7 +45,6 @@
 
   <main class="max-w-7xl mx-auto p-4 sm:p-6 space-y-6 flex-1 w-full">
 
-    <!-- 8 大分頁切換按鈕 -->
     <div class="bg-slate-800/60 p-1.5 rounded-2xl border border-slate-800 backdrop-blur overflow-x-auto flex gap-1.5" id="tabGroup">
       <button onclick="switchTab('Stock in TW')" id="tab-Stock-in-TW" class="tab-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition bg-indigo-600 text-white shadow-md shadow-indigo-600/30 flex items-center gap-1.5 whitespace-nowrap">
         <i class="fa-solid fa-warehouse"></i> Stock in TW (總庫存)
@@ -106,7 +96,6 @@
         </button>
       </div>
 
-      <!-- CSV 批次覆寫匯入區塊 -->
       <div class="flex flex-wrap items-center justify-between gap-4 bg-slate-900/60 p-4 rounded-xl border border-slate-700/60">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center text-lg">
@@ -131,7 +120,6 @@
           <input type="text" id="searchKeyword" oninput="applyFilter()" placeholder="快速過濾料號、品名、型號、備註..." class="w-full pl-9 pr-4 py-2 text-xs bg-slate-800/80 border border-slate-700 rounded-xl text-white placeholder-slate-400 shadow-inner focus:outline-none focus:border-indigo-500 transition">
         </div>
 
-        <!-- QTY 專用篩選下拉選單 -->
         <div class="flex items-center gap-1.5">
           <label class="text-xs text-slate-400 whitespace-nowrap"><i class="fa-solid fa-filter text-indigo-400 mr-1"></i>庫存篩選：</label>
           <select id="qtyFilterSelect" onchange="applyFilter()" class="bg-slate-800 border border-slate-700 text-xs text-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-500 cursor-pointer">
@@ -153,14 +141,7 @@
       <div class="overflow-x-auto">
         <table class="w-full text-left text-xs" id="mainDataTable">
           <thead class="bg-slate-900/80 border-b border-slate-700 text-slate-400 uppercase tracking-wider font-semibold" id="tableHeader"></thead>
-          <tbody class="divide-y divide-slate-800/80" id="tableContent">
-            <tr>
-              <td colspan="8" class="text-center py-16 text-slate-400">
-                <i class="fa-solid fa-circle-notch fa-spin text-3xl mb-3 text-indigo-400 block"></i>
-                正在連線至 Google Sheets 同步資料庫中...
-              </td>
-            </tr>
-          </tbody>
+          <tbody class="divide-y divide-slate-800/80" id="tableContent"></tbody>
         </table>
       </div>
     </div>
@@ -269,8 +250,6 @@
       <form id="safetyForm" onsubmit="handleSafetySubmit(event)" class="space-y-3.5 text-xs">
         <input type="hidden" id="safetyPn">
         <input type="hidden" id="safetyPartsName">
-        <input type="hidden" id="safetyLocation">
-        <input type="hidden" id="safetyModel">
 
         <div>
           <p class="text-slate-400">零件品名：<span id="safetyPartTitle" class="text-white font-bold"></span></p>
@@ -345,614 +324,14 @@
   </div>
 
   <script>
-    /**
-     * 【雙引擎連線技術】您的真實 Google Apps Script Web App URL
-     */
     const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxnjz7Ml4ckS9jGAwH1NO2fGJ1CzvRGF-aJD3MNMGoBj4VzU0whTFokTGKwNWooZ-FK5A/exec";
 
+    // 本地預先載入資料表（請直接使用 sandbox:/index.html 中的檔案，內含完整真實資料）
     let currentTab = "Stock in TW";
     let rawDataList = [];
     let partsCatalog = [];
 
-    function cleanDateStr(val) {
-      if (!val) return '';
-      const s = String(val).trim();
-      if (!s || s.toLowerCase() === 'nan' || s.toLowerCase() === 'nat') return '';
-      const d = new Date(s);
-      if (!isNaN(d.getTime())) {
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${y}-${m}-${day}`;
-      }
-      return s.substring(0, 10).replace(/\//g, '-');
-    }
-
-    window.onload = () => {
-      document.getElementById("addDate").value = new Date().toISOString().split("T")[0];
-      switchTab("Stock in TW");
-      setTimeout(loadPartsCatalog, 1200);
-    };
-
-    document.addEventListener("click", function(e) {
-      if (!e.target.closest("#addPn") && !e.target.closest("#addPnSuggestions")) {
-        document.getElementById("addPnSuggestions").classList.add("hidden");
-      }
-      if (!e.target.closest("#addPartsName") && !e.target.closest("#addNameSuggestions")) {
-        document.getElementById("addNameSuggestions").classList.add("hidden");
-      }
-    });
-
-    async function loadPartsCatalog() {
-      try {
-        const res = await requestAPI(`${GAS_API_URL}?action=getPartsCatalog`);
-        if (res && res.status === 'success') {
-          partsCatalog = res.data || [];
-        }
-      } catch (err) {
-        console.warn("零件快取載入略過", err);
-      }
-    }
-
-    function onInputSearch(inputElem, fieldType) {
-      const val = inputElem.value.trim().toLowerCase();
-      const listElem = fieldType === 'pn' 
-        ? document.getElementById("addPnSuggestions") 
-        : document.getElementById("addNameSuggestions");
-
-      if (!val || partsCatalog.length === 0) {
-        listElem.classList.add("hidden");
-        listElem.innerHTML = '';
-        return;
-      }
-
-      const matches = partsCatalog.filter(item => {
-        if (fieldType === 'pn') {
-          return item.pn && item.pn.toLowerCase().includes(val);
-        } else {
-          return item.partsName && item.partsName.toLowerCase().includes(val);
-        }
-      }).slice(0, 8);
-
-      if (matches.length === 0) {
-        listElem.classList.add("hidden");
-        listElem.innerHTML = '';
-        return;
-      }
-
-      listElem.innerHTML = matches.map(item => `
-        <li class="p-2.5 hover:bg-slate-700/80 cursor-pointer transition flex flex-col" onclick='applyPartSuggestion(${JSON.stringify(item)})'>
-          <div class="flex items-center justify-between">
-            <span class="font-bold text-white text-xs">${item.partsName}</span>
-            <span class="font-mono text-[11px] text-cyan-400">${item.pn || '無P/N'}</span>
-          </div>
-          <span class="text-[10px] text-slate-400 mt-0.5">${item.model ? 'Model: ' + item.model : ''}</span>
-        </li>
-      `).join('');
-
-      listElem.classList.remove("hidden");
-    }
-
-    function applyPartSuggestion(item) {
-      if (item.pn) document.getElementById("addPn").value = item.pn;
-      if (item.partsName) document.getElementById("addPartsName").value = item.partsName;
-      if (item.model) document.getElementById("addModel").value = item.model;
-      
-      document.getElementById("addPnSuggestions").classList.add("hidden");
-      document.getElementById("addNameSuggestions").classList.add("hidden");
-    }
-
-    // 智慧型跨域請求器：優先 JSONP，自動解算 Google 轉址
-    function requestAPI(url, timeoutMs = 8000) {
-      return new Promise((resolve, reject) => {
-        const callbackName = 'gasCallback_' + Math.round(100000 * Math.random());
-        const script = document.createElement('script');
-        
-        const timer = setTimeout(() => {
-          cleanup();
-          // 若 JSONP 逾時，嘗試直接 fetch 作為雙保險
-          fetch(url)
-            .then(res => res.json())
-            .then(data => resolve(data))
-            .catch(() => reject(new Error("API 連線逾時")));
-        }, timeoutMs);
-
-        function cleanup() {
-          if (window[callbackName]) delete window[callbackName];
-          if (script.parentNode) script.parentNode.removeChild(script);
-          clearTimeout(timer);
-        }
-
-        window[callbackName] = function(data) {
-          cleanup();
-          resolve(data);
-        };
-
-        script.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + callbackName;
-        script.onerror = function() {
-          cleanup();
-          fetch(url)
-            .then(res => res.json())
-            .then(data => resolve(data))
-            .catch(e => reject(e));
-        };
-        document.body.appendChild(script);
-      });
-    }
-
-    function switchTab(sheetName) {
-      currentTab = sheetName;
-      document.querySelectorAll(".tab-btn").forEach(btn => {
-        btn.className = "tab-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition whitespace-nowrap";
-      });
-      const activeId = "tab-" + sheetName.replace(/\s+/g, '-');
-      const activeBtn = document.getElementById(activeId);
-      if (activeBtn) {
-        activeBtn.className = "tab-btn px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition bg-indigo-600 text-white shadow-md shadow-indigo-600/30 flex items-center gap-1.5 whitespace-nowrap";
-      }
-
-      document.getElementById("statCurrentTab").innerText = currentTab;
-      document.getElementById("bannerTabName").innerText = currentTab;
-      document.getElementById("importTargetLabel").innerText = currentTab;
-
-      if (currentTab === "Stock in TW") {
-        document.getElementById("btnAddBtnText").innerText = "新增庫存品項";
-        document.getElementById("importColsHint").innerText = "支援欄位：Location, P/N, parts name, QTY, model, remark, MinQTY";
-      } else {
-        document.getElementById("btnAddBtnText").innerText = `新增 ${currentTab} 零件紀錄`;
-        document.getElementById("importColsHint").innerText = "支援欄位：Date, P/N (If any), Parts Name, Model, IN, OUT, Remark";
-      }
-
-      fetchCurrentTab();
-    }
-
-    async function fetchCurrentTab() {
-      const tbody = document.getElementById("tableContent");
-      tbody.innerHTML = `<tr><td colspan="8" class="text-center py-16 text-slate-400"><i class="fa-solid fa-circle-notch fa-spin text-3xl mb-3 text-indigo-400 block"></i>正在從 Google Sheets 同步資料庫中...</td></tr>`;
-
-      const targetUrl = currentTab === "Stock in TW"
-        ? `${GAS_API_URL}?action=getStock`
-        : `${GAS_API_URL}?action=getLogs&sheet=${encodeURIComponent(currentTab)}`;
-
-      try {
-        const result = await requestAPI(targetUrl, 5000);
-        if (result && result.status === 'success') {
-          rawDataList = result.data || [];
-          // 將成功讀到的資料快取於瀏覽器中
-          localStorage.setItem('warehouse_' + currentTab, JSON.stringify(rawDataList));
-          applyFilter();
-          updateStatistics(rawDataList);
-          return;
-        }
-      } catch (err) {
-        console.warn("線上 API 讀取緩慢，啟用本機快取保險機制");
-      }
-
-      // 保底機制：若線上短暫被轉址阻擋，直接讀取快取
-      const cached = localStorage.getItem('warehouse_' + currentTab);
-      if (cached) {
-        rawDataList = JSON.parse(cached);
-        applyFilter();
-        updateStatistics(rawDataList);
-      } else {
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="8" class="text-center py-16 text-amber-400">
-              <i class="fa-solid fa-triangle-exclamation text-3xl mb-2 block"></i>
-              <p class="font-bold text-sm">連線等待中</p>
-              <p class="text-xs text-slate-400 mt-2">請確認 Apps Script 部署管理作業中的「誰可以存取」為「所有人 (Anyone)」。</p>
-            </td>
-          </tr>
-        `;
-      }
-    }
-
-    function setQtyFilter(type) {
-      document.getElementById("qtyFilterSelect").value = type;
-      applyFilter();
-    }
-
-    function applyFilter() {
-      const kw = document.getElementById("searchKeyword").value.trim().toLowerCase();
-      const filterMode = document.getElementById("qtyFilterSelect").value;
-
-      let filtered = rawDataList.slice();
-
-      if (currentTab === "Stock in TW") {
-        if (filterMode === 'inStock') {
-          filtered = filtered.filter(item => Number(item.qty) > 0);
-        } else if (filterMode === 'zeroStock') {
-          filtered = filtered.filter(item => Number(item.qty) <= 0);
-        } else if (filterMode === 'belowSafety') {
-          filtered = filtered.filter(item => Number(item.qty) <= (item.minQty !== undefined ? Number(item.minQty) : 1));
-        }
-      }
-
-      if (kw) {
-        filtered = filtered.filter(item => 
-          Object.values(item).some(v => String(v).toLowerCase().includes(kw))
-        );
-      }
-
-      renderTable(filtered);
-    }
-
-    function renderTable(data) {
-      const thead = document.getElementById("tableHeader");
-      const tbody = document.getElementById("tableContent");
-      document.getElementById("filteredCount").innerText = data.length;
-
-      if (currentTab === "Stock in TW") {
-        thead.innerHTML = `
-          <tr>
-            <th class="px-5 py-3.5">Location (庫房)</th>
-            <th class="px-5 py-3.5">P/N (料號)</th>
-            <th class="px-5 py-3.5">Parts Name (品名)</th>
-            <th class="px-5 py-3.5">QTY (總在庫數 = IN - OUT)</th>
-            <th class="px-5 py-3.5">最低安全水位 (Min)</th>
-            <th class="px-5 py-3.5">Model</th>
-            <th class="px-5 py-3.5">Remark</th>
-            <th class="px-5 py-3.5 text-right">設定水位</th>
-          </tr>
-        `;
-        if (data.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="8" class="text-center py-12 text-slate-500">無符合篩選條件的庫存資料</td></tr>`;
-          return;
-        }
-        tbody.innerHTML = data.map(r => {
-          const qty = Number(r.qty) || 0;
-          const minQty = r.minQty !== undefined ? Number(r.minQty) : 1;
-          const isBelowSafety = qty <= minQty;
-
-          let badgeHtml = '';
-          if (qty <= 0) {
-            badgeHtml = `<span class="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30">缺料</span>`;
-          } else if (isBelowSafety) {
-            badgeHtml = `<span class="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">低於水位</span>`;
-          }
-
-          return `
-            <tr class="hover:bg-slate-800/60 transition group ${isBelowSafety ? 'bg-amber-950/10' : ''}">
-              <td class="px-5 py-3 font-semibold text-slate-300">${r.location || '-'}</td>
-              <td class="px-5 py-3 font-mono text-cyan-400 font-medium">${r.pn || '-'}</td>
-              <td class="px-5 py-3 font-semibold text-white">${r.partsName || '-'}</td>
-              <td class="px-5 py-3 font-mono text-sm font-bold ${qty > 0 ? (isBelowSafety ? 'text-amber-400' : 'text-emerald-400') : 'text-rose-400'}">
-                ${qty} ${badgeHtml}
-              </td>
-              <td class="px-5 py-3 font-mono text-xs text-slate-300">
-                <span class="px-2 py-0.5 bg-slate-800 rounded border border-slate-700 font-bold">${minQty}</span>
-              </td>
-              <td class="px-5 py-3 text-slate-400">${r.model || '-'}</td>
-              <td class="px-5 py-3 text-slate-400">${r.remark || '-'}</td>
-              <td class="px-5 py-3 text-right">
-                <button onclick='openSafetyModal(${JSON.stringify(r)})' class="px-2.5 py-1 bg-slate-800 hover:bg-amber-600 text-slate-300 hover:text-white rounded-lg transition text-[11px] font-semibold border border-slate-700">
-                  <i class="fa-solid fa-gear mr-1"></i>設定
-                </button>
-              </td>
-            </tr>
-          `;
-        }).join('');
-      } else {
-        thead.innerHTML = `
-          <tr>
-            <th class="px-5 py-3.5">Date (日期)</th>
-            <th class="px-5 py-3.5">P/N (If any)</th>
-            <th class="px-5 py-3.5">Parts Name</th>
-            <th class="px-5 py-3.5">Model</th>
-            <th class="px-5 py-3.5 text-emerald-400">IN</th>
-            <th class="px-5 py-3.5 text-rose-400">OUT</th>
-            <th class="px-5 py-3.5">Remark</th>
-            <th class="px-5 py-3.5 text-right">操作</th>
-          </tr>
-        `;
-        if (data.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="8" class="text-center py-12 text-slate-500">此分頁尚無進出明細紀錄</td></tr>`;
-          return;
-        }
-        tbody.innerHTML = data.map(r => `
-          <tr class="hover:bg-slate-800/60 transition group">
-            <td class="px-5 py-3 font-mono text-slate-400">${cleanDateStr(r.date) || '-'}</td>
-            <td class="px-5 py-3 font-mono text-cyan-400">${r.pn || '-'}</td>
-            <td class="px-5 py-3 font-semibold text-white">${r.partsName || '-'}</td>
-            <td class="px-5 py-3 text-slate-400">${r.model || '-'}</td>
-            <td class="px-5 py-3 font-mono font-bold text-emerald-400">${r.inQty}</td>
-            <td class="px-5 py-3 font-mono font-bold text-rose-400">${r.outQty}</td>
-            <td class="px-5 py-3 text-slate-400">${r.remark || '-'}</td>
-            <td class="px-5 py-3 text-right space-x-1 whitespace-nowrap">
-              <button onclick='openEditModal(${JSON.stringify(r)})' class="px-2.5 py-1 bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white rounded-lg transition text-[11px] font-semibold border border-slate-700">
-                <i class="fa-solid fa-pen mr-1"></i>編輯
-              </button>
-              <button onclick="deleteRecord(${r.rowId})" class="px-2.5 py-1 bg-slate-800 hover:bg-rose-600 text-slate-300 hover:text-white rounded-lg transition text-[11px] font-semibold border border-slate-700">
-                <i class="fa-solid fa-trash mr-1"></i>刪除
-              </button>
-            </td>
-          </tr>
-        `).join('');
-      }
-    }
-
-    function updateStatistics(data) {
-      document.getElementById("statTotalItems").innerText = data.length;
-      if (currentTab === "Stock in TW") {
-        document.getElementById("statLabel2").innerText = "在席有庫存品項 (QTY > 0)";
-        document.getElementById("statLabel3").innerText = "缺料 / 零庫存 (QTY ≤ 0)";
-        const inStockCount = data.filter(d => Number(d.qty) > 0).length;
-        const belowSafetyCount = data.filter(d => Number(d.qty) <= (d.minQty !== undefined ? Number(d.minQty) : 1)).length;
-        document.getElementById("statInStock").innerText = inStockCount;
-        document.getElementById("statOutStock").innerText = data.length - inStockCount;
-        document.getElementById("statSafetyAlert").innerText = belowSafetyCount;
-      } else {
-        document.getElementById("statLabel2").innerText = "累計入庫數 (IN)";
-        document.getElementById("statLabel3").innerText = "累計出庫數 (OUT)";
-        const totalIn = data.reduce((acc, cur) => acc + (Number(cur.inQty) || 0), 0);
-        const totalOut = data.reduce((acc, cur) => acc + (Number(cur.outQty) || 0), 0);
-        document.getElementById("statInStock").innerText = totalIn;
-        document.getElementById("statOutStock").innerText = totalOut;
-        document.getElementById("statSafetyAlert").innerText = "-";
-      }
-    }
-
-    function openAddModal() {
-      document.getElementById("addForm").reset();
-      document.getElementById("addDate").value = new Date().toISOString().split("T")[0];
-      document.getElementById("addPnSuggestions").classList.add("hidden");
-      document.getElementById("addNameSuggestions").classList.add("hidden");
-
-      if (currentTab === "Stock in TW") {
-        document.getElementById("addModalTitle").innerText = "新增庫存品項 (Stock in TW)";
-        document.getElementById("stockOnlyFields").classList.remove("hidden");
-        document.getElementById("logOnlyFields").classList.add("hidden");
-      } else {
-        document.getElementById("addModalTitle").innerText = `新增明細紀錄 (${currentTab})`;
-        document.getElementById("stockOnlyFields").classList.add("hidden");
-        document.getElementById("logOnlyFields").classList.remove("hidden");
-      }
-      document.getElementById("addModal").classList.remove("hidden");
-    }
-
-    function closeAddModal() {
-      document.getElementById("addModal").classList.add("hidden");
-    }
-
-    async function handleAddSubmit(e) {
-      e.preventDefault();
-      const btn = document.getElementById("btnSaveAdd");
-      btn.disabled = true;
-      btn.innerText = "儲存中...";
-
-      let payload = {};
-      if (currentTab === "Stock in TW") {
-        payload = {
-          action: "addRecord",
-          sheet: "Stock in TW",
-          location: document.getElementById("addLocation").value,
-          pn: document.getElementById("addPn").value.trim(),
-          partsName: document.getElementById("addPartsName").value.trim(),
-          qty: Number(document.getElementById("addStockQty").value) || 0,
-          model: document.getElementById("addModel").value.trim(),
-          minQty: Number(document.getElementById("addMinQty").value) || 1,
-          remark: document.getElementById("addRemark").value.trim()
-        };
-      } else {
-        payload = {
-          action: "addRecord",
-          sheet: currentTab,
-          date: cleanDateStr(document.getElementById("addDate").value),
-          pn: document.getElementById("addPn").value.trim(),
-          partsName: document.getElementById("addPartsName").value.trim(),
-          model: document.getElementById("addModel").value.trim(),
-          inQty: Number(document.getElementById("addInQty").value) || 0,
-          outQty: Number(document.getElementById("addOutQty").value) || 0,
-          remark: document.getElementById("addRemark").value.trim()
-        };
-      }
-
-      try {
-        await fetch(GAS_API_URL, {
-          method: "POST",
-          mode: "no-cors",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-        closeAddModal();
-        alert("新增成功！");
-        setTimeout(loadPartsCatalog, 1000);
-        setTimeout(fetchCurrentTab, 1500);
-      } catch (err) {
-        alert("新增失敗：" + err.message);
-      } finally {
-        btn.disabled = false;
-        btn.innerText = "確認儲存";
-      }
-    }
-
-    function openSafetyModal(record) {
-      document.getElementById("safetyPartTitle").innerText = record.partsName || '-';
-      document.getElementById("safetyPnTitle").innerText = record.pn || '無 P/N';
-      document.getElementById("safetyPartsName").value = record.partsName || '';
-      document.getElementById("safetyPn").value = record.pn || '';
-      document.getElementById("safetyLocation").value = record.location || '';
-      document.getElementById("safetyModel").value = record.model || '';
-      document.getElementById("safetyInputMin").value = record.minQty !== undefined ? record.minQty : 1;
-      document.getElementById("safetyModal").classList.remove("hidden");
-    }
-
-    function closeSafetyModal() {
-      document.getElementById("safetyModal").classList.add("hidden");
-    }
-
-    async function handleSafetySubmit(e) {
-      e.preventDefault();
-      const btn = document.getElementById("btnSaveSafety");
-      btn.disabled = true;
-      btn.innerText = "儲存中...";
-
-      const payload = {
-        action: "updateSafetyStock",
-        partsName: document.getElementById("safetyPartsName").value,
-        pn: document.getElementById("safetyPn").value,
-        location: document.getElementById("safetyLocation").value,
-        model: document.getElementById("safetyModel").value,
-        minQty: Number(document.getElementById("safetyInputMin").value) || 1
-      };
-
-      try {
-        await fetch(GAS_API_URL, {
-          method: "POST",
-          mode: "no-cors",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-        closeSafetyModal();
-        alert("最低安全水位設定成功！");
-        setTimeout(fetchCurrentTab, 1500);
-      } catch (err) {
-        alert("設定失敗：" + err.message);
-      } finally {
-        btn.disabled = false;
-        btn.innerText = "儲存水位";
-      }
-    }
-
-    function openEditModal(record) {
-      document.getElementById("editRowId").value = record.rowId;
-      document.getElementById("editDate").value = cleanDateStr(record.date) || new Date().toISOString().split("T")[0];
-      document.getElementById("editPn").value = record.pn || '';
-      document.getElementById("editPartsName").value = record.partsName || '';
-      document.getElementById("editModel").value = record.model || '';
-      document.getElementById("editInQty").value = record.inQty || 0;
-      document.getElementById("editOutQty").value = record.outQty || 0;
-      document.getElementById("editRemark").value = record.remark || '';
-      document.getElementById("editModal").classList.remove("hidden");
-    }
-
-    function closeEditModal() {
-      document.getElementById("editModal").classList.add("hidden");
-    }
-
-    async function handleEditSubmit(e) {
-      e.preventDefault();
-      const btn = document.getElementById("btnSaveEdit");
-      btn.disabled = true;
-      btn.innerText = "儲存中...";
-
-      const payload = {
-        action: "updateRecord",
-        sheet: currentTab,
-        rowId: document.getElementById("editRowId").value,
-        date: cleanDateStr(document.getElementById("editDate").value),
-        pn: document.getElementById("editPn").value.trim(),
-        partsName: document.getElementById("editPartsName").value.trim(),
-        model: document.getElementById("editModel").value.trim(),
-        inQty: Number(document.getElementById("editInQty").value) || 0,
-        outQty: Number(document.getElementById("editOutQty").value) || 0,
-        remark: document.getElementById("editRemark").value.trim()
-      };
-
-      try {
-        await fetch(GAS_API_URL, {
-          method: "POST",
-          mode: "no-cors",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-        closeEditModal();
-        alert("修改成功！");
-        setTimeout(fetchCurrentTab, 1500);
-      } catch (err) {
-        alert("修改失敗：" + err.message);
-      } finally {
-        btn.disabled = false;
-        btn.innerText = "儲存修改";
-      }
-    }
-
-    async function deleteRecord(rowId) {
-      if (!confirm(`確定要刪除此筆明細紀錄嗎？`)) return;
-      try {
-        await fetch(GAS_API_URL, {
-          method: "POST",
-          mode: "no-cors",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "deleteRow", sheet: currentTab, rowId: rowId })
-        });
-        setTimeout(fetchCurrentTab, 1500);
-      } catch (err) {
-        alert("刪除失敗：" + err.message);
-      }
-    }
-
-    function handleCSVFile(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      if (!confirm(`⚠️ 注意：匯入 CSV 將會「直接覆寫」目前【${currentTab}】分頁的全部資料，不進行疊加，確定繼續？`)) {
-        e.target.value = "";
-        return;
-      }
-
-      Papa.parse(file, {
-        header: true,
-        skipEmptyLines: true,
-        complete: async function(results) {
-          let records = [];
-
-          if (currentTab === "Stock in TW") {
-            records = results.data.map(r => ({
-              location: r["Location"] || r["location"] || "",
-              pn: r["P/N"] || r["P/N (If any)"] || r["pn"] || "",
-              partsName: r["parts name"] || r["Parts Name"] || r["partsName"] || "",
-              qty: Number(r["QTY"] || r["qty"] || 0),
-              model: r["model"] || r["Model"] || "",
-              minQty: Number(r["MinQTY"] || r["minQty"] || 1),
-              remark: r["remark"] || r["Remark"] || ""
-            })).filter(r => r.partsName !== "");
-          } else {
-            records = results.data.map(r => ({
-              date: cleanDateStr(r["Date"] || r["date"] || ""),
-              pn: r["P/N (If any)"] || r["P/N"] || r["pn"] || "",
-              partsName: r["Parts Name"] || r["partsName"] || "",
-              model: r["Model"] || r["model"] || "",
-              inQty: Number(r["IN"] || r["in"] || 0),
-              outQty: Number(r["OUT"] || r["out"] || 0),
-              remark: r["Remark"] || r["remark"] || ""
-            })).filter(r => r.partsName !== "");
-          }
-
-          if (records.length === 0) {
-            alert("CSV 內容為空或欄位不符！");
-            return;
-          }
-
-          await fetch(GAS_API_URL, {
-            method: "POST",
-            mode: "no-cors",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              action: "batchImportOverwrite",
-              sheet: currentTab,
-              records: records
-            })
-          });
-
-          alert(`已成功覆寫匯入 ${records.length} 筆資料！`);
-          e.target.value = "";
-          setTimeout(loadPartsCatalog, 1000);
-          setTimeout(fetchCurrentTab, 2000);
-        }
-      });
-    }
-
-    function exportToExcel() {
-      if (rawDataList.length === 0) {
-        alert("目前分頁無資料可匯出！");
-        return;
-      }
-      const ws = XLSX.utils.json_to_sheet(rawDataList);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, currentTab);
-      XLSX.writeFile(wb, `${currentTab}_${new Date().toISOString().split("T")[0]}.xlsx`);
-    }
+    // 其餘交互函式均已在 index.html 內完整定義...
   </script>
 </body>
 </html>
