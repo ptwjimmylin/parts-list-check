@@ -32,7 +32,7 @@
 
   <!-- 頂部導航列 -->
   <header class="bg-slate-900/90 backdrop-blur border-b border-slate-800 sticky top-0 z-40">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-wrap justify-between items-center gap-3">
+    <div class="w-full px-4 sm:px-8 py-3.5 flex flex-wrap justify-between items-center gap-3">
       <div class="flex items-center space-x-3.5">
         <div class="w-11 h-11 rounded-xl bg-gradient-to-tr from-indigo-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/20">
           <i class="fa-solid fa-boxes-stacked text-white text-xl"></i>
@@ -46,8 +46,15 @@
         </div>
       </div>
       
-      <!-- 工具按鈕群 -->
+      <!-- 工具按鈕群（含全螢幕、字型調整） -->
       <div class="flex items-center gap-2.5 flex-wrap">
+        <!-- 一鍵全螢幕切換按鈕 -->
+        <button id="btnFullscreen" onclick="toggleFullScreen()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs sm:text-sm font-semibold text-cyan-400 border border-slate-700 rounded-lg shadow-sm transition flex items-center gap-1.5" title="切換全螢幕模式">
+          <i class="fa-solid fa-expand" id="fullscreenIcon"></i>
+          <span id="fullscreenText">全螢幕</span>
+        </button>
+
+        <!-- 字型調整按鈕 -->
         <div class="flex items-center bg-slate-800 border border-slate-700 rounded-lg p-1 text-slate-300">
           <button onclick="adjustFontSize(-1)" title="字型縮小" class="px-2.5 py-1 hover:bg-slate-700 rounded text-xs font-bold transition">A-</button>
           <span class="px-2 text-xs font-medium text-slate-400" id="currentFontSizeLabel">標準</span>
@@ -64,7 +71,8 @@
     </div>
   </header>
 
-  <main class="max-w-7xl mx-auto p-4 sm:p-6 space-y-6 flex-1 w-full">
+  <!-- 主體區域：支援滿版橫向延展 -->
+  <main class="w-full px-4 sm:px-8 py-5 space-y-6 flex-1">
 
     <!-- 8 大分頁切換按鈕 -->
     <div class="bg-slate-800/60 p-1.5 rounded-2xl border border-slate-800 backdrop-blur overflow-x-auto flex gap-2" id="tabGroup">
@@ -140,7 +148,7 @@
       </div>
     </div>
 
-    <!-- 搜尋與 QTY 篩選列（含一鍵篩選在庫按鈕） -->
+    <!-- 搜尋與 QTY 篩選列 -->
     <div class="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-3">
       <div class="flex flex-1 flex-col sm:flex-row items-center gap-3 flex-wrap">
         <div class="relative w-full sm:w-72">
@@ -203,7 +211,7 @@
       <div class="space-y-4 text-xs sm:text-sm">
         <div class="bg-slate-800/60 p-3.5 rounded-xl border border-slate-700/50">
           <label class="block text-slate-200 font-bold mb-1">系統預設通用安全水位</label>
-          <p class="text-xs text-slate-400 mb-2">未個別設定的零件，將統一套用此門檻。</p>
+          <p class="text-xs text-slate-400 mb-2">未個別指定水位的零件，將統一套用此門檻。</p>
           <div class="flex gap-2">
             <input type="number" id="globalThresholdInput" min="0" class="flex-1 bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white font-mono focus:outline-none focus:border-amber-500">
             <button type="button" onclick="saveGlobalThreshold()" class="px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-semibold transition whitespace-nowrap">儲存預設值</button>
@@ -370,13 +378,39 @@
     let currentTab = "Stock in TW";
     let rawDataList = [];
     let partsCatalog = [];
-    let isOnlyInStockActive = false; // 一鍵在庫按鈕狀態
+    let isOnlyInStockActive = false;
 
     // 水位設定核心 (LocalStorage)
     let globalThreshold = Number(localStorage.getItem('GLOBAL_PARTS_THRESHOLD')) || 5;
     let customThresholds = JSON.parse(localStorage.getItem('CUSTOM_PARTS_THRESHOLDS') || '{}');
 
-    // 取得零件專屬識別 Key（優先使用 P/N，若無則改用品名）
+    // 全螢幕切換功能
+    function toggleFullScreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+          alert(`全螢幕切換失敗: ${err.message}`);
+        });
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      }
+    }
+
+    // 監聽全螢幕狀態切換按鈕文字與圖示
+    document.addEventListener("fullscreenchange", () => {
+      const icon = document.getElementById("fullscreenIcon");
+      const text = document.getElementById("fullscreenText");
+      if (document.fullscreenElement) {
+        icon.className = "fa-solid fa-compress";
+        text.innerText = "退出全螢幕";
+      } else {
+        icon.className = "fa-solid fa-expand";
+        text.innerText = "全螢幕";
+      }
+    });
+
+    // 零件專屬識別 Key（優先使用 P/N，若無則改用品名）
     function getPartStorageKey(pn, partsName) {
       const cleanPn = (pn || '').trim();
       const cleanName = (partsName || '').trim();
@@ -594,7 +628,6 @@
       }
     }
 
-    // 一鍵切換「僅看在庫品項 (QTY > 0)」
     function toggleQuickInStock() {
       isOnlyInStockActive = !isOnlyInStockActive;
       const btn = document.getElementById("btnQuickInStock");
@@ -614,19 +647,16 @@
 
       let filtered = rawDataList;
 
-      // 1. 關鍵字搜尋
       if (kw) {
         filtered = filtered.filter(item => 
           Object.values(item).some(v => String(v).toLowerCase().includes(kw))
         );
       }
 
-      // 2. 一鍵在庫篩選 (QTY > 0)
       if (currentTab === "Stock in TW" && isOnlyInStockActive) {
         filtered = filtered.filter(item => (Number(item.qty) || 0) > 0);
       }
 
-      // 3. QTY 狀態過濾
       if (currentTab === "Stock in TW" && qtyFilter !== 'ALL') {
         filtered = filtered.filter(item => {
           const qty = Number(item.qty) || 0;
