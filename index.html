@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>零件庫房進出管理系統</title>
+  <title>PTW 零件庫房管理系統 (PTW Inventory System)</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Google Fonts Inter -->
@@ -39,7 +39,7 @@
         </div>
         <div>
           <h1 class="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2">
-            零件庫房進出管理系統
+            PTW 零件庫房管理系統 (PTW Inventory System)
             <span class="text-xs font-semibold uppercase px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">Pro</span>
           </h1>
           <p class="text-xs sm:text-sm text-slate-400">智慧 P/N 聯想 ｜ 水位即時監控 ｜ 跨庫房歸併</p>
@@ -48,13 +48,11 @@
       
       <!-- 工具按鈕群（含全螢幕、字型調整） -->
       <div class="flex items-center gap-2.5 flex-wrap">
-        <!-- 一鍵全螢幕切換按鈕 -->
         <button id="btnFullscreen" onclick="toggleFullScreen()" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs sm:text-sm font-semibold text-cyan-400 border border-slate-700 rounded-lg shadow-sm transition flex items-center gap-1.5" title="切換全螢幕模式">
           <i class="fa-solid fa-expand" id="fullscreenIcon"></i>
           <span id="fullscreenText">全螢幕</span>
         </button>
 
-        <!-- 字型調整按鈕 -->
         <div class="flex items-center bg-slate-800 border border-slate-700 rounded-lg p-1 text-slate-300">
           <button onclick="adjustFontSize(-1)" title="字型縮小" class="px-2.5 py-1 hover:bg-slate-700 rounded text-xs font-bold transition">A-</button>
           <span class="px-2 text-xs font-medium text-slate-400" id="currentFontSizeLabel">標準</span>
@@ -71,7 +69,7 @@
     </div>
   </header>
 
-  <!-- 主體區域：支援滿版橫向延展 -->
+  <!-- 主體區域 -->
   <main class="w-full px-4 sm:px-8 py-5 space-y-6 flex-1">
 
     <!-- 8 大分頁切換按鈕 -->
@@ -156,20 +154,18 @@
           <input type="text" id="searchKeyword" oninput="applyFilter()" placeholder="過濾料號、品名、型號..." class="w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm bg-slate-800/80 border border-slate-700 rounded-xl text-white placeholder-slate-400 shadow-inner focus:outline-none focus:border-indigo-500 transition">
         </div>
         
-        <!-- 一鍵在庫按鈕 -->
         <button id="btnQuickInStock" onclick="toggleQuickInStock()" class="w-full sm:w-auto px-4 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-xl text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-2">
           <i class="fa-solid fa-boxes-packing text-emerald-400"></i> 
           <span id="quickInStockText">僅看在庫品項 (QTY > 0)</span>
         </button>
 
-        <!-- QTY 專用篩選下拉選單 -->
         <div id="qtyFilterContainer" class="flex items-center gap-2 w-full sm:w-auto">
           <label class="text-xs sm:text-sm text-slate-400 whitespace-nowrap font-medium"><i class="fa-solid fa-filter text-indigo-400 mr-1"></i>QTY 狀態:</label>
           <select id="qtyFilterSelect" onchange="applyFilter()" class="w-full sm:w-auto bg-slate-800 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-indigo-500 font-medium">
             <option value="ALL">全部狀態 (ALL)</option>
             <option value="LOW">⚠️ 低於安全水位 (含缺料)</option>
             <option value="OUT">🚨 缺料 (QTY ≤ 0)</option>
-            <option value="SAFE">✅ 充足 (大於水位)</option>
+            <option value="SAFE">✅ 充足 (大於或等於水位)</option>
           </select>
         </div>
       </div>
@@ -211,7 +207,7 @@
       <div class="space-y-4 text-xs sm:text-sm">
         <div class="bg-slate-800/60 p-3.5 rounded-xl border border-slate-700/50">
           <label class="block text-slate-200 font-bold mb-1">系統預設通用安全水位</label>
-          <p class="text-xs text-slate-400 mb-2">未個別指定水位的零件，將統一套用此門檻。</p>
+          <p class="text-xs text-slate-400 mb-2">未個別指定水位的零件，將統一套用此門檻（數量等於水位時顯示「充足」）。</p>
           <div class="flex gap-2">
             <input type="number" id="globalThresholdInput" min="0" class="flex-1 bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white font-mono focus:outline-none focus:border-amber-500">
             <button type="button" onclick="saveGlobalThreshold()" class="px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-semibold transition whitespace-nowrap">儲存預設值</button>
@@ -380,11 +376,9 @@
     let partsCatalog = [];
     let isOnlyInStockActive = false;
 
-    // 水位設定核心 (LocalStorage)
     let globalThreshold = Number(localStorage.getItem('GLOBAL_PARTS_THRESHOLD')) || 5;
     let customThresholds = JSON.parse(localStorage.getItem('CUSTOM_PARTS_THRESHOLDS') || '{}');
 
-    // 全螢幕切換功能
     function toggleFullScreen() {
       if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen().catch(err => {
@@ -397,7 +391,6 @@
       }
     }
 
-    // 監聽全螢幕狀態切換按鈕文字與圖示
     document.addEventListener("fullscreenchange", () => {
       const icon = document.getElementById("fullscreenIcon");
       const text = document.getElementById("fullscreenText");
@@ -410,7 +403,6 @@
       }
     });
 
-    // 零件專屬識別 Key（優先使用 P/N，若無則改用品名）
     function getPartStorageKey(pn, partsName) {
       const cleanPn = (pn || '').trim();
       const cleanName = (partsName || '').trim();
@@ -426,7 +418,6 @@
       return globalThreshold;
     }
 
-    // 字型大小切換邏輯
     const fontSizes = ['font-sm', 'font-md', 'font-lg', 'font-xl'];
     const fontLabels = ['較小', '標準', '中等', '特大'];
     let currentFontIdx = Number(localStorage.getItem('APP_FONT_IDX')) || 1;
@@ -663,11 +654,11 @@
           const threshold = getPartThreshold(item.pn, item.partsName);
 
           if (qtyFilter === 'LOW') {
-            return qty <= threshold;
+            return qty < threshold || qty <= 0;
           } else if (qtyFilter === 'OUT') {
             return qty <= 0;
           } else if (qtyFilter === 'SAFE') {
-            return qty > threshold;
+            return qty >= threshold && qty > 0;
           }
           return true;
         });
@@ -707,10 +698,11 @@
           let statusBadge = '';
           let qtyColor = 'text-emerald-400 font-bold';
 
+          // 修改條件：qty <= 0 缺料；qty < threshold 低於水位；qty >= threshold 顯示充足
           if (qty <= 0) {
             qtyColor = 'text-rose-400 font-extrabold';
             statusBadge = '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20"><i class="fa-solid fa-triangle-exclamation mr-1"></i>缺料 (0)</span>';
-          } else if (qty <= threshold) {
+          } else if (qty < threshold) {
             qtyColor = 'text-amber-400 font-extrabold';
             statusBadge = `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20"><i class="fa-solid fa-bell mr-1"></i>低於水位</span>`;
           } else {
@@ -787,7 +779,7 @@
         data.forEach(d => {
           const qty = Number(d.qty) || 0;
           const th = getPartThreshold(d.pn, d.partsName);
-          if (qty <= th) {
+          if (qty <= 0 || qty < th) {
             lowStockCount++;
           } else {
             safeCount++;
