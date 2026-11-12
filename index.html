@@ -154,13 +154,13 @@
       <!-- 搜尋、庫房與 QTY 篩選列 -->
       <div class="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-2.5">
         <div class="flex flex-1 flex-col sm:flex-row items-center gap-2.5 flex-wrap">
-          <!-- 關鍵字搜尋 -->
+          <!-- 關鍵字搜尋（輸入庫房名如 S6 時自動精準比對 Location 欄位） -->
           <div class="relative w-full sm:w-64">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
-            <input type="text" id="searchKeyword" oninput="applyFilter()" placeholder="過濾料號、品名、型號..." class="w-full pl-8 pr-3 py-1.5 text-xs sm:text-sm bg-slate-800/80 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition">
+            <input type="text" id="searchKeyword" oninput="applyFilter()" placeholder="輸入庫房(如S6)、料號、品名..." class="w-full pl-8 pr-3 py-1.5 text-xs sm:text-sm bg-slate-800/80 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition">
           </div>
 
-          <!-- 庫房 (Location) 專屬篩選選單 -->
+          <!-- 庫房 (Location) 快速篩選選單 -->
           <div id="locFilterContainer" class="flex items-center gap-1.5 w-full sm:w-auto">
             <select id="locFilterSelect" onchange="applyFilter()" class="w-full sm:w-auto bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs sm:text-sm text-cyan-300 focus:outline-none focus:border-indigo-500 font-semibold">
               <option value="ALL">📍 全部庫房</option>
@@ -465,6 +465,8 @@
     let partsCatalog = [];
     let isOnlyInStockActive = false;
 
+    const KNOWN_LOCATIONS = ['s2', 's3', 's4', 's5', 's6', 'dry box', 'clean room'];
+
     let globalThreshold = Number(localStorage.getItem('GLOBAL_PARTS_THRESHOLD')) || 5;
     let customThresholds = JSON.parse(localStorage.getItem('CUSTOM_PARTS_THRESHOLDS') || '{}');
 
@@ -728,20 +730,25 @@
 
       let filtered = rawDataList;
 
-      // 1. 庫房專屬精準過濾（只比對 Location 欄位，不受備註文字干擾）
+      // 1. 庫房下拉選單專屬過濾（只比對 Location 欄位）
       if (currentTab === "Stock in TW" && locFilter !== 'ALL') {
-        filtered = filtered.filter(item => {
-          const locStr = String(item.location || '').toLowerCase();
-          return locStr.includes(locFilter.toLowerCase());
-        });
+        filtered = filtered.filter(item => 
+          String(item.location || '').toLowerCase().includes(locFilter.toLowerCase())
+        );
       }
 
-      // 2. 關鍵字搜尋（僅比對畫面上實際顯示的文字欄位，排除隱藏 rowId 干擾）
+      // 2. 關鍵字搜尋（若輸入的字串剛好是庫房名稱如 S6，自動只比對 Location 欄位，排除備註干擾）
       if (kw) {
-        filtered = filtered.filter(item => 
-          [item.location, item.pn, item.partsName, item.model, item.remark, item.date]
-            .some(v => v && String(v).toLowerCase().includes(kw))
-        );
+        if (currentTab === "Stock in TW" && KNOWN_LOCATIONS.includes(kw)) {
+          filtered = filtered.filter(item => 
+            String(item.location || '').toLowerCase().includes(kw)
+          );
+        } else {
+          filtered = filtered.filter(item => 
+            [item.location, item.pn, item.partsName, item.model, item.remark, item.date]
+              .some(v => v && String(v).toLowerCase().includes(kw))
+          );
+        }
       }
 
       // 3. 一鍵在庫篩選 (QTY > 0)
@@ -775,7 +782,6 @@
       const tbody = document.getElementById("tableContent");
       document.getElementById("filteredCount").innerText = data.length;
 
-      // 同步更新右上角匯出按鈕文字，顯示實際可匯出的篩選筆數
       const exportBtnText = document.getElementById("exportBtnLabel");
       if (exportBtnText) {
         exportBtnText.innerText = data.length < rawDataList.length 
