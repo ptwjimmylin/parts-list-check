@@ -76,7 +76,7 @@
         <button onclick="fetchCurrentTab()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs sm:text-sm font-medium text-slate-200 rounded-lg border border-slate-700 shadow-sm transition flex items-center gap-1.5">
           <i class="fa-solid fa-rotate text-cyan-400"></i> 重新載入
         </button>
-        <button onclick="exportToExcel()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-xs sm:text-sm font-semibold text-white rounded-lg shadow-md shadow-emerald-900/30 transition flex items-center gap-1.5">
+        <button onclick="exportToExcel()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-xs sm:text-sm font-semibold text-white rounded-lg shadow-md shadow-emerald-900/30 transition flex items-center gap-1.5" title="僅匯出目前畫面篩選後的資料">
           <i class="fa-solid fa-file-excel"></i> 匯出 Excel
         </button>
       </div>
@@ -444,6 +444,7 @@
 
     let currentTab = "Stock in TW";
     let rawDataList = [];
+    let currentFilteredList = []; // 儲存目前篩選後的資料（供匯出使用）
     let partsCatalog = [];
     let isOnlyInStockActive = false;
 
@@ -732,6 +733,8 @@
         });
       }
 
+      // 儲存目前過濾結果供匯出 Excel 使用
+      currentFilteredList = filtered;
       renderTable(filtered);
     }
 
@@ -1043,7 +1046,6 @@
       document.getElementById("editStockOldPn").value = record.pn || '';
       document.getElementById("editStockOldPartsName").value = record.partsName || '';
       
-      // 提取主要地點名稱（例如從 "S2 (4個)，S4 (1個)" 中擷取第一個庫房或精準比對）
       const rawLoc = String(record.location || '').split(/[（(，,]/)[0].trim();
       const locSelect = document.getElementById("editStockLocation");
       const options = Array.from(locSelect.options).map(o => o.value);
@@ -1189,7 +1191,7 @@
       }
     }
 
-    // ====== CSV 匯入與 Excel 匯出 ======
+    // ====== CSV 匯入與只匯出篩選結果的 Excel 功能 ======
     function handleCSVFile(e) {
       const file = e.target.files[0];
       if (!file) return;
@@ -1251,14 +1253,53 @@
     }
 
     function exportToExcel() {
-      if (rawDataList.length === 0) {
-        alert("目前分頁無資料可匯出！");
+      const targetList = currentFilteredList || [];
+      if (targetList.length === 0) {
+        alert("目前篩選條件下無任何資料可匯出！");
         return;
       }
-      const ws = XLSX.utils.json_to_sheet(rawDataList);
+
+      // 整理成乾淨的報表欄位格式
+      let exportData = [];
+      if (currentTab === "Stock in TW") {
+        exportData = targetList.map(r => {
+          const qty = Number(r.qty) || 0;
+          const threshold = getPartThreshold(r.pn, r.partsName);
+          let statusText = "充足";
+          if (qty <= 0) statusText = "缺料 (0)";
+          else if (qty < threshold) statusText = "低於安全水位";
+
+          return {
+            "Location (庫房)": r.location || "",
+            "P/N (料號)": r.pn || "",
+            "Parts Name (品名)": r.partsName || "",
+            "QTY (在庫數)": qty,
+            "安全水位": threshold,
+            "庫存狀態": statusText,
+            "Model": r.model || "",
+            "Remark": r.remark || ""
+          };
+        });
+      } else {
+        exportData = targetList.map(r => ({
+          "Date (日期)": cleanDateStr(r.date) || "",
+          "P/N (料號)": r.pn || "",
+          "Parts Name (品名)": r.partsName || "",
+          "Model": r.model || "",
+          "IN (入庫數)": Number(r.inQty) || 0,
+          "OUT (出庫數)": Number(r.outQty) || 0,
+          "Remark": r.remark || ""
+        }));
+      }
+
+      const isFiltered = targetList.length < rawDataList.length;
+      const suffix = isFiltered ? "_篩選結果" : "";
+      const fileName = `${currentTab}${suffix}_${new Date().toISOString().split("T")[0]}.xlsx`;
+
+      const ws = XLSX.utils.json_to_sheet(exportData);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, currentTab);
-      XLSX.writeFile(wb, `${currentTab}_${new Date().toISOString().split("T")[0]}.xlsx`);
+      XLSX.writeFile(wb, fileName);
     }
   </script>
 </body>
