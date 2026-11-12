@@ -77,7 +77,7 @@
           <i class="fa-solid fa-rotate text-cyan-400"></i> 重新載入
         </button>
         <button onclick="exportToExcel()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-xs sm:text-sm font-semibold text-white rounded-lg shadow-md shadow-emerald-900/30 transition flex items-center gap-1.5" title="僅匯出目前畫面篩選後的資料">
-          <i class="fa-solid fa-file-excel"></i> 匯出 Excel
+          <i class="fa-solid fa-file-excel"></i> <span id="exportBtnLabel">匯出 Excel</span>
         </button>
       </div>
     </div>
@@ -151,19 +151,36 @@
         </div>
       </div>
 
-      <!-- 搜尋與 QTY 篩選列 -->
+      <!-- 搜尋、庫房與 QTY 篩選列 -->
       <div class="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-2.5">
         <div class="flex flex-1 flex-col sm:flex-row items-center gap-2.5 flex-wrap">
-          <div class="relative w-full sm:w-72">
+          <!-- 關鍵字搜尋 -->
+          <div class="relative w-full sm:w-64">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
             <input type="text" id="searchKeyword" oninput="applyFilter()" placeholder="過濾料號、品名、型號..." class="w-full pl-8 pr-3 py-1.5 text-xs sm:text-sm bg-slate-800/80 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition">
           </div>
+
+          <!-- 庫房 (Location) 專屬篩選選單 -->
+          <div id="locFilterContainer" class="flex items-center gap-1.5 w-full sm:w-auto">
+            <select id="locFilterSelect" onchange="applyFilter()" class="w-full sm:w-auto bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs sm:text-sm text-cyan-300 focus:outline-none focus:border-indigo-500 font-semibold">
+              <option value="ALL">📍 全部庫房</option>
+              <option value="S2">S2</option>
+              <option value="S3">S3</option>
+              <option value="S4">S4</option>
+              <option value="S5">S5</option>
+              <option value="S6">S6</option>
+              <option value="DRY BOX">DRY BOX</option>
+              <option value="clean room">clean room</option>
+            </select>
+          </div>
           
+          <!-- 一鍵在庫按鈕 -->
           <button id="btnQuickInStock" onclick="toggleQuickInStock()" class="w-full sm:w-auto px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-1.5">
             <i class="fa-solid fa-boxes-packing text-emerald-400"></i> 
             <span id="quickInStockText">僅看在庫品項 (QTY > 0)</span>
           </button>
 
+          <!-- QTY 狀態下拉選單 -->
           <div id="qtyFilterContainer" class="flex items-center gap-2 w-full sm:w-auto">
             <label class="text-xs sm:text-sm text-slate-400 whitespace-nowrap font-medium"><i class="fa-solid fa-filter text-indigo-400 mr-1"></i>QTY 狀態:</label>
             <select id="qtyFilterSelect" onchange="applyFilter()" class="w-full sm:w-auto bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-indigo-500 font-medium">
@@ -444,7 +461,7 @@
 
     let currentTab = "Stock in TW";
     let rawDataList = [];
-    let currentFilteredList = []; // 儲存目前篩選後的資料（供匯出使用）
+    let currentFilteredList = [];
     let partsCatalog = [];
     let isOnlyInStockActive = false;
 
@@ -640,17 +657,20 @@
       document.getElementById("statCurrentTab").innerText = currentTab;
       document.getElementById("bannerTabName").innerText = currentTab;
 
+      const locFilterBox = document.getElementById("locFilterContainer");
       const qtyFilterBox = document.getElementById("qtyFilterContainer");
       const btnThreshold = document.getElementById("btnThresholdSetting");
       const btnQuick = document.getElementById("btnQuickInStock");
 
       if (currentTab === "Stock in TW") {
         document.getElementById("btnAddBtnText").innerText = "新增庫存品項";
+        if (locFilterBox) locFilterBox.classList.remove("hidden");
         if (qtyFilterBox) qtyFilterBox.classList.remove("hidden");
         if (btnThreshold) btnThreshold.classList.remove("hidden");
         if (btnQuick) btnQuick.classList.remove("hidden");
       } else {
         document.getElementById("btnAddBtnText").innerText = `新增 ${currentTab} 紀錄`;
+        if (locFilterBox) locFilterBox.classList.add("hidden");
         if (qtyFilterBox) qtyFilterBox.classList.add("hidden");
         if (btnThreshold) btnThreshold.classList.add("hidden");
         if (btnQuick) btnQuick.classList.add("hidden");
@@ -703,20 +723,33 @@
 
     function applyFilter() {
       const kw = document.getElementById("searchKeyword").value.trim().toLowerCase();
+      const locFilter = document.getElementById("locFilterSelect") ? document.getElementById("locFilterSelect").value : 'ALL';
       const qtyFilter = document.getElementById("qtyFilterSelect") ? document.getElementById("qtyFilterSelect").value : 'ALL';
 
       let filtered = rawDataList;
 
+      // 1. 庫房專屬精準過濾（只比對 Location 欄位，不受備註文字干擾）
+      if (currentTab === "Stock in TW" && locFilter !== 'ALL') {
+        filtered = filtered.filter(item => {
+          const locStr = String(item.location || '').toLowerCase();
+          return locStr.includes(locFilter.toLowerCase());
+        });
+      }
+
+      // 2. 關鍵字搜尋（僅比對畫面上實際顯示的文字欄位，排除隱藏 rowId 干擾）
       if (kw) {
         filtered = filtered.filter(item => 
-          Object.values(item).some(v => String(v).toLowerCase().includes(kw))
+          [item.location, item.pn, item.partsName, item.model, item.remark, item.date]
+            .some(v => v && String(v).toLowerCase().includes(kw))
         );
       }
 
+      // 3. 一鍵在庫篩選 (QTY > 0)
       if (currentTab === "Stock in TW" && isOnlyInStockActive) {
         filtered = filtered.filter(item => (Number(item.qty) || 0) > 0);
       }
 
+      // 4. QTY 狀態過濾
       if (currentTab === "Stock in TW" && qtyFilter !== 'ALL') {
         filtered = filtered.filter(item => {
           const qty = Number(item.qty) || 0;
@@ -733,7 +766,6 @@
         });
       }
 
-      // 儲存目前過濾結果供匯出 Excel 使用
       currentFilteredList = filtered;
       renderTable(filtered);
     }
@@ -742,6 +774,14 @@
       const thead = document.getElementById("tableHeader");
       const tbody = document.getElementById("tableContent");
       document.getElementById("filteredCount").innerText = data.length;
+
+      // 同步更新右上角匯出按鈕文字，顯示實際可匯出的篩選筆數
+      const exportBtnText = document.getElementById("exportBtnLabel");
+      if (exportBtnText) {
+        exportBtnText.innerText = data.length < rawDataList.length 
+          ? `匯出篩選 (${data.length}筆)` 
+          : `匯出 Excel`;
+      }
 
       if (currentTab === "Stock in TW") {
         thead.innerHTML = `
@@ -1259,7 +1299,6 @@
         return;
       }
 
-      // 整理成乾淨的報表欄位格式
       let exportData = [];
       if (currentTab === "Stock in TW") {
         exportData = targetList.map(r => {
