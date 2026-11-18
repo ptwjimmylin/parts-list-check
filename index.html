@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>PTW 零件庫房管理系統 (PTW Inventory System)</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -18,7 +18,7 @@
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
-    body { font-family: 'Inter', sans-serif; }
+    body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
     .font-mono { font-family: 'JetBrains Mono', monospace; }
     .autocomplete-list {
       max-height: 220px;
@@ -43,6 +43,9 @@
     .table-scroll::-webkit-scrollbar-thumb:hover {
       background: rgba(99, 102, 241, 0.8);
     }
+    /* 隱藏橫向捲軸但保留滑動功能（手機分頁列用） */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     #barcodeReader video {
       border-radius: 0.75rem;
       object-fit: cover;
@@ -52,130 +55,133 @@
     }
   </style>
 </head>
-<body class="bg-slate-900 text-slate-100 h-screen overflow-hidden antialiased flex flex-col font-md" id="appBody">
+<body class="bg-slate-900 text-slate-100 min-h-screen md:h-screen md:overflow-hidden antialiased flex flex-col font-md pb-20 md:pb-0" id="appBody">
 
-  <!-- 頂部導航列 (固定不捲動) -->
-  <header class="bg-slate-900/95 backdrop-blur border-b border-slate-800 shrink-0 z-40">
-    <div class="w-full px-4 sm:px-8 py-3 flex flex-wrap justify-between items-center gap-3">
-      <div class="flex items-center space-x-3.5">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-          <i class="fa-solid fa-boxes-stacked text-white text-lg"></i>
+  <!-- 頂部導航列 (手機/電腦皆置頂固定) -->
+  <header class="bg-slate-900/95 backdrop-blur border-b border-slate-800 sticky top-0 shrink-0 z-40">
+    <div class="w-full px-3 sm:px-8 py-2.5 sm:py-3 flex justify-between items-center gap-2">
+      <div class="flex items-center space-x-2.5 sm:space-x-3.5 min-w-0">
+        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/20 shrink-0">
+          <i class="fa-solid fa-boxes-stacked text-white text-base sm:text-lg"></i>
         </div>
-        <div>
-          <h1 class="text-base sm:text-xl font-bold tracking-tight text-white flex items-center gap-2">
-            PTW 零件庫房管理系統 (PTW Inventory System)
-            <span class="text-xs font-semibold uppercase px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">Pro</span>
+        <div class="min-w-0">
+          <h1 class="text-sm sm:text-xl font-bold tracking-tight text-white flex items-center gap-1.5 truncate">
+            <span class="truncate">PTW 零件庫房管理系統</span>
+            <span class="hidden md:inline text-slate-300 font-semibold">(PTW Inventory System)</span>
+            <span class="text-[10px] sm:text-xs font-semibold uppercase px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shrink-0">Pro</span>
           </h1>
-          <p class="text-xs text-slate-400 hidden sm:block">QR Code 掃碼進出庫 ｜ 標籤自動生成 ｜ 跨庫房歸併</p>
+          <p class="text-[11px] sm:text-xs text-slate-400 truncate">QR Code 掃碼進出庫 ｜ 水位即時監控</p>
         </div>
       </div>
       
       <!-- 工具按鈕群 -->
-      <div class="flex items-center gap-2 flex-wrap">
-        <!-- 一鍵 QR Code 掃碼進出貨按鈕 -->
-        <button onclick="openScannerModal()" class="px-3.5 py-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 active:scale-95 text-xs sm:text-sm font-bold text-white rounded-lg shadow-lg shadow-cyan-500/25 transition flex items-center gap-1.5">
+      <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <!-- 電腦與平板頂部掃碼鈕（手機版改用右下角大型懸浮鈕單手好按） -->
+        <button onclick="openScannerModal()" class="hidden sm:flex px-3.5 py-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 active:scale-95 text-xs sm:text-sm font-bold text-white rounded-lg shadow-lg shadow-cyan-500/25 transition items-center gap-1.5">
           <i class="fa-solid fa-qrcode text-base"></i> 掃碼進出庫
         </button>
 
-        <button id="btnFullscreen" onclick="toggleFullScreen()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs sm:text-sm font-semibold text-cyan-400 border border-slate-700 rounded-lg shadow-sm transition flex items-center gap-1.5" title="切換全螢幕模式">
+        <button id="btnFullscreen" onclick="toggleFullScreen()" class="hidden md:flex px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs sm:text-sm font-semibold text-cyan-400 border border-slate-700 rounded-lg shadow-sm transition items-center gap-1.5" title="切換全螢幕模式">
           <i class="fa-solid fa-expand" id="fullscreenIcon"></i>
-          <span id="fullscreenText" class="hidden md:inline">全螢幕</span>
+          <span id="fullscreenText">全螢幕</span>
         </button>
 
-        <div class="hidden sm:flex items-center bg-slate-800 border border-slate-700 rounded-lg p-0.5 text-slate-300">
+        <div class="hidden lg:flex items-center bg-slate-800 border border-slate-700 rounded-lg p-0.5 text-slate-300">
           <button onclick="adjustFontSize(-1)" title="字型縮小" class="px-2 py-1 hover:bg-slate-700 rounded text-xs font-bold transition">A-</button>
           <span class="px-2 text-xs font-medium text-slate-400" id="currentFontSizeLabel">標準</span>
           <button onclick="adjustFontSize(1)" title="字型放大" class="px-2 py-1 hover:bg-slate-700 rounded text-xs font-bold transition">A+</button>
         </div>
 
-        <button onclick="fetchCurrentTab()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs sm:text-sm font-medium text-slate-200 rounded-lg border border-slate-700 shadow-sm transition flex items-center gap-1.5">
+        <button onclick="fetchCurrentTab()" class="p-2 sm:px-3 sm:py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs sm:text-sm font-medium text-slate-200 rounded-lg border border-slate-700 shadow-sm transition flex items-center gap-1.5" title="重新載入">
           <i class="fa-solid fa-rotate text-cyan-400"></i> <span class="hidden sm:inline">重新載入</span>
         </button>
-        <button onclick="exportToExcel()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-xs sm:text-sm font-semibold text-white rounded-lg shadow-md shadow-emerald-900/30 transition flex items-center gap-1.5" title="僅匯出目前畫面篩選後的資料">
-          <i class="fa-solid fa-file-excel"></i> <span id="exportBtnLabel">匯出 Excel</span>
+        <button onclick="exportToExcel()" class="p-2 sm:px-3 sm:py-1.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-xs sm:text-sm font-semibold text-white rounded-lg shadow-md shadow-emerald-900/30 transition flex items-center gap-1.5" title="匯出篩選結果">
+          <i class="fa-solid fa-file-excel"></i> <span id="exportBtnLabel" class="hidden sm:inline">匯出 Excel</span>
         </button>
       </div>
     </div>
   </header>
 
-  <!-- 主體區域 -->
-  <main class="w-full px-4 sm:px-8 pt-3 pb-4 flex-1 flex flex-col min-h-0 space-y-3">
+  <!-- 主體區域：手機版自然滾動，電腦版固定 Dashboard + 獨立表格捲動 -->
+  <main class="w-full px-3 sm:px-8 pt-3 pb-4 flex-1 flex flex-col md:min-h-0 space-y-3">
 
-    <!-- 固定不動的上方 Dashboard 區域 -->
-    <div class="shrink-0 space-y-3">
-      <!-- 8 大分頁切換按鈕 -->
-      <div class="bg-slate-800/60 p-1 rounded-xl border border-slate-800 backdrop-blur overflow-x-auto flex gap-1.5" id="tabGroup">
-        <button onclick="switchTab('Stock in TW')" id="tab-Stock-in-TW" class="tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition bg-indigo-600 text-white shadow-md shadow-indigo-600/30 flex items-center gap-1.5 whitespace-nowrap">
+    <!-- 上方 Dashboard 區域 -->
+    <div class="shrink-0 space-y-2.5 sm:space-y-3">
+      <!-- 8 大分頁切換按鈕（手機可左右滑動） -->
+      <div class="bg-slate-800/60 p-1 rounded-xl border border-slate-800 backdrop-blur overflow-x-auto no-scrollbar flex gap-1.5" id="tabGroup">
+        <button onclick="switchTab('Stock in TW')" id="tab-Stock-in-TW" class="tab-btn px-3 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition bg-indigo-600 text-white shadow-md shadow-indigo-600/30 flex items-center gap-1.5 whitespace-nowrap">
           <i class="fa-solid fa-warehouse"></i> Stock in TW (總庫存)
         </button>
-        <button onclick="switchTab('S2')" id="tab-S2" class="tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition whitespace-nowrap">S2</button>
-        <button onclick="switchTab('S3')" id="tab-S3" class="tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition whitespace-nowrap">S3</button>
-        <button onclick="switchTab('S4')" id="tab-S4" class="tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition whitespace-nowrap">S4</button>
-        <button onclick="switchTab('S5')" id="tab-S5" class="tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition whitespace-nowrap">S5</button>
-        <button onclick="switchTab('S6')" id="tab-S6" class="tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition whitespace-nowrap">S6</button>
-        <button onclick="switchTab('DRY BOX')" id="tab-DRY-BOX" class="tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition whitespace-nowrap">DRY BOX</button>
-        <button onclick="switchTab('clean room')" id="tab-clean-room" class="tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition whitespace-nowrap">clean room</button>
+        <button onclick="switchTab('S2')" id="tab-S2" class="tab-btn px-3 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition whitespace-nowrap">S2</button>
+        <button onclick="switchTab('S3')" id="tab-S3" class="tab-btn px-3 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition whitespace-nowrap">S3</button>
+        <button onclick="switchTab('S4')" id="tab-S4" class="tab-btn px-3 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition whitespace-nowrap">S4</button>
+        <button onclick="switchTab('S5')" id="tab-S5" class="tab-btn px-3 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition whitespace-nowrap">S5</button>
+        <button onclick="switchTab('S6')" id="tab-S6" class="tab-btn px-3 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition whitespace-nowrap">S6</button>
+        <button onclick="switchTab('DRY BOX')" id="tab-DRY-BOX" class="tab-btn px-3 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition whitespace-nowrap">DRY BOX</button>
+        <button onclick="switchTab('clean room')" id="tab-clean-room" class="tab-btn px-3 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition whitespace-nowrap">clean room</button>
       </div>
 
       <!-- 摘要指標卡片 -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div class="bg-slate-800/50 border border-slate-700/60 px-4 py-3 rounded-xl backdrop-blur relative overflow-hidden">
-          <div class="absolute -right-2 -bottom-2 text-slate-700/20 text-5xl"><i class="fa-solid fa-list-ol"></i></div>
-          <p class="text-xs font-medium text-slate-400">分頁項目總數</p>
-          <p class="text-xl sm:text-2xl font-extrabold text-white mt-0.5" id="statTotalItems">0</p>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
+        <div class="bg-slate-800/50 border border-slate-700/60 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-xl backdrop-blur relative overflow-hidden">
+          <div class="absolute -right-2 -bottom-2 text-slate-700/20 text-4xl sm:text-5xl"><i class="fa-solid fa-list-ol"></i></div>
+          <p class="text-[11px] sm:text-xs font-medium text-slate-400">分頁項目總數</p>
+          <p class="text-lg sm:text-2xl font-extrabold text-white mt-0.5" id="statTotalItems">0</p>
         </div>
-        <div class="bg-slate-800/50 border border-slate-700/60 px-4 py-3 rounded-xl backdrop-blur relative overflow-hidden">
-          <div class="absolute -right-2 -bottom-2 text-emerald-500/10 text-5xl"><i class="fa-solid fa-cubes"></i></div>
-          <p class="text-xs font-medium text-slate-400" id="statLabel2">在庫充足品項</p>
-          <p class="text-xl sm:text-2xl font-extrabold text-emerald-400 mt-0.5" id="statInStock">0</p>
+        <div class="bg-slate-800/50 border border-slate-700/60 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-xl backdrop-blur relative overflow-hidden">
+          <div class="absolute -right-2 -bottom-2 text-emerald-500/10 text-4xl sm:text-5xl"><i class="fa-solid fa-cubes"></i></div>
+          <p class="text-[11px] sm:text-xs font-medium text-slate-400" id="statLabel2">在庫充足品項</p>
+          <p class="text-lg sm:text-2xl font-extrabold text-emerald-400 mt-0.5" id="statInStock">0</p>
         </div>
-        <div class="bg-slate-800/50 border border-slate-700/60 px-4 py-3 rounded-xl backdrop-blur relative overflow-hidden">
-          <div class="absolute -right-2 -bottom-2 text-amber-500/10 text-5xl"><i class="fa-solid fa-triangle-exclamation"></i></div>
-          <p class="text-xs font-medium text-slate-400" id="statLabel3">低於安全水位 / 缺料</p>
-          <p class="text-xl sm:text-2xl font-extrabold text-amber-400 mt-0.5" id="statLowStock">0</p>
+        <div class="bg-slate-800/50 border border-slate-700/60 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-xl backdrop-blur relative overflow-hidden">
+          <div class="absolute -right-2 -bottom-2 text-amber-500/10 text-4xl sm:text-5xl"><i class="fa-solid fa-triangle-exclamation"></i></div>
+          <p class="text-[11px] sm:text-xs font-medium text-slate-400" id="statLabel3">低於安全水位 / 缺料</p>
+          <p class="text-lg sm:text-2xl font-extrabold text-amber-400 mt-0.5" id="statLowStock">0</p>
         </div>
-        <div class="bg-slate-800/50 border border-slate-700/60 px-4 py-3 rounded-xl backdrop-blur relative overflow-hidden">
-          <div class="absolute -right-2 -bottom-2 text-indigo-500/10 text-5xl"><i class="fa-solid fa-folder-open"></i></div>
-          <p class="text-xs font-medium text-slate-400">當前檢視庫房</p>
-          <p class="text-lg sm:text-xl font-extrabold text-indigo-400 truncate mt-0.5" id="statCurrentTab">Stock in TW</p>
+        <div class="bg-slate-800/50 border border-slate-700/60 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-xl backdrop-blur relative overflow-hidden">
+          <div class="absolute -right-2 -bottom-2 text-indigo-500/10 text-4xl sm:text-5xl"><i class="fa-solid fa-folder-open"></i></div>
+          <p class="text-[11px] sm:text-xs font-medium text-slate-400">當前檢視庫房</p>
+          <p class="text-base sm:text-xl font-extrabold text-indigo-400 truncate mt-0.5" id="statCurrentTab">Stock in TW</p>
         </div>
       </div>
 
       <!-- 操作與 CSV 整合工具列 -->
-      <div class="bg-slate-800/50 border border-slate-700/80 rounded-xl px-4 py-2.5 shadow backdrop-blur flex flex-wrap items-center justify-between gap-3">
-        <div class="flex items-center gap-2.5">
+      <div class="bg-slate-800/50 border border-slate-700/80 rounded-xl px-3.5 py-2.5 shadow backdrop-blur flex flex-wrap items-center justify-between gap-2.5">
+        <div class="flex items-center gap-2">
           <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
           <span class="font-bold text-xs sm:text-sm text-slate-200">
-            操作專區：<span id="bannerTabName" class="text-cyan-400 font-mono">Stock in TW</span>
+            操作：<span id="bannerTabName" class="text-cyan-400 font-mono">Stock in TW</span>
           </span>
         </div>
 
-        <div class="flex flex-wrap items-center gap-2">
-          <label class="px-3 py-1.5 bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-semibold cursor-pointer transition flex items-center gap-1.5" title="覆寫匯入 CSV">
-            <i class="fa-solid fa-file-arrow-up"></i> 覆寫匯入 CSV
+        <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+          <label class="px-2.5 sm:px-3 py-1.5 bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-semibold cursor-pointer transition flex items-center gap-1.5" title="覆寫匯入 CSV">
+            <i class="fa-solid fa-file-arrow-up"></i> <span class="hidden sm:inline">覆寫匯入</span> CSV
             <input type="file" id="csvFileInput" accept=".csv" onchange="handleCSVFile(event)" class="hidden">
           </label>
 
-          <button type="button" onclick="openThresholdModal()" id="btnThresholdSetting" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-amber-300 border border-slate-600 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
+          <button type="button" onclick="openThresholdModal()" id="btnThresholdSetting" class="px-2.5 sm:px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-amber-300 border border-slate-600 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
             <i class="fa-solid fa-sliders"></i> 水位設定
           </button>
 
-          <button type="button" onclick="openAddModal()" class="px-3.5 py-1.5 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white rounded-lg text-xs font-semibold shadow-md shadow-indigo-600/30 transition flex items-center gap-1.5 active:scale-95">
-            <i class="fa-solid fa-plus-circle"></i> <span id="btnAddBtnText">新增庫存品項</span>
+          <button type="button" onclick="openAddModal()" class="px-3 sm:px-3.5 py-1.5 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white rounded-lg text-xs font-semibold shadow-md shadow-indigo-600/30 transition flex items-center gap-1.5 active:scale-95">
+            <i class="fa-solid fa-plus-circle"></i> <span id="btnAddBtnText">新增庫存</span>
           </button>
         </div>
       </div>
 
       <!-- 搜尋、庫房與 QTY 篩選列 -->
-      <div class="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-2.5">
-        <div class="flex flex-1 flex-col sm:flex-row items-center gap-2.5 flex-wrap">
-          <div class="relative w-full sm:w-64">
+      <div class="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-2">
+        <div class="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 flex-1">
+          <!-- 關鍵字搜尋（手機佔滿整列方便輸入） -->
+          <div class="relative col-span-2 sm:w-64">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
-            <input type="text" id="searchKeyword" oninput="applyFilter()" placeholder="輸入庫房(如S6)、料號、品名..." class="w-full pl-8 pr-3 py-1.5 text-xs sm:text-sm bg-slate-800/80 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition">
+            <input type="text" id="searchKeyword" oninput="applyFilter()" placeholder="搜尋庫房(如S6)、料號、品名..." class="w-full pl-8 pr-3 py-2 sm:py-1.5 text-xs sm:text-sm bg-slate-800/80 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition">
           </div>
 
-          <div id="locFilterContainer" class="flex items-center gap-1.5 w-full sm:w-auto">
-            <select id="locFilterSelect" onchange="applyFilter()" class="w-full sm:w-auto bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs sm:text-sm text-cyan-300 focus:outline-none focus:border-indigo-500 font-semibold">
+          <!-- 庫房 (Location) 快速篩選選單 -->
+          <div id="locFilterContainer" class="col-span-1 sm:w-auto">
+            <select id="locFilterSelect" onchange="applyFilter()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 sm:py-1.5 text-xs sm:text-sm text-cyan-300 focus:outline-none focus:border-indigo-500 font-semibold">
               <option value="ALL">📍 全部庫房</option>
               <option value="S2">S2</option>
               <option value="S3">S3</option>
@@ -186,21 +192,22 @@
               <option value="clean room">clean room</option>
             </select>
           </div>
+
+          <!-- QTY 狀態下拉選單 -->
+          <div id="qtyFilterContainer" class="col-span-1 sm:w-auto flex items-center gap-1.5">
+            <select id="qtyFilterSelect" onchange="applyFilter()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 sm:py-1.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-indigo-500 font-medium">
+              <option value="ALL">全部狀態 (ALL)</option>
+              <option value="LOW">⚠️ 低於水位/缺料</option>
+              <option value="OUT">🚨 缺料 (0)</option>
+              <option value="SAFE">✅ 充足</option>
+            </select>
+          </div>
           
-          <button id="btnQuickInStock" onclick="toggleQuickInStock()" class="w-full sm:w-auto px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-1.5">
+          <!-- 一鍵在庫按鈕 -->
+          <button id="btnQuickInStock" onclick="toggleQuickInStock()" class="col-span-2 sm:w-auto px-3.5 py-2 sm:py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-1.5">
             <i class="fa-solid fa-boxes-packing text-emerald-400"></i> 
             <span id="quickInStockText">僅看在庫品項 (QTY > 0)</span>
           </button>
-
-          <div id="qtyFilterContainer" class="flex items-center gap-2 w-full sm:w-auto">
-            <label class="text-xs sm:text-sm text-slate-400 whitespace-nowrap font-medium"><i class="fa-solid fa-filter text-indigo-400 mr-1"></i>QTY 狀態:</label>
-            <select id="qtyFilterSelect" onchange="applyFilter()" class="w-full sm:w-auto bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-indigo-500 font-medium">
-              <option value="ALL">全部狀態 (ALL)</option>
-              <option value="LOW">⚠️ 低於安全水位 (含缺料)</option>
-              <option value="OUT">🚨 缺料 (QTY ≤ 0)</option>
-              <option value="SAFE">✅ 充足 (大於或等於水位)</option>
-            </select>
-          </div>
         </div>
 
         <div class="text-xs sm:text-sm text-slate-400 font-medium self-end lg:self-center">
@@ -209,8 +216,16 @@
       </div>
     </div>
 
-    <!-- 下方獨立滾動資料表格區 -->
-    <div class="bg-slate-800/40 rounded-2xl shadow-xl border border-slate-700/80 flex-1 min-h-0 flex flex-col overflow-hidden backdrop-blur">
+    <!-- 手機版專屬卡片列表區（螢幕小於 md 時顯示，單手滑動點擊超順暢） -->
+    <div id="mobileCardList" class="md:hidden space-y-2.5">
+      <div class="text-center py-12 text-slate-400 text-xs">
+        <i class="fa-solid fa-circle-notch fa-spin text-2xl mb-2 text-indigo-400 block"></i>
+        正在同步資料庫...
+      </div>
+    </div>
+
+    <!-- 電腦與平板版獨立滾動資料表格區（螢幕 md 以上顯示） -->
+    <div class="hidden md:flex bg-slate-800/40 rounded-2xl shadow-xl border border-slate-700/80 flex-1 min-h-0 flex-col overflow-hidden backdrop-blur">
       <div class="overflow-auto flex-1 table-scroll">
         <table class="w-full text-left text-xs sm:text-sm border-collapse" id="mainDataTable">
           <thead class="bg-slate-900 border-b border-slate-700 text-slate-400 uppercase tracking-wider font-semibold sticky top-0 z-20 shadow-sm" id="tableHeader"></thead>
@@ -228,14 +243,19 @@
 
   </main>
 
-  <!-- 彈窗 1：零件 QR Code 標籤預覽與下載（免修改 Google Sheet） -->
+  <!-- 手機版右下角大型懸浮「掃碼進出庫」快捷按鈕 -->
+  <button onclick="openScannerModal()" class="sm:hidden fixed bottom-5 right-5 z-40 px-4 py-3.5 bg-gradient-to-r from-cyan-500 to-blue-600 active:scale-95 text-white font-bold text-sm rounded-full shadow-2xl shadow-cyan-500/40 border border-cyan-300/30 flex items-center gap-2">
+    <i class="fa-solid fa-qrcode text-lg"></i> 掃碼進出庫
+  </button>
+
+  <!-- 彈窗 1：零件 QR Code 標籤預覽與下載 -->
   <div id="qrLabelModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4 text-center">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-sm w-full p-5 sm:p-6 shadow-2xl space-y-4 text-center">
       <div class="flex justify-between items-center pb-3 border-b border-slate-800">
         <h3 class="font-bold text-base text-white flex items-center gap-2">
           <i class="fa-solid fa-qrcode text-cyan-400"></i> 零件專屬 QR Code 標籤
         </h3>
-        <button onclick="closeQrLabelModal()" class="text-slate-400 hover:text-white text-xl p-1">&times;</button>
+        <button onclick="closeQrLabelModal()" class="text-slate-400 hover:text-white text-2xl leading-none p-1">&times;</button>
       </div>
 
       <div class="bg-white p-5 rounded-xl shadow-inner inline-block mx-auto" id="qrPrintArea">
@@ -261,9 +281,9 @@
   </div>
 
   <!-- 彈窗 2：手機相機 QR Code 掃碼進出庫 -->
-  <div id="scannerModal" class="fixed inset-0 bg-black/85 backdrop-blur-md hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4">
-      <div class="flex justify-between items-center pb-3 border-b border-slate-800">
+  <div id="scannerModal" class="fixed inset-0 bg-black/85 backdrop-blur-md hidden z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-4 sm:p-5 shadow-2xl space-y-3.5 my-auto">
+      <div class="flex justify-between items-center pb-2.5 border-b border-slate-800">
         <h3 class="font-bold text-base text-white flex items-center gap-2">
           <i class="fa-solid fa-qrcode text-cyan-400 text-lg"></i> 手機 QR Code 掃碼進出庫
         </h3>
@@ -271,17 +291,17 @@
       </div>
 
       <!-- 1. 切換「出貨 (-1)」或「進貨 (+1)」模式 -->
-      <div class="grid grid-cols-2 gap-2.5">
-        <button type="button" id="btnScanOutMode" onclick="setScanMode('OUT')" class="py-2.5 px-3 rounded-xl font-bold text-sm bg-rose-600 text-white shadow-lg shadow-rose-600/30 border border-rose-400/50 transition flex items-center justify-center gap-2">
+      <div class="grid grid-cols-2 gap-2">
+        <button type="button" id="btnScanOutMode" onclick="setScanMode('OUT')" class="py-2.5 px-3 rounded-xl font-bold text-sm bg-rose-600 text-white shadow-lg shadow-rose-600/30 border border-rose-400/50 transition flex items-center justify-center gap-1.5">
           <i class="fa-solid fa-arrow-up-from-bracket"></i> 出貨扣帳 (-1)
         </button>
-        <button type="button" id="btnScanInMode" onclick="setScanMode('IN')" class="py-2.5 px-3 rounded-xl font-semibold text-sm bg-slate-800 text-slate-400 border border-slate-700 hover:text-white transition flex items-center justify-center gap-2">
+        <button type="button" id="btnScanInMode" onclick="setScanMode('IN')" class="py-2.5 px-3 rounded-xl font-semibold text-sm bg-slate-800 text-slate-400 border border-slate-700 hover:text-white transition flex items-center justify-center gap-1.5">
           <i class="fa-solid fa-arrow-right-to-bracket"></i> 進貨入庫 (+1)
         </button>
       </div>
 
       <!-- 2. 選擇操作庫房與單次數量 -->
-      <div class="grid grid-cols-3 gap-2.5 text-xs sm:text-sm">
+      <div class="grid grid-cols-3 gap-2 text-xs sm:text-sm">
         <div class="col-span-2">
           <label class="block text-slate-400 font-medium mb-1">目標庫房 (Location)</label>
           <select id="scanLocationSelect" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-white font-semibold focus:outline-none focus:border-cyan-500">
@@ -300,8 +320,8 @@
         </div>
       </div>
 
-      <!-- 3. 相機即時預覽區域（正方形掃描框最適合 QR Code） -->
-      <div class="relative rounded-xl overflow-hidden border-2 border-slate-700 bg-black min-h-[250px] flex items-center justify-center">
+      <!-- 3. 相機即時預覽區域 -->
+      <div class="relative rounded-xl overflow-hidden border-2 border-slate-700 bg-black min-h-[230px] flex items-center justify-center">
         <div id="barcodeReader" class="w-full"></div>
       </div>
 
@@ -312,25 +332,25 @@
       </div>
 
       <!-- 5. 支援手動輸入料號備用 -->
-      <div class="flex gap-2 pt-1">
+      <div class="flex gap-2">
         <input type="text" id="manualBarcodeInput" placeholder="或手動輸入 P/N 料號或品名..." onkeydown="if(event.key==='Enter'){ event.preventDefault(); processScannedCode(this.value); this.value=''; }" class="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-white font-mono focus:outline-none focus:border-cyan-500">
         <button type="button" onclick="const inp=document.getElementById('manualBarcodeInput'); processScannedCode(inp.value); inp.value='';" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs sm:text-sm font-semibold transition">送出</button>
       </div>
 
-      <div class="flex justify-end pt-2 border-t border-slate-800">
+      <div class="pt-1">
         <button type="button" onclick="closeScannerModal()" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs sm:text-sm font-semibold transition">關閉掃描器並刷新列表</button>
       </div>
     </div>
   </div>
 
   <!-- 彈窗：安全水位設定 -->
-  <div id="thresholdModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+  <div id="thresholdModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4 my-auto">
       <div class="flex justify-between items-center pb-3 border-b border-slate-800">
         <h3 class="font-bold text-base text-white flex items-center gap-2">
           <i class="fa-solid fa-sliders text-amber-400"></i> 零件安全水位設定
         </h3>
-        <button onclick="closeThresholdModal()" class="text-slate-400 hover:text-white text-xl p-1">&times;</button>
+        <button onclick="closeThresholdModal()" class="text-slate-400 hover:text-white text-2xl leading-none p-1">&times;</button>
       </div>
 
       <div class="space-y-4 text-xs sm:text-sm">
@@ -345,30 +365,32 @@
 
         <div>
           <label class="block text-slate-200 font-bold mb-1">個別指定料號 / 品名安全水位</label>
-          <div class="flex gap-2 mb-2">
+          <div class="flex flex-col sm:flex-row gap-2 mb-2">
             <input type="text" id="customPnInput" placeholder="輸入 P/N 或品名" class="flex-1 bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-amber-500">
-            <input type="number" id="customThresholdInput" placeholder="水位" min="0" class="w-24 bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-amber-500">
-            <button type="button" onclick="addCustomThreshold()" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-semibold transition whitespace-nowrap">加入/修改</button>
+            <div class="flex gap-2">
+              <input type="number" id="customThresholdInput" placeholder="水位" min="0" class="w-24 bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-amber-500">
+              <button type="button" onclick="addCustomThreshold()" class="flex-1 sm:flex-none px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-semibold transition whitespace-nowrap">加入/修改</button>
+            </div>
           </div>
           
           <div class="max-h-40 overflow-y-auto space-y-1 rounded-xl border border-slate-800 p-2.5 bg-slate-950/60" id="customThresholdList"></div>
         </div>
 
         <div class="flex justify-end pt-3 border-t border-slate-800">
-          <button type="button" onclick="closeThresholdModal()" class="px-5 py-2 border border-slate-700 rounded-xl text-slate-300 hover:bg-slate-800 font-medium transition">完成並關閉</button>
+          <button type="button" onclick="closeThresholdModal()" class="w-full sm:w-auto px-5 py-2 border border-slate-700 rounded-xl text-slate-300 hover:bg-slate-800 font-medium transition">完成並關閉</button>
         </div>
       </div>
     </div>
   </div>
 
   <!-- 彈窗：新增項目 -->
-  <div id="addModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+  <div id="addModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4 my-auto">
       <div class="flex justify-between items-center pb-3 border-b border-slate-800">
         <h3 class="font-bold text-base text-white flex items-center gap-2">
           <i class="fa-solid fa-plus-circle text-indigo-400"></i> <span id="addModalTitle">新增項目</span>
         </h3>
-        <button onclick="closeAddModal()" class="text-slate-400 hover:text-white text-xl p-1">&times;</button>
+        <button onclick="closeAddModal()" class="text-slate-400 hover:text-white text-2xl leading-none p-1">&times;</button>
       </div>
 
       <form id="addForm" onsubmit="handleAddSubmit(event)" class="space-y-3.5 text-xs sm:text-sm">
@@ -392,18 +414,20 @@
         </div>
 
         <div id="logOnlyFields" class="hidden">
-          <div class="grid grid-cols-3 gap-3">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label class="block text-slate-400 font-medium mb-1">Date 日期</label>
               <input type="date" id="addDate" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-indigo-500">
             </div>
-            <div>
-              <label class="block text-emerald-400 font-medium mb-1">IN (入庫數)</label>
-              <input type="number" id="addInQty" min="0" value="0" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-indigo-500">
-            </div>
-            <div>
-              <label class="block text-rose-400 font-medium mb-1">OUT (出庫數)</label>
-              <input type="number" id="addOutQty" min="0" value="0" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-indigo-500">
+            <div class="grid grid-cols-2 sm:col-span-2 gap-3">
+              <div>
+                <label class="block text-emerald-400 font-medium mb-1">IN (入庫數)</label>
+                <input type="number" id="addInQty" min="0" value="0" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-indigo-500">
+              </div>
+              <div>
+                <label class="block text-rose-400 font-medium mb-1">OUT (出庫數)</label>
+                <input type="number" id="addOutQty" min="0" value="0" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-indigo-500">
+              </div>
             </div>
           </div>
         </div>
@@ -445,13 +469,13 @@
   </div>
 
   <!-- 彈窗：編輯 Stock in TW 總庫存項目 -->
-  <div id="editStockModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+  <div id="editStockModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4 my-auto">
       <div class="flex justify-between items-center pb-3 border-b border-slate-800">
         <h3 class="font-bold text-base text-white flex items-center gap-2">
           <i class="fa-solid fa-pen-to-square text-cyan-400"></i> 編輯總庫存項目 (Stock in TW)
         </h3>
-        <button onclick="closeEditStockModal()" class="text-slate-400 hover:text-white text-xl p-1">&times;</button>
+        <button onclick="closeEditStockModal()" class="text-slate-400 hover:text-white text-2xl leading-none p-1">&times;</button>
       </div>
 
       <form id="editStockForm" onsubmit="handleEditStockSubmit(event)" class="space-y-3.5 text-xs sm:text-sm">
@@ -510,18 +534,18 @@
   </div>
 
   <!-- 彈窗：編輯流水帳明細 (S2 ~ clean room) -->
-  <div id="editModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+  <div id="editModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4 my-auto">
       <div class="flex justify-between items-center pb-3 border-b border-slate-800">
         <h3 class="font-bold text-base text-white flex items-center gap-2">
           <i class="fa-solid fa-pen-to-square text-cyan-400"></i> 編輯明細資料
         </h3>
-        <button onclick="closeEditModal()" class="text-slate-400 hover:text-white text-xl p-1">&times;</button>
+        <button onclick="closeEditModal()" class="text-slate-400 hover:text-white text-2xl leading-none p-1">&times;</button>
       </div>
 
       <form id="editForm" onsubmit="handleEditSubmit(event)" class="space-y-3.5 text-xs sm:text-sm">
         <input type="hidden" id="editRowId">
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label class="block text-slate-400 font-medium mb-1">Date 日期</label>
             <input type="date" id="editDate" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-cyan-500" required>
@@ -563,7 +587,7 @@
   </div>
 
   <script>
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzOo9vzDRGMVsf1aivn6ZBlW-ecfea-Rud1izva7TFxlxX2oYmE5G6nE6hLYn-pyZyelQ/exec";
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzjOqc0uVfeqC6-WOHjZ5e48ZkuP3qGLnHGDJ-6fAm23e3_pbvQP9N73PJMi0daEb-xzQ/exec";
 
     let currentTab = "Stock in TW";
     let rawDataList = [];
@@ -582,9 +606,8 @@
     let isScanCoolingDown = false;
     let currentQrLabelTitle = '';
 
-    // ====== 一鍵生成零件 QR Code 標籤（免改 Google Sheet） ======
+    // ====== 一鍵生成零件 QR Code 標籤 ======
     function openQrLabelModal(record) {
-      // 優先使用 P/N 作為 QR Code 內容；若該零件沒有 P/N，則自動使用 Parts Name 品名
       const cleanPn = (record.pn && record.pn !== '-') ? record.pn.trim() : '';
       const cleanName = (record.partsName || '').trim();
       const qrPayload = cleanPn || cleanName;
@@ -669,11 +692,11 @@
       const btnOut = document.getElementById("btnScanOutMode");
       const btnIn = document.getElementById("btnScanInMode");
       if (mode === 'OUT') {
-        btnOut.className = "py-2.5 px-3 rounded-xl font-bold text-sm bg-rose-600 text-white shadow-lg shadow-rose-600/30 border border-rose-400/50 transition flex items-center justify-center gap-2";
-        btnIn.className = "py-2.5 px-3 rounded-xl font-semibold text-sm bg-slate-800 text-slate-400 border border-slate-700 hover:text-white transition flex items-center justify-center gap-2";
+        btnOut.className = "py-2.5 px-3 rounded-xl font-bold text-sm bg-rose-600 text-white shadow-lg shadow-rose-600/30 border border-rose-400/50 transition flex items-center justify-center gap-1.5";
+        btnIn.className = "py-2.5 px-3 rounded-xl font-semibold text-sm bg-slate-800 text-slate-400 border border-slate-700 hover:text-white transition flex items-center justify-center gap-1.5";
       } else {
-        btnIn.className = "py-2.5 px-3 rounded-xl font-bold text-sm bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 border border-emerald-400/50 transition flex items-center justify-center gap-2";
-        btnOut.className = "py-2.5 px-3 rounded-xl font-semibold text-sm bg-slate-800 text-slate-400 border border-slate-700 hover:text-white transition flex items-center justify-center gap-2";
+        btnIn.className = "py-2.5 px-3 rounded-xl font-bold text-sm bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 border border-emerald-400/50 transition flex items-center justify-center gap-1.5";
+        btnOut.className = "py-2.5 px-3 rounded-xl font-semibold text-sm bg-slate-800 text-slate-400 border border-slate-700 hover:text-white transition flex items-center justify-center gap-1.5";
       }
     }
 
@@ -692,7 +715,7 @@
       html5QrCode = new Html5Qrcode("barcodeReader");
       const config = {
         fps: 10,
-        qrbox: { width: 220, height: 220 }, // 正方形掃描框最適合 QR Code
+        qrbox: { width: 210, height: 210 },
         aspectRatio: 1.0
       };
 
@@ -737,7 +760,6 @@
       const stepQty = Math.max(1, parseInt(document.getElementById("scanStepQty").value, 10) || 1);
       const todayStr = new Date().toISOString().split("T")[0];
 
-      // 自動比對現有零件字典中的 P/N 或品名（無需額外定義 QR 欄位）
       const matchedPart = partsCatalog.find(p => 
         (p.pn && p.pn.toLowerCase() === code.toLowerCase()) ||
         (p.partsName && p.partsName.toLowerCase() === code.toLowerCase())
@@ -962,12 +984,12 @@
     function switchTab(sheetName) {
       currentTab = sheetName;
       document.querySelectorAll(".tab-btn").forEach(btn => {
-        btn.className = "tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition whitespace-nowrap";
+        btn.className = "tab-btn px-3 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition whitespace-nowrap";
       });
       const activeId = "tab-" + sheetName.replace(/\s+/g, '-');
       const activeBtn = document.getElementById(activeId);
       if (activeBtn) {
-        activeBtn.className = "tab-btn px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition bg-indigo-600 text-white shadow-md shadow-indigo-600/30 flex items-center gap-1.5 whitespace-nowrap";
+        activeBtn.className = "tab-btn px-3 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition bg-indigo-600 text-white shadow-md shadow-indigo-600/30 flex items-center gap-1.5 whitespace-nowrap";
       }
 
       document.getElementById("statCurrentTab").innerText = currentTab;
@@ -979,13 +1001,13 @@
       const btnQuick = document.getElementById("btnQuickInStock");
 
       if (currentTab === "Stock in TW") {
-        document.getElementById("btnAddBtnText").innerText = "新增庫存品項";
+        document.getElementById("btnAddBtnText").innerText = "新增庫存";
         if (locFilterBox) locFilterBox.classList.remove("hidden");
         if (qtyFilterBox) qtyFilterBox.classList.remove("hidden");
         if (btnThreshold) btnThreshold.classList.remove("hidden");
         if (btnQuick) btnQuick.classList.remove("hidden");
       } else {
-        document.getElementById("btnAddBtnText").innerText = `新增 ${currentTab} 紀錄`;
+        document.getElementById("btnAddBtnText").innerText = `新增紀錄`;
         if (locFilterBox) locFilterBox.classList.add("hidden");
         if (qtyFilterBox) qtyFilterBox.classList.add("hidden");
         if (btnThreshold) btnThreshold.classList.add("hidden");
@@ -997,7 +1019,9 @@
 
     async function fetchCurrentTab() {
       const tbody = document.getElementById("tableContent");
+      const mobileList = document.getElementById("mobileCardList");
       tbody.innerHTML = `<tr><td colspan="9" class="text-center py-16 text-slate-400"><i class="fa-solid fa-circle-notch fa-spin text-3xl mb-3 text-indigo-400 block"></i>正在從 Google Sheets 同步資料庫中...</td></tr>`;
+      mobileList.innerHTML = `<div class="text-center py-12 text-slate-400 text-xs"><i class="fa-solid fa-circle-notch fa-spin text-2xl mb-2 text-indigo-400 block"></i>正在同步資料庫...</div>`;
 
       const targetUrl = currentTab === "Stock in TW"
         ? `${GAS_API_URL}?action=getStock`
@@ -1013,14 +1037,9 @@
           throw new Error(result.message || "讀取失敗");
         }
       } catch (err) {
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="9" class="text-center py-16 text-rose-400">
-              <i class="fa-solid fa-triangle-exclamation text-3xl mb-2 block"></i>
-              <p class="font-bold">連線失敗：${err.message}</p>
-            </td>
-          </tr>
-        `;
+        const errHtml = `<div class="text-center py-12 text-rose-400"><i class="fa-solid fa-triangle-exclamation text-2xl mb-2 block"></i><p class="font-bold text-xs">連線失敗：${err.message}</p></div>`;
+        tbody.innerHTML = `<tr><td colspan="9">${errHtml}</td></tr>`;
+        mobileList.innerHTML = errHtml;
       }
     }
 
@@ -1028,10 +1047,10 @@
       isOnlyInStockActive = !isOnlyInStockActive;
       const btn = document.getElementById("btnQuickInStock");
       if (isOnlyInStockActive) {
-        btn.className = "w-full sm:w-auto px-3.5 py-1.5 bg-emerald-600/30 hover:bg-emerald-600/40 border border-emerald-500/60 text-emerald-300 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-1.5 shadow-sm";
+        btn.className = "col-span-2 sm:w-auto px-3.5 py-2 sm:py-1.5 bg-emerald-600/30 hover:bg-emerald-600/40 border border-emerald-500/60 text-emerald-300 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-1.5 shadow-sm";
         document.getElementById("quickInStockText").innerText = "正在檢視：僅在庫品項 (點擊恢復)";
       } else {
-        btn.className = "w-full sm:w-auto px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-1.5";
+        btn.className = "col-span-2 sm:w-auto px-3.5 py-2 sm:py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-1.5";
         document.getElementById("quickInStockText").innerText = "僅看在庫品項 (QTY > 0)";
       }
       applyFilter();
@@ -1084,12 +1103,14 @@
       }
 
       currentFilteredList = filtered;
-      renderTable(filtered);
+      renderTableAndCards(filtered);
     }
 
-    function renderTable(data) {
+    // 同時渲染「電腦版表格」與「手機版卡片列表」
+    function renderTableAndCards(data) {
       const thead = document.getElementById("tableHeader");
       const tbody = document.getElementById("tableContent");
+      const mobileList = document.getElementById("mobileCardList");
       document.getElementById("filteredCount").innerText = data.length;
 
       const exportBtnText = document.getElementById("exportBtnLabel");
@@ -1100,6 +1121,7 @@
       }
 
       if (currentTab === "Stock in TW") {
+        // 1. 電腦版表格表頭
         thead.innerHTML = `
           <tr>
             <th class="px-5 py-3">Location (庫房)</th>
@@ -1115,9 +1137,11 @@
         `;
         if (data.length === 0) {
           tbody.innerHTML = `<tr><td colspan="9" class="text-center py-12 text-slate-500">目前尚無符合條件的庫存資料</td></tr>`;
+          mobileList.innerHTML = `<div class="text-center py-12 text-slate-500 text-xs bg-slate-800/30 rounded-xl border border-slate-800">目前尚無符合條件的庫存資料</div>`;
           return;
         }
 
+        // 2. 電腦版表格內容
         tbody.innerHTML = data.map(r => {
           const qty = Number(r.qty) || 0;
           const threshold = getPartThreshold(r.pn, r.partsName);
@@ -1152,7 +1176,7 @@
               <td class="px-5 py-3 text-slate-400">${r.model || '-'}</td>
               <td class="px-5 py-3 text-slate-400">${r.remark || '-'}</td>
               <td class="px-5 py-3 text-right space-x-1 whitespace-nowrap">
-                <button onclick='openQrLabelModal(${JSON.stringify(r)})' class="px-2.5 py-1 bg-cyan-950/80 hover:bg-cyan-600 text-cyan-300 hover:text-white rounded-lg transition text-xs font-semibold border border-cyan-700/60" title="產生此零件的 QR Code 標籤">
+                <button onclick='openQrLabelModal(${JSON.stringify(r)})' class="px-2.5 py-1 bg-cyan-950/80 hover:bg-cyan-600 text-cyan-300 hover:text-white rounded-lg transition text-xs font-semibold border border-cyan-700/60" title="產生 QR Code 標籤">
                   <i class="fa-solid fa-qrcode mr-1"></i>QR
                 </button>
                 <button onclick='openEditStockModal(${JSON.stringify(r)})' class="px-2.5 py-1 bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white rounded-lg transition text-xs font-semibold border border-slate-700">
@@ -1166,7 +1190,66 @@
           `;
         }).join('');
 
+        // 3. 手機版高對比卡片列表內容
+        mobileList.innerHTML = data.map(r => {
+          const qty = Number(r.qty) || 0;
+          const threshold = getPartThreshold(r.pn, r.partsName);
+          const safeKey = encodeURIComponent(getPartStorageKey(r.pn, r.partsName));
+
+          let statusBadge = '';
+          let qtyColor = 'text-emerald-400';
+
+          if (qty <= 0) {
+            qtyColor = 'text-rose-400';
+            statusBadge = '<span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30">缺料 (0)</span>';
+          } else if (qty < threshold) {
+            qtyColor = 'text-amber-400';
+            statusBadge = '<span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">低於水位</span>';
+          } else {
+            statusBadge = '<span class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">充足</span>';
+          }
+
+          return `
+            <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl p-3.5 space-y-2.5 shadow">
+              <div class="flex justify-between items-start gap-2">
+                <div class="min-w-0">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-xs font-bold text-slate-200">${r.location || '-'}</span>
+                    ${r.pn && r.pn !== '-' ? `<span class="font-mono text-xs text-cyan-400 font-semibold">${r.pn}</span>` : ''}
+                  </div>
+                  <h4 class="font-bold text-white text-sm mt-1 leading-snug">${r.partsName || '-'}</h4>
+                </div>
+                <div class="text-right shrink-0">
+                  <div class="font-mono text-2xl font-extrabold ${qtyColor} leading-none">${qty}</div>
+                  <div class="mt-1">${statusBadge}</div>
+                </div>
+              </div>
+
+              <div class="flex flex-wrap items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-700/60 gap-2">
+                <div class="space-x-3">
+                  <span>水位: <b class="text-slate-200 font-mono underline decoration-amber-500/60" onclick="quickEditThreshold('${safeKey}')">${threshold}</b></span>
+                  ${r.model ? `<span>Model: <b class="text-slate-300">${r.model}</b></span>` : ''}
+                </div>
+                ${r.remark ? `<div class="w-full text-[11px] text-slate-400 truncate"><i class="fa-regular fa-comment-dots mr-1"></i>${r.remark}</div>` : ''}
+              </div>
+
+              <div class="grid grid-cols-3 gap-2 pt-1">
+                <button onclick='openQrLabelModal(${JSON.stringify(r)})' class="py-1.5 bg-cyan-950/90 active:bg-cyan-700 text-cyan-300 rounded-lg text-xs font-semibold border border-cyan-700/60 flex items-center justify-center gap-1">
+                  <i class="fa-solid fa-qrcode"></i> QR標籤
+                </button>
+                <button onclick='openEditStockModal(${JSON.stringify(r)})' class="py-1.5 bg-slate-700/80 active:bg-indigo-600 text-slate-200 rounded-lg text-xs font-semibold border border-slate-600 flex items-center justify-center gap-1">
+                  <i class="fa-solid fa-pen"></i> 編輯
+                </button>
+                <button onclick='deleteStockRecord(${JSON.stringify(r)})' class="py-1.5 bg-slate-700/80 active:bg-rose-600 text-rose-300 rounded-lg text-xs font-semibold border border-slate-600 flex items-center justify-center gap-1">
+                  <i class="fa-solid fa-trash"></i> 刪除
+                </button>
+              </div>
+            </div>
+          `;
+        }).join('');
+
       } else {
+        // 1. 流水帳電腦版表頭
         thead.innerHTML = `
           <tr>
             <th class="px-5 py-3">Date (日期)</th>
@@ -1181,8 +1264,11 @@
         `;
         if (data.length === 0) {
           tbody.innerHTML = `<tr><td colspan="8" class="text-center py-12 text-slate-500">此分頁尚無進出明細紀錄</td></tr>`;
+          mobileList.innerHTML = `<div class="text-center py-12 text-slate-500 text-xs bg-slate-800/30 rounded-xl border border-slate-800">此分頁尚無進出明細紀錄</div>`;
           return;
         }
+
+        // 2. 流水帳電腦版內容
         tbody.innerHTML = data.map(r => `
           <tr class="hover:bg-slate-800/60 transition group">
             <td class="px-5 py-3 font-mono text-slate-400">${cleanDateStr(r.date) || '-'}</td>
@@ -1201,6 +1287,41 @@
               </button>
             </td>
           </tr>
+        `).join('');
+
+        // 3. 流水帳手機版卡片列表
+        mobileList.innerHTML = data.map(r => `
+          <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl p-3.5 space-y-2 shadow">
+            <div class="flex justify-between items-start gap-2">
+              <div class="min-w-0">
+                <div class="flex items-center gap-2 text-xs">
+                  <span class="font-mono text-slate-400">${cleanDateStr(r.date) || '-'}</span>
+                  ${r.pn && r.pn !== '-' ? `<span class="font-mono text-cyan-400 font-semibold">${r.pn}</span>` : ''}
+                </div>
+                <h4 class="font-bold text-white text-sm mt-0.5">${r.partsName || '-'}</h4>
+              </div>
+              <div class="flex items-center gap-2 shrink-0 font-mono text-sm font-bold">
+                ${Number(r.inQty) > 0 ? `<span class="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">+${r.inQty}</span>` : ''}
+                ${Number(r.outQty) > 0 ? `<span class="px-2 py-0.5 rounded bg-rose-500/15 text-rose-400 border border-rose-500/30">-${r.outQty}</span>` : ''}
+              </div>
+            </div>
+
+            ${(r.model || r.remark) ? `
+              <div class="text-xs text-slate-400 pt-1.5 border-t border-slate-700/60 flex flex-wrap gap-x-3 gap-y-1">
+                ${r.model ? `<span>Model: <b class="text-slate-300">${r.model}</b></span>` : ''}
+                ${r.remark ? `<span>備註: ${r.remark}</span>` : ''}
+              </div>
+            ` : ''}
+
+            <div class="grid grid-cols-2 gap-2 pt-1">
+              <button onclick='openEditModal(${JSON.stringify(r)})' class="py-1.5 bg-slate-700/80 active:bg-indigo-600 text-slate-200 rounded-lg text-xs font-semibold border border-slate-600 flex items-center justify-center gap-1">
+                <i class="fa-solid fa-pen"></i> 編輯
+              </button>
+              <button onclick="deleteRecord(${r.rowId})" class="py-1.5 bg-slate-700/80 active:bg-rose-600 text-rose-300 rounded-lg text-xs font-semibold border border-slate-600 flex items-center justify-center gap-1">
+                <i class="fa-solid fa-trash"></i> 刪除
+              </button>
+            </div>
+          </div>
         `).join('');
       }
     }
@@ -1259,10 +1380,10 @@
       }
       container.innerHTML = keys.map(k => `
         <div class="flex items-center justify-between bg-slate-900 px-3 py-2 rounded-lg border border-slate-800 text-xs">
-          <span class="font-mono text-cyan-400 font-bold">${k}</span>
-          <div class="flex items-center gap-2">
+          <span class="font-mono text-cyan-400 font-bold truncate mr-2">${k}</span>
+          <div class="flex items-center gap-2 shrink-0">
             <span class="text-slate-300 font-mono">水位: <b class="text-amber-400">${customThresholds[k]}</b></span>
-            <button onclick="removeCustomThreshold('${encodeURIComponent(k)}')" class="text-rose-400 hover:text-rose-300 text-xs ml-2"><i class="fa-solid fa-trash"></i></button>
+            <button onclick="removeCustomThreshold('${encodeURIComponent(k)}')" class="text-rose-400 hover:text-rose-300 text-xs ml-2 p-1"><i class="fa-solid fa-trash"></i></button>
           </div>
         </div>
       `).join('');
@@ -1334,7 +1455,7 @@
       document.getElementById("addNameSuggestions").classList.add("hidden");
 
       if (currentTab === "Stock in TW") {
-        document.getElementById("addModalTitle").innerText = "新增庫存品項 (將同步寫入對應庫房紀錄)";
+        document.getElementById("addModalTitle").innerText = "新增庫存品項 (同步寫入庫房紀錄)";
         document.getElementById("stockOnlyFields").classList.remove("hidden");
         document.getElementById("logOnlyFields").classList.add("hidden");
       } else {
