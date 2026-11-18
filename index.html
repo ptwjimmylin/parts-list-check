@@ -6,20 +6,16 @@
   <title>PTW Inventory System (PTW 零件庫房管理系統)</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Google Fonts Inter -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <!-- FontAwesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- PapaParse & SheetJS -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <!-- HTML5 QRCode & QRCode Generator -->
-  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- FontAwesome (非阻塞載入) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" media="print" onload="this.media='all'">
+  <!-- 非關鍵套件改用 defer 延遲載入，避免重新整理卡白畫面 -->
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script defer src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
-    body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
-    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #0f172a; color: #f1f5f9; -webkit-tap-highlight-color: transparent; }
+    .font-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
     .autocomplete-list {
       max-height: 220px;
       overflow-y: auto;
@@ -111,7 +107,10 @@
             <span class="truncate">PTW Inventory System</span>
             <span class="hidden lg:inline text-slate-400 font-medium text-sm">(零件庫房管理系統)</span>
           </h1>
-          <p class="text-[11px] sm:text-xs text-slate-400 truncate">QR Scan In/Out ｜ Operator Tracking ｜ Auto-Logout</p>
+          <p class="text-[11px] sm:text-xs text-slate-400 truncate flex items-center gap-2">
+            <span>QR Scan In/Out ｜ Operator Tracking</span>
+            <span id="syncStatusPill" class="hidden text-cyan-400 font-mono text-[10px]"><i class="fa-solid fa-circle-notch fa-spin mr-1"></i>Syncing...</span>
+          </p>
         </div>
       </div>
       
@@ -141,8 +140,8 @@
           <button onclick="adjustFontSize(1)" title="Font Larger" class="px-2 py-1 hover:bg-slate-700 rounded text-xs font-bold transition">A+</button>
         </div>
 
-        <button onclick="fetchCurrentTab()" class="p-2 sm:px-2.5 sm:py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs font-medium text-slate-200 rounded-lg border border-slate-700 shadow-sm transition flex items-center gap-1" title="Reload / 重新載入">
-          <i class="fa-solid fa-rotate text-cyan-400"></i>
+        <button onclick="fetchCurrentTab(true)" class="p-2 sm:px-2.5 sm:py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs font-medium text-slate-200 rounded-lg border border-slate-700 shadow-sm transition flex items-center gap-1" title="Force Reload / 強制重新載入">
+          <i class="fa-solid fa-rotate text-cyan-400" id="reloadSpinIcon"></i>
         </button>
         <button onclick="exportToExcel()" class="p-2 sm:px-3 sm:py-1.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-xs font-semibold text-white rounded-lg shadow-md shadow-emerald-900/30 transition flex items-center gap-1.5" title="Export Filtered Excel / 匯出 Excel">
           <i class="fa-solid fa-file-excel"></i> <span id="exportBtnLabel" class="hidden md:inline">Export 匯出</span>
@@ -197,7 +196,7 @@
         </div>
       </div>
 
-      <!-- 操作與 CSV 整合工具列（含新增：一鍵批次列印 QR Code 按鈕） -->
+      <!-- 操作與 CSV 整合工具列 -->
       <div class="bg-slate-800/50 border border-slate-700/80 rounded-xl px-3.5 py-2.5 shadow backdrop-blur flex flex-wrap items-center justify-between gap-2.5">
         <div class="flex items-center gap-2">
           <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
@@ -207,8 +206,7 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
-          <!-- 新增：一鍵批次列印目前篩選結果的所有 QR Code -->
-          <button type="button" onclick="printAllQrCodes()" id="btnPrintAllQr" class="px-2.5 sm:px-3 py-1.5 bg-cyan-950/90 hover:bg-cyan-600 text-cyan-300 hover:text-white border border-cyan-600/50 rounded-lg text-xs font-semibold transition flex items-center gap-1.5" title="Batch Print All Filtered QR Labels / 批次列印所有 QR Code">
+          <button type="button" onclick="printAllQrCodes()" id="btnPrintAllQr" class="px-2.5 sm:px-3 py-1.5 bg-cyan-950/90 hover:bg-cyan-600 text-cyan-300 hover:text-white border border-cyan-600/50 rounded-lg text-xs font-semibold transition flex items-center gap-1.5" title="Batch Print All Filtered QR Labels (4x8 Grid) / 批次列印所有 QR Code (4x8格)">
             <i class="fa-solid fa-print"></i> <span id="btnPrintAllQrText">Print All QR 批次列印</span>
           </button>
 
@@ -350,13 +348,12 @@
         <button onclick="closeQrLabelModal()" class="text-slate-400 hover:text-white text-2xl leading-none p-1">&times;</button>
       </div>
 
-      <!-- 緊湊標籤預覽區：描述文字緊貼在 QR Code 正下方，不佔空間 -->
       <div class="bg-white p-3 rounded-xl shadow-inner inline-flex flex-col items-center justify-center mx-auto border border-slate-300" id="qrPrintArea">
         <div id="qrCanvasBox" class="flex justify-center"></div>
-        <div class="mt-1.5 text-center leading-tight max-w-[160px]">
-          <p class="text-slate-900 font-extrabold text-xs font-mono m-0" id="qrLabelCodeText"></p>
-          <p class="text-slate-800 font-bold text-[11px] mt-0.5 break-words m-0" id="qrLabelNameText"></p>
-          <p class="text-slate-500 text-[10px] mt-0.5 m-0" id="qrLabelModelText"></p>
+        <div class="mt-1.5 text-center leading-tight max-w-[140px]">
+          <p class="text-slate-900 font-extrabold text-[10px] font-mono m-0" id="qrLabelCodeText"></p>
+          <p class="text-slate-800 font-bold text-[9.5px] mt-0.5 break-words m-0" id="qrLabelNameText"></p>
+          <p class="text-slate-500 text-[8.5px] mt-0.5 m-0" id="qrLabelModelText"></p>
         </div>
       </div>
 
@@ -702,7 +699,7 @@
     </div>
   </div>
 
-  <!-- 隱藏的批次 QR Code 暫存容器（供產生全部圖檔後列印） -->
+  <!-- 隱藏的批次 QR Code 暫存容器 -->
   <div id="batchQrTempContainer" class="hidden"></div>
 
   <script>
@@ -730,6 +727,22 @@
     let scanMode = 'OUT';
     let currentQrLabelTitle = '';
     let pendingScannedItem = null;
+
+    // 從總庫存資料自動萃取零件字典
+    function rebuildPartsCatalogFromStock(stockList) {
+      const map = {};
+      (stockList || []).forEach(r => {
+        const pn = String(r.pn || '').trim();
+        const partsName = String(r.partsName || '').trim();
+        const model = String(r.model || '').trim();
+        if (!partsName && !pn) return;
+        const key = `${partsName.toLowerCase()}|||${pn.toLowerCase()}`;
+        if (!map[key]) {
+          map[key] = { pn, partsName, model };
+        }
+      });
+      partsCatalog = Object.values(map);
+    }
 
     // ====== 閒置自動登出監聽器 ======
     function resetIdleTimer() {
@@ -760,7 +773,6 @@
         }
         resetIdleTimer();
         switchTab("Stock in TW");
-        loadPartsCatalog();
       } else {
         overlay.classList.remove("hidden");
         if (idleTimer) clearTimeout(idleTimer);
@@ -906,8 +918,12 @@
       return `[${operator}] ${cleanText}`;
     }
 
-    // ====== 一鍵生成單張與批次列印所有 QR Code（緊湊置中、不佔空間） ======
+    // ====== 一鍵生成單張與批次列印所有 QR Code（A4 4x8格精準縮小版） ======
     function openQrLabelModal(record) {
+      if (typeof QRCode === 'undefined') {
+        alert("QR generator still loading, please wait 1 second / 元件載入中請稍候一秒");
+        return;
+      }
       const cleanPn = (record.pn && record.pn !== '-') ? record.pn.trim() : '';
       const cleanName = (record.partsName || '').trim();
       const qrPayload = cleanPn || cleanName;
@@ -926,8 +942,8 @@
       box.innerHTML = "";
       new QRCode(box, {
         text: qrPayload,
-        width: 140,
-        height: 140,
+        width: 110,
+        height: 110,
         colorDark: "#000000",
         colorLight: "#ffffff",
         correctLevel: QRCode.CorrectLevel.M
@@ -952,7 +968,6 @@
       link.click();
     }
 
-    // 單張列印：確保 CSS 完整載入，文字緊靠在 QR Code 正下方不留白
     function printQrLabel() {
       const canvas = document.querySelector("#qrCanvasBox canvas");
       const img = document.querySelector("#qrCanvasBox img");
@@ -961,7 +976,7 @@
       const nameText = document.getElementById("qrLabelNameText").innerText;
       const modelText = document.getElementById("qrLabelModelText").innerText;
 
-      const win = window.open("", "", "width=360,height=400");
+      const win = window.open("", "", "width=340,height=360");
       win.document.write(`
         <html>
           <head>
@@ -981,37 +996,37 @@
                 align-items: center;
                 justify-content: center;
                 border: 1px dashed #999;
-                padding: 6px 8px;
-                width: 150px;
+                padding: 5px 6px;
+                width: 130px;
                 text-align: center;
               }
               .sticker img {
-                width: 115px;
-                height: 115px;
+                width: 62px;
+                height: 62px;
                 display: block;
-                margin: 0 auto 4px auto;
+                margin: 0 auto 2px auto;
               }
               .pn {
                 font-family: monospace;
-                font-size: 11px;
+                font-size: 8.5px;
                 font-weight: bold;
                 color: #000;
                 margin: 0;
-                line-height: 1.15;
+                line-height: 1.1;
               }
               .name {
-                font-size: 10px;
+                font-size: 8px;
                 font-weight: bold;
                 color: #111;
-                margin: 2px 0 0 0;
-                line-height: 1.15;
+                margin: 1px 0 0 0;
+                line-height: 1.1;
                 word-break: break-word;
               }
               .model {
-                font-size: 9px;
-                color: #444;
+                font-size: 7px;
+                color: #555;
                 margin: 1px 0 0 0;
-                line-height: 1.1;
+                line-height: 1.05;
               }
             </style>
           </head>
@@ -1033,15 +1048,18 @@
       }, 300);
     }
 
-    // 批次列印目前篩選列表中的所有 QR Code（緊湊網格貼紙排版，節省紙張空間）
+    // 批次列印：A4 紙張 4 欄 x 8 列（共 32 格），小尺寸 Barcode + 緊湊小字體
     function printAllQrCodes() {
+      if (typeof QRCode === 'undefined') {
+        alert("QR generator still loading, please wait 1 second / 元件載入中請稍候一秒");
+        return;
+      }
       const targetList = currentFilteredList || [];
       if (targetList.length === 0) {
         alert("No items to print / 目前列表無任何零件可列印 QR Code");
         return;
       }
 
-      // 去除重複料號/品名，避免同一零件印出重複貼紙
       const uniqueMap = {};
       targetList.forEach(item => {
         const cleanPn = (item.pn && item.pn !== '-') ? item.pn.trim() : '';
@@ -1072,13 +1090,13 @@
 
       const stickerHtmlArray = [];
 
-      itemsToPrint.forEach((info, idx) => {
+      itemsToPrint.forEach((info) => {
         const cellDiv = document.createElement("div");
         tempBox.appendChild(cellDiv);
         new QRCode(cellDiv, {
           text: info.qrPayload,
-          width: 110,
-          height: 110,
+          width: 90,
+          height: 90,
           colorDark: "#000000",
           colorLight: "#ffffff",
           correctLevel: QRCode.CorrectLevel.M
@@ -1104,11 +1122,14 @@
       win.document.write(`
         <html>
           <head>
-            <title>Batch Print QR Labels (${itemsToPrint.length} items)</title>
+            <title>Batch Print QR Labels - 4x8 (${itemsToPrint.length} items)</title>
             <style>
               @page {
                 size: A4 portrait;
                 margin: 6mm;
+              }
+              * {
+                box-sizing: border-box;
               }
               body {
                 margin: 0;
@@ -1117,47 +1138,63 @@
               }
               .grid {
                 display: grid;
-                grid-template-columns: repeat(5, 1fr);
-                gap: 4px;
+                grid-template-columns: repeat(4, 1fr);
+                grid-auto-rows: 34.5mm;
+                gap: 2mm;
               }
               .sticker {
                 border: 1px dashed #999;
-                padding: 5px 4px;
+                padding: 2mm 3mm;
                 text-align: center;
                 display: flex;
                 flex-direction: column;
                 align-items: center;
-                justify-content: flex-start;
+                justify-content: center;
+                overflow: hidden;
                 break-inside: avoid;
                 page-break-inside: avoid;
               }
               .sticker img {
-                width: 92px;
-                height: 92px;
+                width: 62px;
+                height: 62px;
                 display: block;
-                margin: 0 auto 3px auto;
+                margin: 0 auto 2px auto;
+                flex-shrink: 0;
               }
               .pn {
                 font-family: monospace;
-                font-size: 9.5px;
+                font-size: 8.5px;
                 font-weight: bold;
                 color: #000;
                 margin: 0;
                 line-height: 1.1;
+                max-width: 100%;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
               }
               .name {
-                font-size: 9px;
+                font-size: 8px;
                 font-weight: bold;
                 color: #111;
-                margin: 1.5px 0 0 0;
+                margin: 1px 0 0 0;
                 line-height: 1.1;
+                max-width: 100%;
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
                 word-break: break-word;
               }
               .model {
-                font-size: 8px;
-                color: #444;
+                font-size: 7px;
+                color: #555;
                 margin: 1px 0 0 0;
                 line-height: 1.05;
+                max-width: 100%;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
               }
             </style>
           </head>
@@ -1326,8 +1363,16 @@
 
       if (stockSummaryCache.length === 0) {
         fetchJSONP(`${GAS_API_URL}?action=getStock`).then(res => {
-          if (res.status === 'success') stockSummaryCache = res.data || [];
+          if (res.status === 'success') {
+            stockSummaryCache = res.data || [];
+            rebuildPartsCatalogFromStock(stockSummaryCache);
+          }
         }).catch(() => {});
+      }
+
+      if (typeof Html5Qrcode === 'undefined') {
+        document.getElementById("scanStatusTitle").innerText = "Scanner library loading (Use manual input below)";
+        return;
       }
 
       html5QrCode = new Html5Qrcode("barcodeReader");
@@ -1364,7 +1409,7 @@
           html5QrCode = null;
         });
       }
-      fetchCurrentTab();
+      fetchCurrentTab(true);
     }
 
     function handleScannedPreview(rawCode) {
@@ -1573,17 +1618,6 @@
       }
     });
 
-    async function loadPartsCatalog() {
-      try {
-        const res = await fetchJSONP(`${GAS_API_URL}?action=getPartsCatalog`);
-        if (res.status === 'success') {
-          partsCatalog = res.data || [];
-        }
-      } catch (err) {
-        console.warn("Catalog load failed", err);
-      }
-    }
-
     function onInputSearch(inputElem, fieldType) {
       const val = inputElem.value.trim().toLowerCase();
       const listElem = fieldType === 'pn' 
@@ -1640,7 +1674,7 @@
         const timer = setTimeout(() => {
           cleanup();
           reject(new Error("Connection timeout / 連線逾時"));
-        }, 15000);
+        }, 18000);
 
         function cleanup() {
           if (window[callbackName]) delete window[callbackName];
@@ -1695,14 +1729,42 @@
         if (btnQuick) btnQuick.classList.add("hidden");
       }
 
-      fetchCurrentTab();
+      fetchCurrentTab(false);
     }
 
-    async function fetchCurrentTab() {
+    async function fetchCurrentTab(forceReload = false) {
       const tbody = document.getElementById("tableContent");
       const mobileList = document.getElementById("mobileCardList");
-      tbody.innerHTML = `<tr><td colspan="9" class="text-center py-16 text-slate-400"><i class="fa-solid fa-circle-notch fa-spin text-3xl mb-3 text-indigo-400 block"></i>Syncing Google Sheets... 正在同步資料庫中...</td></tr>`;
-      mobileList.innerHTML = `<div class="text-center py-12 text-slate-400 text-xs"><i class="fa-solid fa-circle-notch fa-spin text-2xl mb-2 text-indigo-400 block"></i>Syncing... 正在同步資料庫...</div>`;
+      const syncPill = document.getElementById("syncStatusPill");
+      const reloadIcon = document.getElementById("reloadSpinIcon");
+
+      const cacheKey = `PTW_CACHE_${currentTab}`;
+      const cachedRaw = localStorage.getItem(cacheKey);
+      let hasCached = false;
+
+      if (cachedRaw) {
+        try {
+          const parsedCache = JSON.parse(cachedRaw);
+          if (Array.isArray(parsedCache) && parsedCache.length > 0) {
+            rawDataList = parsedCache;
+            if (currentTab === "Stock in TW") {
+              stockSummaryCache = rawDataList;
+              rebuildPartsCatalogFromStock(rawDataList);
+            }
+            applyFilter();
+            updateStatistics(rawDataList);
+            hasCached = true;
+          }
+        } catch (e) {}
+      }
+
+      if (!hasCached) {
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-16 text-slate-400"><i class="fa-solid fa-circle-notch fa-spin text-3xl mb-3 text-indigo-400 block"></i>Syncing Google Sheets... 正在同步資料庫中...</td></tr>`;
+        mobileList.innerHTML = `<div class="text-center py-12 text-slate-400 text-xs"><i class="fa-solid fa-circle-notch fa-spin text-2xl mb-2 text-indigo-400 block"></i>Syncing... 正在同步資料庫...</div>`;
+      }
+
+      if (syncPill) syncPill.classList.remove("hidden");
+      if (reloadIcon) reloadIcon.classList.add("fa-spin");
 
       const targetUrl = currentTab === "Stock in TW"
         ? `${GAS_API_URL}?action=getStock`
@@ -1712,8 +1774,10 @@
         const result = await fetchJSONP(targetUrl);
         if (result.status === 'success') {
           rawDataList = result.data || [];
+          localStorage.setItem(cacheKey, JSON.stringify(rawDataList));
           if (currentTab === "Stock in TW") {
             stockSummaryCache = rawDataList;
+            rebuildPartsCatalogFromStock(rawDataList);
           }
           applyFilter();
           updateStatistics(rawDataList);
@@ -1721,9 +1785,14 @@
           throw new Error(result.message || "Read failed / 讀取失敗");
         }
       } catch (err) {
-        const errHtml = `<div class="text-center py-12 text-rose-400"><i class="fa-solid fa-triangle-exclamation text-2xl mb-2 block"></i><p class="font-bold text-xs">Error 連線失敗：${err.message}</p></div>`;
-        tbody.innerHTML = `<tr><td colspan="9">${errHtml}</td></tr>`;
-        mobileList.innerHTML = errHtml;
+        if (!hasCached) {
+          const errHtml = `<div class="text-center py-12 text-rose-400"><i class="fa-solid fa-triangle-exclamation text-2xl mb-2 block"></i><p class="font-bold text-xs">Error 連線失敗：${err.message}</p></div>`;
+          tbody.innerHTML = `<tr><td colspan="9">${errHtml}</td></tr>`;
+          mobileList.innerHTML = errHtml;
+        }
+      } finally {
+        if (syncPill) syncPill.classList.add("hidden");
+        if (reloadIcon) reloadIcon.classList.remove("fa-spin");
       }
     }
 
@@ -2204,8 +2273,7 @@
         });
         closeAddModal();
         alert("Saved successfully! / 新增成功！");
-        loadPartsCatalog();
-        setTimeout(fetchCurrentTab, 1500);
+        setTimeout(() => fetchCurrentTab(true), 1200);
       } catch (err) {
         alert("Failed / 新增失敗：" + err.message);
       } finally {
@@ -2264,8 +2332,7 @@
         });
         closeEditStockModal();
         alert("Updated successfully! / 修改成功！");
-        loadPartsCatalog();
-        setTimeout(fetchCurrentTab, 1800);
+        setTimeout(() => fetchCurrentTab(true), 1400);
       } catch (err) {
         alert("Update failed / 修改失敗：" + err.message);
       } finally {
@@ -2289,7 +2356,7 @@
           })
         });
         alert("Deleted! / 刪除成功！");
-        setTimeout(fetchCurrentTab, 1800);
+        setTimeout(() => fetchCurrentTab(true), 1400);
       } catch (err) {
         alert("Delete failed / 刪除失敗：" + err.message);
       }
@@ -2340,7 +2407,7 @@
         });
         closeEditModal();
         alert("Updated! / 修改成功！");
-        setTimeout(fetchCurrentTab, 1500);
+        setTimeout(() => fetchCurrentTab(true), 1200);
       } catch (err) {
         alert("Update failed / 修改失敗：" + err.message);
       } finally {
@@ -2358,7 +2425,7 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action: "deleteRow", sheet: currentTab, rowId: rowId })
         });
-        setTimeout(fetchCurrentTab, 1500);
+        setTimeout(() => fetchCurrentTab(true), 1200);
       } catch (err) {
         alert("Delete failed / 刪除失敗：" + err.message);
       }
@@ -2419,13 +2486,16 @@
 
           alert(`Successfully imported ${records.length} records! / 已成功覆寫匯入 ${records.length} 筆資料！`);
           e.target.value = "";
-          loadPartsCatalog();
-          setTimeout(fetchCurrentTab, 2000);
+          setTimeout(() => fetchCurrentTab(true), 1600);
         }
       });
     }
 
     function exportToExcel() {
+      if (typeof XLSX === 'undefined') {
+        alert("Excel module loading, please wait 1 second / 匯出模組載入中請稍候一秒");
+        return;
+      }
       const targetList = currentFilteredList || [];
       if (targetList.length === 0) {
         alert("No data to export / 目前篩選條件下無資料可匯出！");
