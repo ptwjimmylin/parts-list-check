@@ -56,6 +56,47 @@
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen md:h-screen md:overflow-hidden antialiased flex flex-col font-md pb-20 md:pb-0" id="appBody">
 
+  <!-- 全螢幕登入遮罩畫面（未登入時強制顯示） -->
+  <div id="loginOverlay" class="fixed inset-0 bg-slate-950/95 backdrop-blur-md z-50 flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700/90 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl space-y-6">
+      <div class="text-center space-y-2">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/30 mx-auto">
+          <i class="fa-solid fa-boxes-stacked text-white text-3xl"></i>
+        </div>
+        <h2 class="text-xl font-extrabold text-white pt-2">PTW 零件庫房管理系統</h2>
+        <p class="text-xs sm:text-sm text-slate-400">請輸入個人帳號密碼登入（所有進出庫將自動記錄操作人）</p>
+      </div>
+
+      <form id="loginForm" onsubmit="handleLoginSubmit(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">帳號 (Username)</label>
+          <div class="relative">
+            <i class="fa-solid fa-user absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+            <input type="text" id="loginUsername" placeholder="請輸入帳號（預設 admin）" required autocomplete="username" class="w-full pl-10 pr-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500 transition">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">密碼 (Password)</label>
+          <div class="relative">
+            <i class="fa-solid fa-lock absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+            <input type="password" id="loginPassword" placeholder="請輸入密碼（預設 1234）" required autocomplete="current-password" class="w-full pl-10 pr-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500 transition">
+          </div>
+        </div>
+
+        <p id="loginErrorMsg" class="hidden text-xs text-rose-400 font-semibold text-center bg-rose-500/10 border border-rose-500/30 py-2 rounded-lg"></p>
+
+        <button type="submit" id="btnLoginSubmit" class="w-full py-3 bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 active:scale-95 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-500/30 transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-right-to-bracket"></i> 登入系統
+        </button>
+      </form>
+
+      <div class="text-center text-[11px] text-slate-500 border-t border-slate-800 pt-3">
+        帳號資料同步儲存於 Google Sheets 的 <span class="font-mono text-slate-400">Users</span> 分頁
+      </div>
+    </div>
+  </div>
+
   <!-- 頂部導航列 -->
   <header class="bg-slate-900/95 backdrop-blur border-b border-slate-800 sticky top-0 shrink-0 z-40">
     <div class="w-full px-3 sm:px-8 py-2.5 sm:py-3 flex justify-between items-center gap-2">
@@ -66,35 +107,49 @@
         <div class="min-w-0">
           <h1 class="text-sm sm:text-xl font-bold tracking-tight text-white flex items-center gap-1.5 truncate">
             <span class="truncate">PTW 零件庫房管理系統</span>
-            <span class="hidden md:inline text-slate-300 font-semibold">(PTW Inventory System)</span>
-            <span class="text-[10px] sm:text-xs font-semibold uppercase px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shrink-0">Pro</span>
+            <span class="hidden lg:inline text-slate-300 font-semibold">(PTW Inventory System)</span>
           </h1>
-          <p class="text-[11px] sm:text-xs text-slate-400 truncate">QR Code 掃碼進出庫 ｜ 水位即時監控</p>
+          <p class="text-[11px] sm:text-xs text-slate-400 truncate">QR Code 掃碼進出庫 ｜ 人員操作簽核追蹤</p>
         </div>
       </div>
       
-      <!-- 工具按鈕群 -->
+      <!-- 工具按鈕群（含目前登入人員標示與帳號管理） -->
       <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <!-- 目前登入者標示 -->
+        <div class="flex items-center gap-1.5 bg-indigo-950/80 border border-indigo-500/30 px-2.5 py-1.5 rounded-lg text-xs text-indigo-200 font-semibold">
+          <i class="fa-solid fa-circle-user text-cyan-400"></i>
+          <span id="currentUserDisplay" class="max-w-[70px] sm:max-w-[120px] truncate">未登入</span>
+        </div>
+
+        <!-- 管理員專用：帳號管理按鈕 -->
+        <button id="btnManageUsers" onclick="openUsersModal()" class="hidden px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 rounded-lg text-xs font-semibold transition flex items-center gap-1" title="管理人員帳號密碼">
+          <i class="fa-solid fa-users-gear"></i> <span class="hidden md:inline">帳號管理</span>
+        </button>
+
+        <!-- 掃碼進出庫按鈕 -->
         <button onclick="openScannerModal()" class="hidden sm:flex px-3.5 py-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 active:scale-95 text-xs sm:text-sm font-bold text-white rounded-lg shadow-lg shadow-cyan-500/25 transition items-center gap-1.5">
           <i class="fa-solid fa-qrcode text-base"></i> 掃碼進出庫
         </button>
 
-        <button id="btnFullscreen" onclick="toggleFullScreen()" class="hidden md:flex px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs sm:text-sm font-semibold text-cyan-400 border border-slate-700 rounded-lg shadow-sm transition items-center gap-1.5" title="切換全螢幕模式">
+        <button id="btnFullscreen" onclick="toggleFullScreen()" class="hidden xl:flex px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs sm:text-sm font-semibold text-cyan-400 border border-slate-700 rounded-lg shadow-sm transition items-center gap-1.5" title="切換全螢幕模式">
           <i class="fa-solid fa-expand" id="fullscreenIcon"></i>
           <span id="fullscreenText">全螢幕</span>
         </button>
 
-        <div class="hidden lg:flex items-center bg-slate-800 border border-slate-700 rounded-lg p-0.5 text-slate-300">
+        <div class="hidden xl:flex items-center bg-slate-800 border border-slate-700 rounded-lg p-0.5 text-slate-300">
           <button onclick="adjustFontSize(-1)" title="字型縮小" class="px-2 py-1 hover:bg-slate-700 rounded text-xs font-bold transition">A-</button>
           <span class="px-2 text-xs font-medium text-slate-400" id="currentFontSizeLabel">標準</span>
           <button onclick="adjustFontSize(1)" title="字型放大" class="px-2 py-1 hover:bg-slate-700 rounded text-xs font-bold transition">A+</button>
         </div>
 
         <button onclick="fetchCurrentTab()" class="p-2 sm:px-3 sm:py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs sm:text-sm font-medium text-slate-200 rounded-lg border border-slate-700 shadow-sm transition flex items-center gap-1.5" title="重新載入">
-          <i class="fa-solid fa-rotate text-cyan-400"></i> <span class="hidden sm:inline">重新載入</span>
+          <i class="fa-solid fa-rotate text-cyan-400"></i>
         </button>
         <button onclick="exportToExcel()" class="p-2 sm:px-3 sm:py-1.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-xs sm:text-sm font-semibold text-white rounded-lg shadow-md shadow-emerald-900/30 transition flex items-center gap-1.5" title="匯出篩選結果">
-          <i class="fa-solid fa-file-excel"></i> <span id="exportBtnLabel" class="hidden sm:inline">匯出 Excel</span>
+          <i class="fa-solid fa-file-excel"></i> <span id="exportBtnLabel" class="hidden md:inline">匯出 Excel</span>
+        </button>
+        <button onclick="logoutUser()" class="p-2 sm:px-2.5 sm:py-1.5 bg-slate-800 hover:bg-rose-600/80 text-slate-300 hover:text-white rounded-lg border border-slate-700 text-xs font-semibold transition flex items-center gap-1" title="登出帳號">
+          <i class="fa-solid fa-right-from-bracket"></i>
         </button>
       </div>
     </div>
@@ -173,7 +228,7 @@
         <div class="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 flex-1">
           <div class="relative col-span-2 sm:w-64">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
-            <input type="text" id="searchKeyword" oninput="applyFilter()" placeholder="搜尋庫房(如S6)、料號、品名..." class="w-full pl-8 pr-3 py-2 sm:py-1.5 text-xs sm:text-sm bg-slate-800/80 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition">
+            <input type="text" id="searchKeyword" oninput="applyFilter()" placeholder="搜尋庫房(如S6)、料號、品名、人員..." class="w-full pl-8 pr-3 py-2 sm:py-1.5 text-xs sm:text-sm bg-slate-800/80 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition">
           </div>
 
           <div id="locFilterContainer" class="col-span-1 sm:w-auto">
@@ -242,6 +297,45 @@
     <i class="fa-solid fa-qrcode text-lg"></i> 掃碼進出庫
   </button>
 
+  <!-- 彈窗 0：管理員帳號密碼管理視窗 -->
+  <div id="usersModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4 my-auto">
+      <div class="flex justify-between items-center pb-3 border-b border-slate-800">
+        <h3 class="font-bold text-base text-white flex items-center gap-2">
+          <i class="fa-solid fa-users-gear text-amber-400"></i> 人員帳號與密碼管理
+        </h3>
+        <button onclick="closeUsersModal()" class="text-slate-400 hover:text-white text-2xl leading-none p-1">&times;</button>
+      </div>
+
+      <div class="space-y-4 text-xs sm:text-sm">
+        <div class="bg-slate-800/60 p-3.5 rounded-xl border border-slate-700/50 space-y-2.5">
+          <p class="font-bold text-slate-200">新增人員帳號</p>
+          <div class="grid grid-cols-2 gap-2">
+            <input type="text" id="newUsername" placeholder="登入帳號 (如 jimmy)" class="bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-cyan-500">
+            <input type="text" id="newPassword" placeholder="登入密碼" class="bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-cyan-500">
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <input type="text" id="newDisplayName" placeholder="顯示姓名 (如 Jimmy)" class="col-span-2 bg-slate-800 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-cyan-500">
+            <select id="newUserRole" class="bg-slate-800 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-cyan-500">
+              <option value="user">一般人員</option>
+              <option value="admin">管理員</option>
+            </select>
+          </div>
+          <button type="button" onclick="handleAddUser()" id="btnAddUser" class="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-semibold transition">
+            <i class="fa-solid fa-user-plus mr-1"></i> 建立帳號
+          </button>
+        </div>
+
+        <div>
+          <p class="font-bold text-slate-200 mb-2">現有帳號清單（同步儲存於 Users 分頁）</p>
+          <div id="usersListContainer" class="max-h-48 overflow-y-auto space-y-1.5 rounded-xl border border-slate-800 p-2.5 bg-slate-950/60">
+            <div class="text-center text-slate-400 py-4">載入中...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- 彈窗 1：零件 QR Code 標籤預覽與下載 -->
   <div id="qrLabelModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
     <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-sm w-full p-5 sm:p-6 shadow-2xl space-y-4 text-center">
@@ -260,7 +354,7 @@
       </div>
 
       <p class="text-xs text-slate-400">
-        可直接列印或下載貼在料盒上，無需在 Google Sheet 新增任何欄位。
+        可直接列印或下載貼在料盒上，掃描後會自動帶入零件資料。
       </p>
 
       <div class="grid grid-cols-2 gap-2.5 pt-2">
@@ -274,27 +368,30 @@
     </div>
   </div>
 
-  <!-- 彈窗 2：手機相機 QR Code 掃碼進出庫（掃描後須按「確認送出」才增減庫存） -->
+  <!-- 彈窗 2：手機相機 QR Code 掃碼進出庫（含必填 Remark 進出理由 + 自動記錄操作人） -->
   <div id="scannerModal" class="fixed inset-0 bg-black/85 backdrop-blur-md hidden z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-4 sm:p-5 shadow-2xl space-y-3.5 my-auto">
-      <div class="flex justify-between items-center pb-2.5 border-b border-slate-800">
-        <h3 class="font-bold text-base text-white flex items-center gap-2">
-          <i class="fa-solid fa-qrcode text-cyan-400 text-lg"></i> QR Code 掃碼進出庫
-        </h3>
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-4 sm:p-5 shadow-2xl space-y-3 my-auto">
+      <div class="flex justify-between items-center pb-2 border-b border-slate-800">
+        <div>
+          <h3 class="font-bold text-base text-white flex items-center gap-2">
+            <i class="fa-solid fa-qrcode text-cyan-400 text-lg"></i> QR Code 掃碼進出庫
+          </h3>
+          <p class="text-[11px] text-indigo-300 mt-0.5">操作人員：<span id="scanOperatorName" class="font-bold text-cyan-300"></span></p>
+        </div>
         <button onclick="closeScannerModal()" class="text-slate-400 hover:text-white text-2xl leading-none p-1">&times;</button>
       </div>
 
       <!-- 1. 切換「出貨 (-)」或「進貨 (+)」模式 -->
       <div class="grid grid-cols-2 gap-2">
-        <button type="button" id="btnScanOutMode" onclick="setScanMode('OUT')" class="py-2.5 px-3 rounded-xl font-bold text-sm bg-rose-600 text-white shadow-lg shadow-rose-600/30 border border-rose-400/50 transition flex items-center justify-center gap-1.5">
+        <button type="button" id="btnScanOutMode" onclick="setScanMode('OUT')" class="py-2 px-3 rounded-xl font-bold text-sm bg-rose-600 text-white shadow-lg shadow-rose-600/30 border border-rose-400/50 transition flex items-center justify-center gap-1.5">
           <i class="fa-solid fa-arrow-up-from-bracket"></i> 出貨扣帳 (-)
         </button>
-        <button type="button" id="btnScanInMode" onclick="setScanMode('IN')" class="py-2.5 px-3 rounded-xl font-semibold text-sm bg-slate-800 text-slate-400 border border-slate-700 hover:text-white transition flex items-center justify-center gap-1.5">
+        <button type="button" id="btnScanInMode" onclick="setScanMode('IN')" class="py-2 px-3 rounded-xl font-semibold text-sm bg-slate-800 text-slate-400 border border-slate-700 hover:text-white transition flex items-center justify-center gap-1.5">
           <i class="fa-solid fa-arrow-right-to-bracket"></i> 進貨入庫 (+)
         </button>
       </div>
 
-      <!-- 2. 選擇目標庫房與本次增減數量 -->
+      <!-- 2. 選擇操作庫房與本次增減數量 -->
       <div class="grid grid-cols-3 gap-2 text-xs sm:text-sm">
         <div class="col-span-2">
           <label class="block text-slate-400 font-medium mb-1">目標庫房 (Location)</label>
@@ -315,12 +412,12 @@
       </div>
 
       <!-- 3. 相機即時預覽區域 -->
-      <div class="relative rounded-xl overflow-hidden border-2 border-slate-700 bg-black min-h-[210px] flex items-center justify-center">
+      <div class="relative rounded-xl overflow-hidden border-2 border-slate-700 bg-black min-h-[190px] flex items-center justify-center">
         <div id="barcodeReader" class="w-full"></div>
       </div>
 
-      <!-- 4. 掃描結果預覽區（尚未寫入資料庫，需確認後按送出） -->
-      <div id="scanPreviewBox" class="bg-slate-800/90 border border-slate-700 rounded-xl p-3.5 space-y-2">
+      <!-- 4. 掃描結果預覽 ＋ 必填 Remark 進出理由區 -->
+      <div id="scanPreviewBox" class="bg-slate-800/90 border border-slate-700 rounded-xl p-3 space-y-2.5">
         <div class="flex items-center justify-between">
           <span class="text-xs font-medium text-slate-400" id="scanStatusTitle">請將 QR Code 對準鏡頭掃描</span>
           <button type="button" id="btnClearScanned" onclick="clearScannedItem()" class="hidden text-xs text-slate-400 hover:text-rose-400 transition">
@@ -328,24 +425,32 @@
           </button>
         </div>
 
-        <div id="scanPendingInfo" class="bg-slate-900/80 border border-slate-700/80 rounded-lg p-2.5 text-left space-y-1">
+        <div id="scanPendingInfo" class="bg-slate-900/80 border border-slate-700/80 rounded-lg p-2.5 text-left space-y-0.5">
           <p class="text-sm font-bold text-slate-400 font-mono truncate" id="scanPreviewName">尚未掃描零件...</p>
           <p class="text-xs text-cyan-400 font-mono truncate" id="scanPreviewSub">掃描後將顯示品名與料號供您確認</p>
         </div>
 
-        <!-- 必須點擊此按鈕才會真正寫入 Google Sheet 增減庫存 -->
+        <!-- 必填：進出理由 Remark 輸入框 -->
+        <div>
+          <label class="block text-xs font-bold text-amber-300 mb-1">
+            進出理由 / Remark <span class="text-rose-400">* (必填)</span>
+          </label>
+          <input type="text" id="scanRemarkInput" oninput="updateConfirmButtonAppearance()" placeholder="請填寫事由（如：UMC 8F 維修、廠商補貨...）" class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 transition">
+        </div>
+
+        <!-- 必須掃描且填寫 Remark 後，點擊此按鈕才會寫入 Google Sheet -->
         <button type="button" id="btnConfirmScanSubmit" onclick="confirmSubmitScannedData()" disabled class="w-full py-3 rounded-xl font-bold text-sm bg-slate-700 text-slate-500 cursor-not-allowed transition flex items-center justify-center gap-2">
           <i class="fa-solid fa-paper-plane"></i> <span id="btnConfirmScanText">請先掃描零件條碼</span>
         </button>
       </div>
 
-      <!-- 5. 支援手動輸入料號預覽（輸入後同樣帶入上方確認區，按確認送出才扣帳） -->
+      <!-- 5. 支援手動輸入料號帶入 -->
       <div class="flex gap-2">
         <input type="text" id="manualBarcodeInput" placeholder="或手動輸入 P/N 料號或品名帶入..." onkeydown="if(event.key==='Enter'){ event.preventDefault(); handleScannedPreview(this.value); this.value=''; }" class="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-white font-mono focus:outline-none focus:border-cyan-500">
         <button type="button" onclick="const inp=document.getElementById('manualBarcodeInput'); handleScannedPreview(inp.value); inp.value='';" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl text-xs sm:text-sm font-semibold transition">帶入</button>
       </div>
 
-      <div class="pt-1">
+      <div>
         <button type="button" onclick="closeScannerModal()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition">關閉視窗並刷新列表</button>
       </div>
     </div>
@@ -464,8 +569,8 @@
         </div>
 
         <div>
-          <label class="block text-slate-400 font-medium mb-1">Remark 備註</label>
-          <input type="text" id="addRemark" placeholder="事由 / 來源說明" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-indigo-500">
+          <label class="block text-slate-400 font-medium mb-1">Remark 備註 / 進出理由 *</label>
+          <input type="text" id="addRemark" placeholder="事由 / 來源說明（將自動標記操作人）" required class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-indigo-500">
         </div>
 
         <div class="flex justify-end gap-2.5 pt-3 border-t border-slate-800">
@@ -529,10 +634,6 @@
           <input type="text" id="editStockRemark" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-cyan-500">
         </div>
 
-        <p class="text-xs text-amber-400/90 bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-lg">
-          <i class="fa-solid fa-circle-info mr-1"></i> 儲存後將同步更新此零件在指定庫房的在庫結餘數量。
-        </p>
-
         <div class="flex justify-end gap-2.5 pt-3 border-t border-slate-800">
           <button type="button" onclick="closeEditStockModal()" class="px-4 py-2 border border-slate-700 rounded-xl text-slate-300 hover:bg-slate-800 font-medium transition">取消</button>
           <button type="submit" id="btnSaveEditStock" class="px-5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-semibold shadow-lg shadow-cyan-600/30 transition">儲存修改</button>
@@ -595,8 +696,9 @@
   </div>
 
   <script>
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzjOqc0uVfeqC6-WOHjZ5e48ZkuP3qGLnHGDJ-6fAm23e3_pbvQP9N73PJMi0daEb-xzQ/exec";
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbydf4TWl_NqUrXhwvUA9kuutkFyL0m9K7NOZ1fSTAE5iLe996TYt2DTbbi6v3Na26Js0g/exec";
 
+    let currentUser = JSON.parse(localStorage.getItem('PTW_CURRENT_USER') || 'null');
     let currentTab = "Stock in TW";
     let rawDataList = [];
     let currentFilteredList = [];
@@ -608,11 +710,156 @@
     let globalThreshold = Number(localStorage.getItem('GLOBAL_PARTS_THRESHOLD')) || 5;
     let customThresholds = JSON.parse(localStorage.getItem('CUSTOM_PARTS_THRESHOLDS') || '{}');
 
-    // QR Code 掃描器變數（先掃描預覽，按確認送出才寫入資料）
+    // QR Code 掃描器變數
     let html5QrCode = null;
     let scanMode = 'OUT';
     let currentQrLabelTitle = '';
-    let pendingScannedItem = null; // 暫存掃描到的零件資訊，等待按下送出按鈕
+    let pendingScannedItem = null;
+
+    // ====== 使用者登入與權限控制 ======
+    function checkLoginState() {
+      const overlay = document.getElementById("loginOverlay");
+      const userDisp = document.getElementById("currentUserDisplay");
+      const adminBtn = document.getElementById("btnManageUsers");
+
+      if (currentUser && currentUser.username) {
+        overlay.classList.add("hidden");
+        userDisp.innerText = currentUser.name || currentUser.username;
+        if (currentUser.role === 'admin') {
+          adminBtn.classList.remove("hidden");
+        } else {
+          adminBtn.classList.add("hidden");
+        }
+        switchTab("Stock in TW");
+        loadPartsCatalog();
+      } else {
+        overlay.classList.remove("hidden");
+      }
+    }
+
+    async function handleLoginSubmit(e) {
+      e.preventDefault();
+      const username = document.getElementById("loginUsername").value.trim();
+      const password = document.getElementById("loginPassword").value.trim();
+      const errElem = document.getElementById("loginErrorMsg");
+      const btn = document.getElementById("btnLoginSubmit");
+
+      errElem.classList.add("hidden");
+      btn.disabled = true;
+      btn.innerText = "驗證帳號中...";
+
+      try {
+        const url = `${GAS_API_URL}?action=login&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`;
+        const res = await fetchJSONP(url);
+        if (res.status === 'success' && res.user) {
+          currentUser = res.user;
+          localStorage.setItem('PTW_CURRENT_USER', JSON.stringify(currentUser));
+          checkLoginState();
+        } else {
+          errElem.innerText = res.message || "帳號或密碼錯誤";
+          errElem.classList.remove("hidden");
+        }
+      } catch (err) {
+        errElem.innerText = "連線失敗：" + err.message;
+        errElem.classList.remove("hidden");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-right-to-bracket"></i> 登入系統`;
+      }
+    }
+
+    function logoutUser() {
+      if (!confirm("確定要登出目前帳號嗎？")) return;
+      currentUser = null;
+      localStorage.removeItem('PTW_CURRENT_USER');
+      document.getElementById("loginForm").reset();
+      checkLoginState();
+    }
+
+    // 管理員：帳號管理視窗
+    function openUsersModal() {
+      document.getElementById("usersModal").classList.remove("hidden");
+      loadUsersList();
+    }
+
+    function closeUsersModal() {
+      document.getElementById("usersModal").classList.add("hidden");
+    }
+
+    async function loadUsersList() {
+      const container = document.getElementById("usersListContainer");
+      container.innerHTML = `<div class="text-center text-slate-400 py-4 text-xs">正在載入帳號清單...</div>`;
+      try {
+        const res = await fetchJSONP(`${GAS_API_URL}?action=getUsers`);
+        if (res.status === 'success') {
+          const list = res.data || [];
+          container.innerHTML = list.map(u => `
+            <div class="flex items-center justify-between bg-slate-900 px-3 py-2 rounded-lg border border-slate-800 text-xs">
+              <div>
+                <span class="font-bold text-white">${u.name}</span>
+                <span class="font-mono text-cyan-400 ml-1">(${u.username})</span>
+                <span class="ml-1.5 px-1.5 py-0.5 rounded text-[10px] ${u.role === 'admin' ? 'bg-amber-500/20 text-amber-300' : 'bg-slate-800 text-slate-400'}">${u.role === 'admin' ? '管理員' : '一般人員'}</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-slate-500 font-mono">密碼: ${u.password}</span>
+                ${u.username !== 'admin' ? `<button onclick="handleDeleteUser(${u.rowId})" class="text-rose-400 hover:text-rose-300 p-1"><i class="fa-solid fa-trash"></i></button>` : ''}
+              </div>
+            </div>
+          `).join('');
+        }
+      } catch (err) {
+        container.innerHTML = `<div class="text-center text-rose-400 py-4 text-xs">載入失敗</div>`;
+      }
+    }
+
+    async function handleAddUser() {
+      const u = document.getElementById("newUsername").value.trim();
+      const p = document.getElementById("newPassword").value.trim();
+      const n = document.getElementById("newDisplayName").value.trim() || u;
+      const role = document.getElementById("newUserRole").value;
+      if (!u || !p) {
+        alert("請填寫帳號與密碼");
+        return;
+      }
+      const btn = document.getElementById("btnAddUser");
+      btn.disabled = true;
+      btn.innerText = "建立中...";
+      try {
+        await fetch(GAS_API_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "addUser", username: u, password: p, name: n, role: role })
+        });
+        document.getElementById("newUsername").value = '';
+        document.getElementById("newPassword").value = '';
+        document.getElementById("newDisplayName").value = '';
+        setTimeout(loadUsersList, 1200);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-user-plus mr-1"></i> 建立帳號`;
+      }
+    }
+
+    async function handleDeleteUser(rowId) {
+      if (!confirm("確定刪除此帳號？")) return;
+      await fetch(GAS_API_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "deleteUser", rowId: rowId })
+      });
+      setTimeout(loadUsersList, 1200);
+    }
+
+    // 組合包含操作人姓名的 Remark 字串
+    function formatRemarkWithUser(rawRemark) {
+      const operator = currentUser ? (currentUser.name || currentUser.username) : '未知人員';
+      const cleanText = String(rawRemark || '').trim();
+      if (!cleanText) return `[${operator}]`;
+      if (cleanText.startsWith(`[${operator}]`)) return cleanText;
+      return `[${operator}] ${cleanText}`;
+    }
 
     // ====== 一鍵生成零件 QR Code 標籤 ======
     function openQrLabelModal(record) {
@@ -679,7 +926,7 @@
       }, 300);
     }
 
-    // ====== 手機相機 QR Code 掃碼進出庫（掃描後需手動按送出） ======
+    // ====== 手機相機 QR Code 掃碼進出庫（必填 Remark + 按送出才扣帳） ======
     function playBeepSound(success = true) {
       try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -700,11 +947,19 @@
       const btnText = document.getElementById("btnConfirmScanText");
       const stepQty = Math.max(1, parseInt(document.getElementById("scanStepQty").value, 10) || 1);
       const loc = document.getElementById("scanLocationSelect").value;
+      const remarkVal = document.getElementById("scanRemarkInput").value.trim();
 
       if (!pendingScannedItem) {
         btn.disabled = true;
         btn.className = "w-full py-3 rounded-xl font-bold text-sm bg-slate-700 text-slate-500 cursor-not-allowed transition flex items-center justify-center gap-2";
         btnText.innerText = "請先掃描零件條碼";
+        return;
+      }
+
+      if (!remarkVal) {
+        btn.disabled = true;
+        btn.className = "w-full py-3 rounded-xl font-bold text-sm bg-amber-950/60 border border-amber-500/40 text-amber-300/80 cursor-not-allowed transition flex items-center justify-center gap-2";
+        btnText.innerText = "請先填寫進出理由 (Remark)";
         return;
       }
 
@@ -723,16 +978,15 @@
       const btnOut = document.getElementById("btnScanOutMode");
       const btnIn = document.getElementById("btnScanInMode");
       if (mode === 'OUT') {
-        btnOut.className = "py-2.5 px-3 rounded-xl font-bold text-sm bg-rose-600 text-white shadow-lg shadow-rose-600/30 border border-rose-400/50 transition flex items-center justify-center gap-1.5";
-        btnIn.className = "py-2.5 px-3 rounded-xl font-semibold text-sm bg-slate-800 text-slate-400 border border-slate-700 hover:text-white transition flex items-center justify-center gap-1.5";
+        btnOut.className = "py-2 px-3 rounded-xl font-bold text-sm bg-rose-600 text-white shadow-lg shadow-rose-600/30 border border-rose-400/50 transition flex items-center justify-center gap-1.5";
+        btnIn.className = "py-2 px-3 rounded-xl font-semibold text-sm bg-slate-800 text-slate-400 border border-slate-700 hover:text-white transition flex items-center justify-center gap-1.5";
       } else {
-        btnIn.className = "py-2.5 px-3 rounded-xl font-bold text-sm bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 border border-emerald-400/50 transition flex items-center justify-center gap-1.5";
-        btnOut.className = "py-2.5 px-3 rounded-xl font-semibold text-sm bg-slate-800 text-slate-400 border border-slate-700 hover:text-white transition flex items-center justify-center gap-1.5";
+        btnIn.className = "py-2 px-3 rounded-xl font-bold text-sm bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 border border-emerald-400/50 transition flex items-center justify-center gap-1.5";
+        btnOut.className = "py-2 px-3 rounded-xl font-semibold text-sm bg-slate-800 text-slate-400 border border-slate-700 hover:text-white transition flex items-center justify-center gap-1.5";
       }
       updateConfirmButtonAppearance();
     }
 
-    // 監聽庫房與數量變動，即時更新送出按鈕文字
     document.addEventListener("DOMContentLoaded", () => {
       const locSel = document.getElementById("scanLocationSelect");
       const qtyInp = document.getElementById("scanStepQty");
@@ -743,7 +997,7 @@
     function clearScannedItem() {
       pendingScannedItem = null;
       document.getElementById("btnClearScanned").classList.add("hidden");
-      document.getElementById("scanStatusTitle").innerText = "已清除，請重新對準 QR Code 掃描";
+      document.getElementById("scanStatusTitle").innerText = "請將 QR Code 對準鏡頭掃描";
       document.getElementById("scanPreviewName").innerText = "尚未掃描零件...";
       document.getElementById("scanPreviewName").className = "text-sm font-bold text-slate-400 font-mono truncate";
       document.getElementById("scanPreviewSub").innerText = "掃描後將顯示品名與料號供您確認";
@@ -757,6 +1011,8 @@
         if (opts.includes(currentTab)) locSel.value = currentTab;
       }
 
+      document.getElementById("scanOperatorName").innerText = currentUser ? (currentUser.name || currentUser.username) : "未知";
+      document.getElementById("scanRemarkInput").value = "";
       clearScannedItem();
       document.getElementById("scannerModal").classList.remove("hidden");
       document.getElementById("scanStatusTitle").innerText = "正在啟動相機鏡頭...";
@@ -764,7 +1020,7 @@
       html5QrCode = new Html5Qrcode("barcodeReader");
       const config = {
         fps: 10,
-        qrbox: { width: 200, height: 200 },
+        qrbox: { width: 190, height: 190 },
         aspectRatio: 1.0
       };
 
@@ -772,7 +1028,6 @@
         { facingMode: "environment" },
         config,
         (decodedText) => {
-          // 掃描到 QR Code 時，僅帶入預覽，不直接送出資料
           handleScannedPreview(decodedText);
         },
         (errorMessage) => {}
@@ -799,12 +1054,10 @@
       fetchCurrentTab();
     }
 
-    // 步驟 A：掃描後帶入預覽區（尚未更改 Google Sheet）
     function handleScannedPreview(rawCode) {
       const code = String(rawCode || '').trim();
       if (!code) return;
 
-      // 如果掃到的是跟目前待確認區完全一樣的條碼，不重複提示音
       if (pendingScannedItem && pendingScannedItem.rawCode === code) {
         return;
       }
@@ -823,7 +1076,7 @@
 
       playBeepSound(true);
       document.getElementById("btnClearScanned").classList.remove("hidden");
-      document.getElementById("scanStatusTitle").innerText = "📌 已讀取條碼，請確認無誤後點擊下方「確認送出」";
+      document.getElementById("scanStatusTitle").innerText = "📌 已讀取條碼，請填寫下方進出理由後點擊送出";
       
       const nameElem = document.getElementById("scanPreviewName");
       nameElem.innerText = pendingScannedItem.partsName;
@@ -835,11 +1088,19 @@
       document.getElementById("scanPreviewSub").innerText = subParts.length > 0 ? subParts.join(" ｜ ") : `條碼內容: ${code}`;
 
       updateConfirmButtonAppearance();
+      // 自動聚焦到進出理由輸入框，方便立刻打字
+      document.getElementById("scanRemarkInput").focus();
     }
 
-    // 步驟 B：按下「確認送出」按鈕才真正寫入 Google Sheet 增減資料
     async function confirmSubmitScannedData() {
       if (!pendingScannedItem) return;
+
+      const rawRemark = document.getElementById("scanRemarkInput").value.trim();
+      if (!rawRemark) {
+        alert("請務必填寫進出理由 / Remark！");
+        document.getElementById("scanRemarkInput").focus();
+        return;
+      }
 
       const btn = document.getElementById("btnConfirmScanSubmit");
       const btnText = document.getElementById("btnConfirmScanText");
@@ -849,6 +1110,7 @@
       const targetLoc = document.getElementById("scanLocationSelect").value;
       const stepQty = Math.max(1, parseInt(document.getElementById("scanStepQty").value, 10) || 1);
       const todayStr = new Date().toISOString().split("T")[0];
+      const finalRemark = formatRemarkWithUser(rawRemark);
 
       const payload = {
         action: "addRecord",
@@ -859,7 +1121,7 @@
         model: pendingScannedItem.model,
         inQty: scanMode === 'IN' ? stepQty : 0,
         outQty: scanMode === 'OUT' ? stepQty : 0,
-        remark: `QR Code 掃碼${scanMode === 'OUT' ? '出貨' : '進貨'}`
+        remark: finalRemark
       };
 
       try {
@@ -873,15 +1135,15 @@
         const submittedName = pendingScannedItem.partsName;
         const actionDesc = scanMode === 'OUT' ? `出貨 (-${stepQty})` : `進貨 (+${stepQty})`;
 
-        // 送出完成後清空待確認狀態，方便繼續掃下一件
         pendingScannedItem = null;
+        document.getElementById("scanRemarkInput").value = "";
         document.getElementById("btnClearScanned").classList.add("hidden");
         document.getElementById("scanStatusTitle").innerText = `✅ 已完成寫入 (${targetLoc})`;
         
         const nameElem = document.getElementById("scanPreviewName");
         nameElem.innerText = `已送出：${submittedName} ${actionDesc}`;
         nameElem.className = "text-sm font-bold text-emerald-400 truncate";
-        document.getElementById("scanPreviewSub").innerText = "可繼續將鏡頭對準下一個零件 QR Code";
+        document.getElementById("scanPreviewSub").innerText = `紀錄備註：${finalRemark}`;
 
         updateConfirmButtonAppearance();
       } catch (err) {
@@ -964,8 +1226,7 @@
     window.onload = () => {
       updateFontSize();
       document.getElementById("addDate").value = new Date().toISOString().split("T")[0];
-      switchTab("Stock in TW");
-      loadPartsCatalog();
+      checkLoginState();
     };
 
     document.addEventListener("click", function(e) {
@@ -1338,7 +1599,7 @@
             <th class="px-5 py-3">Model</th>
             <th class="px-5 py-3 text-emerald-400">IN</th>
             <th class="px-5 py-3 text-rose-400">OUT</th>
-            <th class="px-5 py-3">Remark</th>
+            <th class="px-5 py-3">Remark (人員與理由)</th>
             <th class="px-5 py-3 text-right">操作</th>
           </tr>
         `;
@@ -1356,7 +1617,7 @@
             <td class="px-5 py-3 text-slate-400">${r.model || '-'}</td>
             <td class="px-5 py-3 font-mono font-bold text-emerald-400">${r.inQty}</td>
             <td class="px-5 py-3 font-mono font-bold text-rose-400">${r.outQty}</td>
-            <td class="px-5 py-3 text-slate-400">${r.remark || '-'}</td>
+            <td class="px-5 py-3 text-slate-300 font-medium">${r.remark || '-'}</td>
             <td class="px-5 py-3 text-right space-x-1.5 whitespace-nowrap">
               <button onclick='openEditModal(${JSON.stringify(r)})' class="px-2.5 py-1 bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white rounded-lg transition text-xs font-semibold border border-slate-700">
                 <i class="fa-solid fa-pen mr-1"></i>編輯
@@ -1387,7 +1648,7 @@
             ${(r.model || r.remark) ? `
               <div class="text-xs text-slate-400 pt-1.5 border-t border-slate-700/60 flex flex-wrap gap-x-3 gap-y-1">
                 ${r.model ? `<span>Model: <b class="text-slate-300">${r.model}</b></span>` : ''}
-                ${r.remark ? `<span>備註: ${r.remark}</span>` : ''}
+                ${r.remark ? `<span class="text-slate-200 font-medium">備註: ${r.remark}</span>` : ''}
               </div>
             ` : ''}
 
@@ -1525,7 +1786,7 @@
       alert("通用安全水位已更新！");
     }
 
-    // ====== 新增項目邏輯 ======
+    // ====== 新增項目邏輯（自動帶入登入者名稱） ======
     function openAddModal() {
       document.getElementById("addForm").reset();
       document.getElementById("addDate").value = new Date().toISOString().split("T")[0];
@@ -1554,6 +1815,8 @@
       btn.disabled = true;
       btn.innerText = "儲存中...";
 
+      const taggedRemark = formatRemarkWithUser(document.getElementById("addRemark").value);
+
       let payload = {};
       if (currentTab === "Stock in TW") {
         payload = {
@@ -1564,7 +1827,7 @@
           partsName: document.getElementById("addPartsName").value.trim(),
           qty: Number(document.getElementById("addStockQty").value) || 0,
           model: document.getElementById("addModel").value.trim(),
-          remark: document.getElementById("addRemark").value.trim()
+          remark: taggedRemark
         };
       } else {
         payload = {
@@ -1576,7 +1839,7 @@
           model: document.getElementById("addModel").value.trim(),
           inQty: Number(document.getElementById("addInQty").value) || 0,
           outQty: Number(document.getElementById("addOutQty").value) || 0,
-          remark: document.getElementById("addRemark").value.trim()
+          remark: taggedRemark
         };
       }
 
@@ -1845,7 +2108,7 @@
           "Model": r.model || "",
           "IN (入庫數)": Number(r.inQty) || 0,
           "OUT (出庫數)": Number(r.outQty) || 0,
-          "Remark": r.remark || ""
+          "Remark (操作人與理由)": r.remark || ""
         }));
       }
 
