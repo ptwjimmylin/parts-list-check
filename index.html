@@ -51,6 +51,7 @@
     }
     #qrCanvasBox img, #qrCanvasBox canvas {
       margin: 0 auto;
+      display: block;
     }
   </style>
 </head>
@@ -116,18 +117,15 @@
       
       <!-- 工具按鈕群 -->
       <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
-        <!-- 目前登入者標示 -->
         <div class="flex items-center gap-1.5 bg-indigo-950/80 border border-indigo-500/30 px-2.5 py-1.5 rounded-lg text-xs text-indigo-200 font-semibold">
           <i class="fa-solid fa-circle-user text-cyan-400"></i>
           <span id="currentUserDisplay" class="max-w-[70px] sm:max-w-[110px] truncate">Guest</span>
         </div>
 
-        <!-- 管理員專用：帳號管理按鈕 -->
         <button id="btnManageUsers" onclick="openUsersModal()" class="hidden px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 rounded-lg text-xs font-semibold transition flex items-center gap-1" title="Manage Users / 帳號管理">
           <i class="fa-solid fa-users-gear"></i> <span class="hidden md:inline">Users 帳號</span>
         </button>
 
-        <!-- 掃碼進出庫按鈕 -->
         <button onclick="openScannerModal()" class="hidden sm:flex px-3.5 py-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 active:scale-95 text-xs sm:text-sm font-bold text-white rounded-lg shadow-lg shadow-cyan-500/25 transition items-center gap-1.5">
           <i class="fa-solid fa-qrcode text-base"></i> Scan 掃碼進出庫
         </button>
@@ -175,7 +173,7 @@
         <button onclick="switchTab('clean room')" id="tab-clean-room" class="tab-btn px-3 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition whitespace-nowrap">clean room</button>
       </div>
 
-      <!-- 摘要指標卡片 / Summary Cards -->
+      <!-- 摘要指標卡片 -->
       <div class="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
         <div class="bg-slate-800/50 border border-slate-700/60 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-xl backdrop-blur relative overflow-hidden">
           <div class="absolute -right-2 -bottom-2 text-slate-700/20 text-4xl sm:text-5xl"><i class="fa-solid fa-list-ol"></i></div>
@@ -199,7 +197,7 @@
         </div>
       </div>
 
-      <!-- 操作與 CSV 整合工具列 -->
+      <!-- 操作與 CSV 整合工具列（含新增：一鍵批次列印 QR Code 按鈕） -->
       <div class="bg-slate-800/50 border border-slate-700/80 rounded-xl px-3.5 py-2.5 shadow backdrop-blur flex flex-wrap items-center justify-between gap-2.5">
         <div class="flex items-center gap-2">
           <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
@@ -209,6 +207,11 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
+          <!-- 新增：一鍵批次列印目前篩選結果的所有 QR Code -->
+          <button type="button" onclick="printAllQrCodes()" id="btnPrintAllQr" class="px-2.5 sm:px-3 py-1.5 bg-cyan-950/90 hover:bg-cyan-600 text-cyan-300 hover:text-white border border-cyan-600/50 rounded-lg text-xs font-semibold transition flex items-center gap-1.5" title="Batch Print All Filtered QR Labels / 批次列印所有 QR Code">
+            <i class="fa-solid fa-print"></i> <span id="btnPrintAllQrText">Print All QR 批次列印</span>
+          </button>
+
           <label class="px-2.5 sm:px-3 py-1.5 bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-semibold cursor-pointer transition flex items-center gap-1.5" title="Overwrite CSV / 覆寫匯入">
             <i class="fa-solid fa-file-arrow-up"></i> <span class="hidden sm:inline">Import CSV</span> 覆寫匯入
             <input type="file" id="csvFileInput" accept=".csv" onchange="handleCSVFile(event)" class="hidden">
@@ -337,39 +340,38 @@
     </div>
   </div>
 
-  <!-- 彈窗 1：零件 QR Code 標籤預覽與下載 -->
+  <!-- 彈窗 1：零件 QR Code 標籤預覽與緊湊置中列印 -->
   <div id="qrLabelModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-sm w-full p-5 sm:p-6 shadow-2xl space-y-4 text-center">
-      <div class="flex justify-between items-center pb-3 border-b border-slate-800">
-        <h3 class="font-bold text-base text-white flex items-center gap-2">
-          <i class="fa-solid fa-qrcode text-cyan-400"></i> QR Code Label 零件標籤
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-xs w-full p-5 shadow-2xl space-y-4 text-center">
+      <div class="flex justify-between items-center pb-2.5 border-b border-slate-800">
+        <h3 class="font-bold text-sm text-white flex items-center gap-2">
+          <i class="fa-solid fa-qrcode text-cyan-400"></i> QR Label 零件標籤
         </h3>
         <button onclick="closeQrLabelModal()" class="text-slate-400 hover:text-white text-2xl leading-none p-1">&times;</button>
       </div>
 
-      <div class="bg-white p-5 rounded-xl shadow-inner inline-block mx-auto" id="qrPrintArea">
+      <!-- 緊湊標籤預覽區：描述文字緊貼在 QR Code 正下方，不佔空間 -->
+      <div class="bg-white p-3 rounded-xl shadow-inner inline-flex flex-col items-center justify-center mx-auto border border-slate-300" id="qrPrintArea">
         <div id="qrCanvasBox" class="flex justify-center"></div>
-        <p class="text-slate-900 font-extrabold text-sm mt-3 font-mono" id="qrLabelCodeText"></p>
-        <p class="text-slate-700 font-bold text-xs mt-0.5 max-w-[200px] truncate mx-auto" id="qrLabelNameText"></p>
-        <p class="text-slate-500 text-[10px] mt-0.5" id="qrLabelModelText"></p>
+        <div class="mt-1.5 text-center leading-tight max-w-[160px]">
+          <p class="text-slate-900 font-extrabold text-xs font-mono m-0" id="qrLabelCodeText"></p>
+          <p class="text-slate-800 font-bold text-[11px] mt-0.5 break-words m-0" id="qrLabelNameText"></p>
+          <p class="text-slate-500 text-[10px] mt-0.5 m-0" id="qrLabelModelText"></p>
+        </div>
       </div>
 
-      <p class="text-xs text-slate-400">
-        Print or download sticker for bin labeling.<br>可直接列印或下載貼在料盒上，掃描自動帶入料號。
-      </p>
-
-      <div class="grid grid-cols-2 gap-2.5 pt-2">
-        <button type="button" onclick="downloadQrImage()" class="py-2.5 px-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-1.5">
+      <div class="grid grid-cols-2 gap-2.5 pt-1">
+        <button type="button" onclick="downloadQrImage()" class="py-2 px-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5">
           <i class="fa-solid fa-download"></i> Download 下載
         </button>
-        <button type="button" onclick="printQrLabel()" class="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-1.5">
+        <button type="button" onclick="printQrLabel()" class="py-2 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5">
           <i class="fa-solid fa-print"></i> Print 列印
         </button>
       </div>
     </div>
   </div>
 
-  <!-- 彈窗 2：手機相機 QR Code 掃碼進出庫（庫存為0禁止出貨 + 必填 Remark + 操作人紀錄） -->
+  <!-- 彈窗 2：手機相機 QR Code 掃碼進出庫 -->
   <div id="scannerModal" class="fixed inset-0 bg-black/85 backdrop-blur-md hidden z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
     <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-4 sm:p-5 shadow-2xl space-y-3 my-auto">
       <div class="flex justify-between items-center pb-2 border-b border-slate-800">
@@ -382,7 +384,6 @@
         <button onclick="closeScannerModal()" class="text-slate-400 hover:text-white text-2xl leading-none p-1">&times;</button>
       </div>
 
-      <!-- 1. 切換「出貨 (-)」或「進貨 (+)」模式 -->
       <div class="grid grid-cols-2 gap-2">
         <button type="button" id="btnScanOutMode" onclick="setScanMode('OUT')" class="py-2 px-3 rounded-xl font-bold text-xs sm:text-sm bg-rose-600 text-white shadow-lg shadow-rose-600/30 border border-rose-400/50 transition flex items-center justify-center gap-1.5">
           <i class="fa-solid fa-arrow-up-from-bracket"></i> Stock Out 出貨 (-)
@@ -392,7 +393,6 @@
         </button>
       </div>
 
-      <!-- 2. 選擇操作庫房與本次增減數量 -->
       <div class="grid grid-cols-3 gap-2 text-xs sm:text-sm">
         <div class="col-span-2">
           <label class="block text-slate-400 font-medium mb-1">Target Location 目標庫房</label>
@@ -412,12 +412,10 @@
         </div>
       </div>
 
-      <!-- 3. 相機即時預覽區域 -->
       <div class="relative rounded-xl overflow-hidden border-2 border-slate-700 bg-black min-h-[185px] flex items-center justify-center">
         <div id="barcodeReader" class="w-full"></div>
       </div>
 
-      <!-- 4. 掃描結果預覽 ＋ 庫存檢核警示 ＋ 必填 Remark -->
       <div id="scanPreviewBox" class="bg-slate-800/90 border border-slate-700 rounded-xl p-3 space-y-2.5">
         <div class="flex items-center justify-between">
           <span class="text-xs font-medium text-slate-400" id="scanStatusTitle">Point camera at QR Code / 請將 QR Code 對準鏡頭</span>
@@ -434,7 +432,6 @@
           <p class="text-xs text-cyan-400 font-mono truncate" id="scanPreviewSub">Scan QR to preview details / 掃描後顯示品名與在庫量</p>
         </div>
 
-        <!-- 庫存不足（0庫存）紅色警告框 -->
         <div id="scanZeroStockAlert" class="hidden bg-rose-950/80 border border-rose-500/60 rounded-lg p-2.5 text-xs text-rose-300 font-semibold flex items-start gap-2">
           <i class="fa-solid fa-circle-xmark text-rose-400 text-base mt-0.5 shrink-0"></i>
           <div>
@@ -443,7 +440,6 @@
           </div>
         </div>
 
-        <!-- 必填：進出理由 Remark 輸入框 -->
         <div>
           <label class="block text-xs font-bold text-amber-300 mb-1">
             Reason / Remark 進出理由 <span class="text-rose-400">* (Required 必填)</span>
@@ -451,13 +447,11 @@
           <input type="text" id="scanRemarkInput" oninput="updateConfirmButtonAppearance()" placeholder="e.g., UMC 8F repair, Vendor restock / 請填寫進出理由..." class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 transition">
         </div>
 
-        <!-- 確認送出按鈕 -->
         <button type="button" id="btnConfirmScanSubmit" onclick="confirmSubmitScannedData()" disabled class="w-full py-3 rounded-xl font-bold text-xs sm:text-sm bg-slate-700 text-slate-500 cursor-not-allowed transition flex items-center justify-center gap-2">
           <i class="fa-solid fa-paper-plane"></i> <span id="btnConfirmScanText">Scan QR First / 請先掃描零件條碼</span>
         </button>
       </div>
 
-      <!-- 5. 手動輸入帶入 -->
       <div class="flex gap-2">
         <input type="text" id="manualBarcodeInput" placeholder="Manual P/N or Name / 手動輸入料號或品名..." onkeydown="if(event.key==='Enter'){ event.preventDefault(); handleScannedPreview(this.value); this.value=''; }" class="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-white font-mono focus:outline-none focus:border-cyan-500">
         <button type="button" onclick="const inp=document.getElementById('manualBarcodeInput'); handleScannedPreview(inp.value); inp.value='';" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl text-xs sm:text-sm font-semibold transition">Load 帶入</button>
@@ -708,17 +702,20 @@
     </div>
   </div>
 
-  <script>
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbygbFiHEJLTCHZdK5svlU9oMfaoYkzXxXwGiid0Hw8yvTnTU7mj8nTdXK3LJTlXqw7A-A/exec";
+  <!-- 隱藏的批次 QR Code 暫存容器（供產生全部圖檔後列印） -->
+  <div id="batchQrTempContainer" class="hidden"></div>
 
-    // ====== 閒置自動登出時間設定（單位：分鐘，可依需求自行修改） ======
+  <script>
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbw_VVXuxH1xqznn2ZGhLR6DAY_tO6460ui7iKtJJtxqJvkhA7q1eleDBlEz1K2dK5LbKw/exec";
+
+    // 閒置自動登出時間（單位：分鐘）
     const IDLE_TIMEOUT_MINUTES = 15;
     let idleTimer = null;
 
     let currentUser = JSON.parse(localStorage.getItem('PTW_CURRENT_USER') || 'null');
     let currentTab = "Stock in TW";
     let rawDataList = [];
-    let stockSummaryCache = []; // 快取總庫存各庫房明細，供掃碼時即時檢核該庫房數量是否為 0
+    let stockSummaryCache = [];
     let currentFilteredList = [];
     let partsCatalog = [];
     let isOnlyInStockActive = false;
@@ -804,7 +801,6 @@
     function logoutUser(isAutoTimeout = false) {
       if (!isAutoTimeout && !confirm("Confirm logout? / 確定要登出目前帳號嗎？")) return;
       
-      // 若相機開著，自動關閉釋放資源
       if (html5QrCode) {
         html5QrCode.stop().catch(() => {});
         html5QrCode = null;
@@ -827,7 +823,6 @@
       checkLoginState();
     }
 
-    // 管理員：帳號管理視窗
     function openUsersModal() {
       document.getElementById("usersModal").classList.remove("hidden");
       loadUsersList();
@@ -911,7 +906,7 @@
       return `[${operator}] ${cleanText}`;
     }
 
-    // ====== 一鍵生成零件 QR Code 標籤 ======
+    // ====== 一鍵生成單張與批次列印所有 QR Code（緊湊置中、不佔空間） ======
     function openQrLabelModal(record) {
       const cleanPn = (record.pn && record.pn !== '-') ? record.pn.trim() : '';
       const cleanName = (record.partsName || '').trim();
@@ -931,8 +926,8 @@
       box.innerHTML = "";
       new QRCode(box, {
         text: qrPayload,
-        width: 180,
-        height: 180,
+        width: 140,
+        height: 140,
         colorDark: "#000000",
         colorLight: "#ffffff",
         correctLevel: QRCode.CorrectLevel.M
@@ -957,14 +952,76 @@
       link.click();
     }
 
+    // 單張列印：確保 CSS 完整載入，文字緊靠在 QR Code 正下方不留白
     function printQrLabel() {
-      const printContent = document.getElementById("qrPrintArea").innerHTML;
-      const win = window.open("", "", "width=400,height=450");
+      const canvas = document.querySelector("#qrCanvasBox canvas");
+      const img = document.querySelector("#qrCanvasBox img");
+      const qrSrc = canvas ? canvas.toDataURL("image/png") : (img ? img.src : "");
+      const codeText = document.getElementById("qrLabelCodeText").innerText;
+      const nameText = document.getElementById("qrLabelNameText").innerText;
+      const modelText = document.getElementById("qrLabelModelText").innerText;
+
+      const win = window.open("", "", "width=360,height=400");
       win.document.write(`
         <html>
-          <head><title>Print QR Label</title></head>
-          <body style="font-family: sans-serif; text-align: center; padding: 20px;">
-            ${printContent}
+          <head>
+            <title>Print QR Label</title>
+            <style>
+              @page { margin: 4mm; }
+              body {
+                margin: 0;
+                padding: 8px;
+                font-family: Arial, sans-serif;
+                display: flex;
+                justify-content: center;
+              }
+              .sticker {
+                display: inline-flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                border: 1px dashed #999;
+                padding: 6px 8px;
+                width: 150px;
+                text-align: center;
+              }
+              .sticker img {
+                width: 115px;
+                height: 115px;
+                display: block;
+                margin: 0 auto 4px auto;
+              }
+              .pn {
+                font-family: monospace;
+                font-size: 11px;
+                font-weight: bold;
+                color: #000;
+                margin: 0;
+                line-height: 1.15;
+              }
+              .name {
+                font-size: 10px;
+                font-weight: bold;
+                color: #111;
+                margin: 2px 0 0 0;
+                line-height: 1.15;
+                word-break: break-word;
+              }
+              .model {
+                font-size: 9px;
+                color: #444;
+                margin: 1px 0 0 0;
+                line-height: 1.1;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="sticker">
+              <img src="${qrSrc}" />
+              <p class="pn">${codeText}</p>
+              <p class="name">${nameText}</p>
+              ${modelText ? `<p class="model">${modelText}</p>` : ''}
+            </div>
           </body>
         </html>
       `);
@@ -974,6 +1031,149 @@
         win.print();
         win.close();
       }, 300);
+    }
+
+    // 批次列印目前篩選列表中的所有 QR Code（緊湊網格貼紙排版，節省紙張空間）
+    function printAllQrCodes() {
+      const targetList = currentFilteredList || [];
+      if (targetList.length === 0) {
+        alert("No items to print / 目前列表無任何零件可列印 QR Code");
+        return;
+      }
+
+      // 去除重複料號/品名，避免同一零件印出重複貼紙
+      const uniqueMap = {};
+      targetList.forEach(item => {
+        const cleanPn = (item.pn && item.pn !== '-') ? item.pn.trim() : '';
+        const cleanName = (item.partsName || '').trim();
+        const qrPayload = cleanPn || cleanName;
+        if (!qrPayload) return;
+        const key = `${cleanName.toLowerCase()}###${cleanPn.toLowerCase()}`;
+        if (!uniqueMap[key]) {
+          uniqueMap[key] = {
+            qrPayload: qrPayload,
+            pnText: cleanPn ? `P/N: ${cleanPn}` : 'NO P/N',
+            nameText: cleanName,
+            modelText: item.model ? `Model: ${item.model}` : ''
+          };
+        }
+      });
+
+      const itemsToPrint = Object.values(uniqueMap);
+      if (itemsToPrint.length === 0) return;
+
+      const btn = document.getElementById("btnPrintAllQr");
+      const btnText = document.getElementById("btnPrintAllQrText");
+      btn.disabled = true;
+      btnText.innerText = `Generating (${itemsToPrint.length})...`;
+
+      const tempBox = document.getElementById("batchQrTempContainer");
+      tempBox.innerHTML = "";
+
+      const stickerHtmlArray = [];
+
+      itemsToPrint.forEach((info, idx) => {
+        const cellDiv = document.createElement("div");
+        tempBox.appendChild(cellDiv);
+        new QRCode(cellDiv, {
+          text: info.qrPayload,
+          width: 110,
+          height: 110,
+          colorDark: "#000000",
+          colorLight: "#ffffff",
+          correctLevel: QRCode.CorrectLevel.M
+        });
+        const canvas = cellDiv.querySelector("canvas");
+        const dataUrl = canvas ? canvas.toDataURL("image/png") : "";
+
+        stickerHtmlArray.push(`
+          <div class="sticker">
+            <img src="${dataUrl}" />
+            <p class="pn">${info.pnText}</p>
+            <p class="name">${info.nameText}</p>
+            ${info.modelText ? `<p class="model">${info.modelText}</p>` : ''}
+          </div>
+        `);
+      });
+
+      tempBox.innerHTML = "";
+      btn.disabled = false;
+      btnText.innerText = "Print All QR 批次列印";
+
+      const win = window.open("", "", "width=850,height=700");
+      win.document.write(`
+        <html>
+          <head>
+            <title>Batch Print QR Labels (${itemsToPrint.length} items)</title>
+            <style>
+              @page {
+                size: A4 portrait;
+                margin: 6mm;
+              }
+              body {
+                margin: 0;
+                padding: 0;
+                font-family: Arial, sans-serif;
+              }
+              .grid {
+                display: grid;
+                grid-template-columns: repeat(5, 1fr);
+                gap: 4px;
+              }
+              .sticker {
+                border: 1px dashed #999;
+                padding: 5px 4px;
+                text-align: center;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: flex-start;
+                break-inside: avoid;
+                page-break-inside: avoid;
+              }
+              .sticker img {
+                width: 92px;
+                height: 92px;
+                display: block;
+                margin: 0 auto 3px auto;
+              }
+              .pn {
+                font-family: monospace;
+                font-size: 9.5px;
+                font-weight: bold;
+                color: #000;
+                margin: 0;
+                line-height: 1.1;
+              }
+              .name {
+                font-size: 9px;
+                font-weight: bold;
+                color: #111;
+                margin: 1.5px 0 0 0;
+                line-height: 1.1;
+                word-break: break-word;
+              }
+              .model {
+                font-size: 8px;
+                color: #444;
+                margin: 1px 0 0 0;
+                line-height: 1.05;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="grid">
+              ${stickerHtmlArray.join('')}
+            </div>
+          </body>
+        </html>
+      `);
+      win.document.close();
+      win.focus();
+      setTimeout(() => {
+        win.print();
+        win.close();
+      }, 450);
     }
 
     // ====== 查詢特定零件在目標庫房的現有庫存數量 ======
@@ -989,7 +1189,6 @@
 
       if (!found) return 0;
 
-      // 優先從後端回傳的 locQtyMap 精準讀取該庫房數量
       if (found.locQtyMap) {
         for (const k in found.locQtyMap) {
           if (k.trim().toLowerCase() === locLower) {
@@ -999,7 +1198,6 @@
         return 0;
       }
 
-      // 備用解析字串（例如 "S2 (4個)，S4 (1個)" 或單一庫房 "S2"）
       const locStr = String(found.location || '').trim();
       if (locStr.toLowerCase() === locLower) {
         return Number(found.qty) || 0;
@@ -1011,7 +1209,7 @@
       return 0;
     }
 
-    // ====== 手機相機 QR Code 掃碼進出庫（庫存為 0 禁止出貨 + 必填 Remark） ======
+    // ====== 手機相機 QR Code 掃碼進出庫 ======
     function playBeepSound(success = true) {
       try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -1045,7 +1243,6 @@
         return;
       }
 
-      // 查詢此零件在目前選定庫房的現有數量
       const currentLocQty = getAvailableStockInLocation(pendingScannedItem.pn, pendingScannedItem.partsName, loc);
       stockBadge.classList.remove("hidden");
       stockBadge.innerText = `${loc} Stock: ${currentLocQty}`;
@@ -1056,7 +1253,6 @@
         stockBadge.className = "shrink-0 px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40";
       }
 
-      // 防呆核心：若為「出貨 OUT」，且該庫房庫存為 0 或小於出貨數量，絕對禁止送出！
       if (scanMode === 'OUT' && (currentLocQty <= 0 || currentLocQty < stepQty)) {
         zeroAlert.classList.remove("hidden");
         btn.disabled = true;
@@ -1128,7 +1324,6 @@
       document.getElementById("scannerModal").classList.remove("hidden");
       document.getElementById("scanStatusTitle").innerText = "Starting camera... 正在啟動相機鏡頭...";
 
-      // 若尚未取得最新總庫存快取，背景刷新一次確保數量精準
       if (stockSummaryCache.length === 0) {
         fetchJSONP(`${GAS_API_URL}?action=getStock`).then(res => {
           if (res.status === 'success') stockSummaryCache = res.data || [];
@@ -1221,7 +1416,6 @@
       const stepQty = Math.max(1, parseInt(document.getElementById("scanStepQty").value, 10) || 1);
       const currentLocQty = getAvailableStockInLocation(pendingScannedItem.pn, pendingScannedItem.partsName, targetLoc);
 
-      // 送出前再次雙重確認：庫存為 0 或不足時嚴格阻擋
       if (scanMode === 'OUT' && (currentLocQty <= 0 || currentLocQty < stepQty)) {
         playBeepSound(false);
         alert(`Cannot Stock Out! Current stock in ${targetLoc} is ${currentLocQty}.\n庫存不足無法出貨！${targetLoc} 目前庫存僅有 ${currentLocQty}，請確認是否選錯庫房。`);
@@ -1264,7 +1458,6 @@
           body: JSON.stringify(payload)
         });
 
-        // 同步更新本地端快取數量，避免連續掃描同一件時超扣
         const cacheItem = stockSummaryCache.find(item => 
           String(item.partsName || '').trim().toLowerCase() === pendingScannedItem.partsName.toLowerCase() &&
           String(item.pn || '').trim().toLowerCase() === pendingScannedItem.pn.toLowerCase()
@@ -1979,7 +2172,6 @@
         const pName = document.getElementById("addPartsName").value.trim();
         const pnVal = document.getElementById("addPn").value.trim();
 
-        // 手動新增分頁出庫時也進行零庫存防呆阻擋
         if (outQ > 0) {
           const curQty = getAvailableStockInLocation(pnVal, pName, currentTab);
           if (curQty < outQ) {
