@@ -4,56 +4,32 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>PTW Inventory System (PTW 零件庫房管理系統)</title>
-  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- FontAwesome (非阻塞載入) -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" media="print" onload="this.media='all'">
-  <!-- 延遲載入非關鍵套件 -->
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script defer src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
   <script defer src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #0f172a; color: #f1f5f9; -webkit-tap-highlight-color: transparent; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #0f172a; color: #f1f5f9; -webkit-tap-highlight-color: transparent; }
     .font-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
-    .autocomplete-list {
-      max-height: 220px;
-      overflow-y: auto;
-      scrollbar-width: thin;
-    }
+    .autocomplete-list { max-height: 220px; overflow-y: auto; scrollbar-width: thin; }
     body.font-sm { font-size: 13px; }
     body.font-md { font-size: 15px; }
     body.font-lg { font-size: 17px; }
     body.font-xl { font-size: 19px; }
-    .table-scroll::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
-    }
-    .table-scroll::-webkit-scrollbar-track {
-      background: rgba(15, 23, 42, 0.6);
-    }
-    .table-scroll::-webkit-scrollbar-thumb {
-      background: rgba(71, 85, 105, 0.8);
-      border-radius: 4px;
-    }
-    .table-scroll::-webkit-scrollbar-thumb:hover {
-      background: rgba(99, 102, 241, 0.8);
-    }
+    .table-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+    .table-scroll::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+    .table-scroll::-webkit-scrollbar-thumb { background: rgba(71, 85, 105, 0.8); border-radius: 4px; }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    #barcodeReader video {
-      border-radius: 0.75rem;
-      object-fit: cover;
-    }
-    #qrCanvasBox img, #qrCanvasBox canvas {
-      margin: 0 auto;
-      display: block;
-    }
+    #barcodeReader video { border-radius: 0.75rem; object-fit: cover; }
+    #qrCanvasBox img, #qrCanvasBox canvas { margin: 0 auto; display: block; }
   </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen md:h-screen md:overflow-hidden antialiased flex flex-col font-md pb-20 md:pb-0" id="appBody">
 
-  <!-- 全螢幕登入遮罩畫面 / Login Overlay -->
+  <!-- 登入畫面 -->
   <div id="loginOverlay" class="fixed inset-0 bg-slate-950/95 backdrop-blur-md z-50 flex items-center justify-center p-4">
     <div class="bg-slate-900 border border-slate-700/90 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl space-y-6">
       <div class="text-center space-y-2">
@@ -64,42 +40,31 @@
         <p class="text-xs font-semibold text-cyan-400">PTW 零件庫房管理系統</p>
         <p class="text-xs text-slate-400 pt-1">Please sign in to record operator activity.<br>請輸入個人帳號密碼登入（進出庫將自動記錄操作人）</p>
       </div>
-
-      <form id="loginForm" onsubmit="handleLoginSubmit(event)" class="space-y-4">
+      <div class="space-y-4">
         <div>
           <label class="block text-xs font-semibold text-slate-300 mb-1.5">Username / 帳號</label>
-          <div class="relative">
-            <i class="fa-solid fa-user absolute left-3.5 top-3 text-slate-400 text-sm"></i>
-            <input type="text" id="loginUsername" placeholder="Enter username (Default: admin)" required autocomplete="username" class="w-full pl-10 pr-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500 transition">
-          </div>
+          <input type="text" id="loginUsername" placeholder="Default: admin" onkeydown="if(event.key==='Enter'){event.preventDefault();handleLoginSubmit();}" class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500">
         </div>
-
         <div>
           <label class="block text-xs font-semibold text-slate-300 mb-1.5">Password / 密碼</label>
-          <div class="relative">
-            <i class="fa-solid fa-lock absolute left-3.5 top-3 text-slate-400 text-sm"></i>
-            <input type="password" id="loginPassword" placeholder="Enter password (Default: 1234)" required autocomplete="current-password" class="w-full pl-10 pr-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500 transition">
-          </div>
+          <input type="password" id="loginPassword" placeholder="Default: 1234" onkeydown="if(event.key==='Enter'){event.preventDefault();handleLoginSubmit();}" class="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-cyan-500">
         </div>
-
         <p id="loginErrorMsg" class="hidden text-xs text-rose-400 font-semibold text-center bg-rose-500/10 border border-rose-500/30 py-2 rounded-lg"></p>
-
-        <button type="submit" id="btnLoginSubmit" class="w-full py-3 bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 active:scale-95 text-white font-bold text-sm rounded-xl shadow-lg shadow-indigo-500/30 transition flex items-center justify-center gap-2">
+        <button type="button" id="btnLoginSubmit" onclick="handleLoginSubmit()" class="w-full py-3 bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 active:scale-95 text-white font-bold text-sm rounded-xl shadow-lg transition flex items-center justify-center gap-2">
           <i class="fa-solid fa-right-to-bracket"></i> Sign In / 登入系統
         </button>
-      </form>
-
+      </div>
       <div class="text-center text-[11px] text-slate-500 border-t border-slate-800 pt-3">
         Auto-logout after 15 mins of inactivity / 閒置 15 分鐘自動登出
       </div>
     </div>
   </div>
 
-  <!-- 頂部導航列 / Header -->
+  <!-- 頂部導航列 -->
   <header class="bg-slate-900/95 backdrop-blur border-b border-slate-800 sticky top-0 shrink-0 z-40">
     <div class="w-full px-3 sm:px-8 py-2.5 sm:py-3 flex justify-between items-center gap-2">
       <div class="flex items-center space-x-2.5 sm:space-x-3.5 min-w-0">
-        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/20 shrink-0">
+        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-cyan-400 flex items-center justify-center shadow-lg shrink-0">
           <i class="fa-solid fa-boxes-stacked text-white text-base sm:text-lg"></i>
         </div>
         <div class="min-w-0">
@@ -113,40 +78,32 @@
           </p>
         </div>
       </div>
-      
-      <!-- 工具按鈕群 -->
       <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
         <div class="flex items-center gap-1.5 bg-indigo-950/80 border border-indigo-500/30 px-2.5 py-1.5 rounded-lg text-xs text-indigo-200 font-semibold">
           <i class="fa-solid fa-circle-user text-cyan-400"></i>
           <span id="currentUserDisplay" class="max-w-[70px] sm:max-w-[110px] truncate">Guest</span>
         </div>
-
-        <button id="btnManageUsers" onclick="openUsersModal()" class="hidden px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 rounded-lg text-xs font-semibold transition flex items-center gap-1" title="Manage Users / 帳號管理">
-          <i class="fa-solid fa-users-gear"></i> <span class="hidden md:inline">Users 帳號</span>
+        <button id="btnManageUsers" onclick="openUsersModal()" class="hidden px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 rounded-lg text-xs font-semibold transition flex items-center gap-1">
+          <i class="fa-solid fa-users-gear"></i> <span class="hidden md:inline">Users</span>
         </button>
-
-        <button onclick="openScannerModal()" class="hidden sm:flex px-3.5 py-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 active:scale-95 text-xs sm:text-sm font-bold text-white rounded-lg shadow-lg shadow-cyan-500/25 transition items-center gap-1.5">
-          <i class="fa-solid fa-qrcode text-base"></i> Scan 掃碼進出庫
+        <button onclick="openScannerModal()" class="hidden sm:flex px-3.5 py-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-xs sm:text-sm font-bold text-white rounded-lg shadow-lg transition items-center gap-1.5">
+          <i class="fa-solid fa-qrcode"></i> Scan 掃碼進出庫
         </button>
-
-        <button id="btnFullscreen" onclick="toggleFullScreen()" class="hidden xl:flex px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs font-semibold text-cyan-400 border border-slate-700 rounded-lg shadow-sm transition items-center gap-1.5" title="Full Screen / 全螢幕">
-          <i class="fa-solid fa-expand" id="fullscreenIcon"></i>
-          <span id="fullscreenText">Full Screen</span>
+        <button id="btnFullscreen" onclick="toggleFullScreen()" class="hidden xl:flex px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-cyan-400 border border-slate-700 rounded-lg transition items-center gap-1.5">
+          <i class="fa-solid fa-expand" id="fullscreenIcon"></i> <span id="fullscreenText">Full Screen</span>
         </button>
-
         <div class="hidden xl:flex items-center bg-slate-800 border border-slate-700 rounded-lg p-0.5 text-slate-300">
-          <button onclick="adjustFontSize(-1)" title="Font Smaller" class="px-2 py-1 hover:bg-slate-700 rounded text-xs font-bold transition">A-</button>
-          <span class="px-2 text-xs font-medium text-slate-400" id="currentFontSizeLabel">Std</span>
-          <button onclick="adjustFontSize(1)" title="Font Larger" class="px-2 py-1 hover:bg-slate-700 rounded text-xs font-bold transition">A+</button>
+          <button onclick="adjustFontSize(-1)" class="px-2 py-1 hover:bg-slate-700 rounded text-xs font-bold">A-</button>
+          <span class="px-2 text-xs text-slate-400" id="currentFontSizeLabel">Std</span>
+          <button onclick="adjustFontSize(1)" class="px-2 py-1 hover:bg-slate-700 rounded text-xs font-bold">A+</button>
         </div>
-
-        <button onclick="fetchCurrentTab(true)" class="p-2 sm:px-2.5 sm:py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs font-medium text-slate-200 rounded-lg border border-slate-700 shadow-sm transition flex items-center gap-1" title="Force Reload / 強制重新載入">
+        <button onclick="fetchCurrentTab(true)" class="p-2 sm:px-2.5 sm:py-1.5 bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 rounded-lg border border-slate-700 transition" title="Reload">
           <i class="fa-solid fa-rotate text-cyan-400" id="reloadSpinIcon"></i>
         </button>
-        <button onclick="exportToExcel()" class="p-2 sm:px-3 sm:py-1.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-xs font-semibold text-white rounded-lg shadow-md shadow-emerald-900/30 transition flex items-center gap-1.5" title="Export Filtered Excel / 匯出 Excel">
+        <button onclick="exportToExcel()" class="p-2 sm:px-3 sm:py-1.5 bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white rounded-lg transition flex items-center gap-1.5">
           <i class="fa-solid fa-file-excel"></i> <span id="exportBtnLabel" class="hidden md:inline">Export 匯出</span>
         </button>
-        <button onclick="logoutUser(false)" class="p-2 sm:px-2.5 sm:py-1.5 bg-slate-800 hover:bg-rose-600/80 text-slate-300 hover:text-white rounded-lg border border-slate-700 text-xs font-semibold transition flex items-center gap-1" title="Logout / 登出">
+        <button onclick="logoutUser(false)" class="p-2 sm:px-2.5 sm:py-1.5 bg-slate-800 hover:bg-rose-600/80 text-slate-300 hover:text-white rounded-lg border border-slate-700 text-xs font-semibold transition" title="Logout">
           <i class="fa-solid fa-right-from-bracket"></i>
         </button>
       </div>
@@ -155,12 +112,10 @@
 
   <!-- 主體區域 -->
   <main class="w-full px-3 sm:px-8 pt-3 pb-4 flex-1 flex flex-col md:min-h-0 space-y-3">
-
-    <!-- 上方 Dashboard 區域 -->
     <div class="shrink-0 space-y-2.5 sm:space-y-3">
-      <!-- 9 大分頁切換按鈕（含 Repair & Exchange 追蹤分頁） -->
-      <div class="bg-slate-800/60 p-1 rounded-xl border border-slate-800 backdrop-blur overflow-x-auto no-scrollbar flex gap-1.5" id="tabGroup">
-        <button onclick="switchTab('Stock in TW')" id="tab-Stock-in-TW" class="tab-btn px-3 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition bg-indigo-600 text-white shadow-md shadow-indigo-600/30 flex items-center gap-1.5 whitespace-nowrap">
+      <!-- 9 大分頁 -->
+      <div class="bg-slate-800/60 p-1 rounded-xl border border-slate-800 overflow-x-auto no-scrollbar flex gap-1.5" id="tabGroup">
+        <button onclick="switchTab('Stock in TW')" id="tab-Stock-in-TW" class="tab-btn px-3 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition bg-indigo-600 text-white shadow-md flex items-center gap-1.5 whitespace-nowrap">
           <i class="fa-solid fa-warehouse"></i> Stock in TW (總庫存)
         </button>
         <button onclick="switchTab('Repair & Exchange')" id="tab-Repair-&-Exchange" class="tab-btn px-3 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold text-rose-300 hover:text-white hover:bg-slate-800 transition flex items-center gap-1.5 whitespace-nowrap">
@@ -175,28 +130,24 @@
         <button onclick="switchTab('clean room')" id="tab-clean-room" class="tab-btn px-3 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition whitespace-nowrap">clean room</button>
       </div>
 
-      <!-- 5 張摘要指標卡片（含 Out of Date 逾期未歸還監控與天數設定） -->
+      <!-- 5 張摘要卡片 -->
       <div class="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-3">
-        <div class="bg-slate-800/50 border border-slate-700/60 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-xl backdrop-blur relative overflow-hidden">
-          <div class="absolute -right-2 -bottom-2 text-slate-700/20 text-4xl sm:text-5xl"><i class="fa-solid fa-list-ol"></i></div>
+        <div class="bg-slate-800/50 border border-slate-700/60 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-xl">
           <p class="text-[11px] sm:text-xs font-medium text-slate-400">Total Items 項目總數</p>
           <p class="text-lg sm:text-2xl font-extrabold text-white mt-0.5" id="statTotalItems">0</p>
         </div>
-        <div class="bg-slate-800/50 border border-slate-700/60 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-xl backdrop-blur relative overflow-hidden">
-          <div class="absolute -right-2 -bottom-2 text-emerald-500/10 text-4xl sm:text-5xl"><i class="fa-solid fa-cubes"></i></div>
+        <div class="bg-slate-800/50 border border-slate-700/60 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-xl">
           <p class="text-[11px] sm:text-xs font-medium text-slate-400" id="statLabel2">In Stock 充足品項</p>
           <p class="text-lg sm:text-2xl font-extrabold text-emerald-400 mt-0.5" id="statInStock">0</p>
         </div>
-        <div class="bg-slate-800/50 border border-slate-700/60 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-xl backdrop-blur relative overflow-hidden">
-          <div class="absolute -right-2 -bottom-2 text-amber-500/10 text-4xl sm:text-5xl"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <div class="bg-slate-800/50 border border-slate-700/60 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-xl">
           <p class="text-[11px] sm:text-xs font-medium text-slate-400" id="statLabel3">Low / Out 低水位與缺料</p>
           <p class="text-lg sm:text-2xl font-extrabold text-amber-400 mt-0.5" id="statLowStock">0</p>
         </div>
-        <!-- 第 4 張：Out of Date 逾期未歸還監控卡片（支援自訂天數） -->
-        <div onclick="switchTab('Repair & Exchange')" class="cursor-pointer bg-rose-950/30 hover:bg-rose-950/50 border border-rose-500/40 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-xl backdrop-blur relative overflow-hidden transition group" title="Click to trace unreturned items / 點擊檢視逾期未歸還明細">
+        <div onclick="switchTab('Repair & Exchange')" class="cursor-pointer bg-rose-950/30 hover:bg-rose-950/50 border border-rose-500/40 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-xl transition">
           <div class="flex items-center justify-between gap-1">
             <p class="text-[11px] sm:text-xs font-bold text-rose-300 truncate">Out of Date 逾期未歸還</p>
-            <button type="button" onclick="event.stopPropagation(); editOutOfDateDays();" class="px-1.5 py-0.5 bg-rose-900/80 hover:bg-rose-700 text-rose-200 rounded text-[10px] font-mono border border-rose-500/40 shrink-0" title="Set Overdue Days / 設定逾期天數">
+            <button type="button" onclick="event.stopPropagation(); editOutOfDateDays();" class="px-1.5 py-0.5 bg-rose-900/80 hover:bg-rose-700 text-rose-200 rounded text-[10px] font-mono border border-rose-500/40 shrink-0">
               ><span id="outOfDateDaysLabel">14</span>d <i class="fa-solid fa-pen ml-0.5"></i>
             </button>
           </div>
@@ -205,52 +156,44 @@
             <span class="text-[11px] text-slate-400 font-mono">/ <span id="statPendingTotal">0</span> pending</span>
           </div>
         </div>
-        <div class="col-span-2 md:col-span-1 bg-slate-800/50 border border-slate-700/60 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-xl backdrop-blur relative overflow-hidden">
-          <div class="absolute -right-2 -bottom-2 text-indigo-500/10 text-4xl sm:text-5xl"><i class="fa-solid fa-folder-open"></i></div>
+        <div class="col-span-2 md:col-span-1 bg-slate-800/50 border border-slate-700/60 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-xl">
           <p class="text-[11px] sm:text-xs font-medium text-slate-400">Current Tab 當前檢視</p>
           <p class="text-base sm:text-lg font-extrabold text-indigo-400 truncate mt-0.5" id="statCurrentTab">Stock in TW</p>
         </div>
       </div>
 
-      <!-- 操作與 CSV 整合工具列 -->
-      <div class="bg-slate-800/50 border border-slate-700/80 rounded-xl px-3.5 py-2.5 shadow backdrop-blur flex flex-wrap items-center justify-between gap-2.5">
+      <!-- 操作工具列 -->
+      <div class="bg-slate-800/50 border border-slate-700/80 rounded-xl px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2.5">
         <div class="flex items-center gap-2">
           <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
-          <span class="font-bold text-xs sm:text-sm text-slate-200">
-            Zone 操作區：<span id="bannerTabName" class="text-cyan-400 font-mono">Stock in TW</span>
-          </span>
+          <span class="font-bold text-xs sm:text-sm text-slate-200">Zone 操作區：<span id="bannerTabName" class="text-cyan-400 font-mono">Stock in TW</span></span>
         </div>
-
         <div class="flex flex-wrap items-center gap-1.5 sm:gap-2">
-          <button type="button" onclick="printAllQrCodes()" id="btnPrintAllQr" class="px-2.5 sm:px-3 py-1.5 bg-cyan-950/90 hover:bg-cyan-600 text-cyan-300 hover:text-white border border-cyan-600/50 rounded-lg text-xs font-semibold transition flex items-center gap-1.5" title="Batch Print All Filtered QR Labels (4x8 Grid) / 批次列印所有 QR Code (4x8格)">
-            <i class="fa-solid fa-print"></i> <span id="btnPrintAllQrText">Print All QR 批次列印</span>
+          <button type="button" onclick="printAllQrCodes()" id="btnPrintAllQr" class="px-2.5 sm:px-3 py-1.5 bg-cyan-950/90 hover:bg-cyan-600 text-cyan-300 hover:text-white border border-cyan-600/50 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
+            <i class="fa-solid fa-print"></i> <span id="btnPrintAllQrText">Print All QR (4x8)</span>
           </button>
-
-          <label id="btnCsvImportLabel" class="px-2.5 sm:px-3 py-1.5 bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-semibold cursor-pointer transition flex items-center gap-1.5" title="Overwrite CSV / 覆寫匯入">
-            <i class="fa-solid fa-file-arrow-up"></i> <span class="hidden sm:inline">Import CSV</span> 覆寫匯入
+          <label id="btnCsvImportLabel" class="px-2.5 sm:px-3 py-1.5 bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-semibold cursor-pointer transition flex items-center gap-1.5">
+            <i class="fa-solid fa-file-arrow-up"></i> <span class="hidden sm:inline">Import CSV</span> 匯入
             <input type="file" id="csvFileInput" accept=".csv" onchange="handleCSVFile(event)" class="hidden">
           </label>
-
           <button type="button" onclick="openThresholdModal()" id="btnThresholdSetting" class="px-2.5 sm:px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-amber-300 border border-slate-600 rounded-lg text-xs font-semibold transition flex items-center gap-1.5">
-            <i class="fa-solid fa-sliders"></i> Threshold 水位設定
+            <i class="fa-solid fa-sliders"></i> Threshold 水位
           </button>
-
-          <button type="button" id="btnOpenAddModal" onclick="openAddModal()" class="px-3 sm:px-3.5 py-1.5 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white rounded-lg text-xs font-semibold shadow-md shadow-indigo-600/30 transition flex items-center gap-1.5 active:scale-95">
+          <button type="button" id="btnOpenAddModal" onclick="openAddModal()" class="px-3 sm:px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-md transition flex items-center gap-1.5">
             <i class="fa-solid fa-plus-circle"></i> <span id="btnAddBtnText">+ Add 新增庫存</span>
           </button>
         </div>
       </div>
 
-      <!-- 搜尋與狀態篩選列 -->
+      <!-- 搜尋與篩選列 -->
       <div class="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-2">
         <div class="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 flex-1">
           <div class="relative col-span-2 sm:w-72">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
-            <input type="text" id="searchKeyword" oninput="applyFilter()" placeholder="Search Loc, P/N, Name, Singapore, User..." class="w-full pl-8 pr-3 py-2 sm:py-1.5 text-xs sm:text-sm bg-slate-800/80 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition">
+            <input type="text" id="searchKeyword" oninput="applyFilter()" placeholder="Search Loc, P/N, Name, Singapore, User..." class="w-full pl-8 pr-3 py-2 sm:py-1.5 text-xs sm:text-sm bg-slate-800/80 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500">
           </div>
-
           <div id="locFilterContainer" class="col-span-1 sm:w-auto">
-            <select id="locFilterSelect" onchange="applyFilter()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 sm:py-1.5 text-xs sm:text-sm text-cyan-300 focus:outline-none focus:border-indigo-500 font-semibold">
+            <select id="locFilterSelect" onchange="applyFilter()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 sm:py-1.5 text-xs sm:text-sm text-cyan-300 font-semibold">
               <option value="ALL">📍 All Loc 全部庫房</option>
               <option value="S2">S2</option>
               <option value="S3">S3</option>
@@ -261,24 +204,19 @@
               <option value="clean room">clean room</option>
             </select>
           </div>
-
           <div id="qtyFilterContainer" class="col-span-1 sm:w-auto flex items-center gap-1.5">
-            <select id="qtyFilterSelect" onchange="applyFilter()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 sm:py-1.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-indigo-500 font-medium">
+            <select id="qtyFilterSelect" onchange="applyFilter()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 sm:py-1.5 text-xs sm:text-sm text-slate-200 font-medium">
               <option value="ALL">Status 全部狀態</option>
               <option value="LOW">⚠️ Low/Out 低水位與缺料</option>
               <option value="OUT">🚨 Out of Stock 缺料(0)</option>
               <option value="SAFE">✅ In Stock 充足</option>
             </select>
           </div>
-          
           <button id="btnQuickInStock" onclick="toggleQuickInStock()" class="col-span-2 sm:w-auto px-3.5 py-2 sm:py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-1.5">
-            <i class="fa-solid fa-boxes-packing text-emerald-400"></i> 
-            <span id="quickInStockText">In-Stock Only 僅看在庫 (QTY > 0)</span>
+            <i class="fa-solid fa-boxes-packing text-emerald-400"></i> <span id="quickInStockText">In-Stock Only 僅看在庫 (QTY > 0)</span>
           </button>
-
-          <!-- Repair & Exchange 追蹤分頁專用：歸還狀態篩選 -->
           <div id="trackFilterContainer" class="hidden col-span-2 sm:w-auto flex items-center gap-2">
-            <select id="trackStatusSelect" onchange="applyFilter()" class="w-full sm:w-auto bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 sm:py-1.5 text-xs sm:text-sm text-rose-300 focus:outline-none focus:border-rose-500 font-semibold">
+            <select id="trackStatusSelect" onchange="applyFilter()" class="w-full sm:w-auto bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 sm:py-1.5 text-xs sm:text-sm text-rose-300 font-semibold">
               <option value="UNRETURNED">⏳ Unreturned 所有未歸還 (Pending + Out of Date)</option>
               <option value="OVERDUE">🚨 Out of Date 僅看逾期未歸還</option>
               <option value="RETURNED">✅ Returned 已歸還紀錄</option>
@@ -286,140 +224,96 @@
             </select>
           </div>
         </div>
-
         <div class="text-xs sm:text-sm text-slate-400 font-medium self-end lg:self-center">
           Matched 符合 <span id="filteredCount" class="font-bold text-indigo-400 font-mono text-base">0</span> items 筆
         </div>
       </div>
     </div>
 
-    <!-- 手機版專屬卡片列表區 -->
-    <div id="mobileCardList" class="md:hidden space-y-2.5">
-      <div class="text-center py-12 text-slate-400 text-xs">
-        <i class="fa-solid fa-circle-notch fa-spin text-2xl mb-2 text-indigo-400 block"></i>
-        Syncing database... 正在同步資料庫...
-      </div>
-    </div>
+    <div id="mobileCardList" class="md:hidden space-y-2.5"></div>
 
-    <!-- 電腦與平板版獨立滾動資料表格區 -->
-    <div class="hidden md:flex bg-slate-800/40 rounded-2xl shadow-xl border border-slate-700/80 flex-1 min-h-0 flex-col overflow-hidden backdrop-blur">
+    <div class="hidden md:flex bg-slate-800/40 rounded-2xl shadow-xl border border-slate-700/80 flex-1 min-h-0 flex-col overflow-hidden">
       <div class="overflow-auto flex-1 table-scroll">
         <table class="w-full text-left text-xs sm:text-sm border-collapse" id="mainDataTable">
-          <thead class="bg-slate-900 border-b border-slate-700 text-slate-400 uppercase tracking-wider font-semibold sticky top-0 z-20 shadow-sm" id="tableHeader"></thead>
-          <tbody class="divide-y divide-slate-800/80" id="tableContent">
-            <tr>
-              <td colspan="10" class="text-center py-16 text-slate-400">
-                <i class="fa-solid fa-circle-notch fa-spin text-3xl mb-3 text-indigo-400 block"></i>
-                Connecting to Google Sheets... 正在連線同步資料庫中...
-              </td>
-            </tr>
-          </tbody>
+          <thead class="bg-slate-900 border-b border-slate-700 text-slate-400 uppercase tracking-wider font-semibold sticky top-0 z-20" id="tableHeader"></thead>
+          <tbody class="divide-y divide-slate-800/80" id="tableContent"></tbody>
         </table>
       </div>
     </div>
-
   </main>
 
-  <!-- 手機版右下角大型懸浮「掃碼進出庫」快捷按鈕 -->
-  <button onclick="openScannerModal()" class="sm:hidden fixed bottom-5 right-5 z-40 px-4 py-3.5 bg-gradient-to-r from-cyan-500 to-blue-600 active:scale-95 text-white font-bold text-sm rounded-full shadow-2xl shadow-cyan-500/40 border border-cyan-300/30 flex items-center gap-2">
+  <button onclick="openScannerModal()" class="sm:hidden fixed bottom-5 right-5 z-40 px-4 py-3.5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-sm rounded-full shadow-2xl flex items-center gap-2">
     <i class="fa-solid fa-qrcode text-lg"></i> Scan 掃碼進出庫
   </button>
 
-  <!-- 彈窗 0：管理員帳號密碼管理視窗 -->
+  <!-- 彈窗：帳號管理 -->
   <div id="usersModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 overflow-y-auto">
-    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4 my-auto">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-4 my-auto">
       <div class="flex justify-between items-center pb-3 border-b border-slate-800">
-        <h3 class="font-bold text-base text-white flex items-center gap-2">
-          <i class="fa-solid fa-users-gear text-amber-400"></i> User Management 人員帳號管理
-        </h3>
+        <h3 class="font-bold text-base text-white"><i class="fa-solid fa-users-gear text-amber-400 mr-1.5"></i>User Management 人員帳號管理</h3>
         <button onclick="closeUsersModal()" class="text-slate-400 hover:text-white text-2xl leading-none p-1">&times;</button>
       </div>
-
       <div class="space-y-4 text-xs sm:text-sm">
         <div class="bg-slate-800/60 p-3.5 rounded-xl border border-slate-700/50 space-y-2.5">
           <p class="font-bold text-slate-200">Add New User / 新增人員帳號</p>
           <div class="grid grid-cols-2 gap-2">
-            <input type="text" id="newUsername" placeholder="Username 帳號 (e.g. jimmy)" class="bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-cyan-500">
-            <input type="text" id="newPassword" placeholder="Password 密碼" class="bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-cyan-500">
+            <input type="text" id="newUsername" placeholder="Username 帳號" class="bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono">
+            <input type="text" id="newPassword" placeholder="Password 密碼" class="bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono">
           </div>
           <div class="grid grid-cols-3 gap-2">
-            <input type="text" id="newDisplayName" placeholder="Display Name 姓名 (e.g. Jimmy)" class="col-span-2 bg-slate-800 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-cyan-500">
-            <select id="newUserRole" class="bg-slate-800 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-cyan-500">
+            <input type="text" id="newDisplayName" placeholder="Display Name 姓名" class="col-span-2 bg-slate-800 border border-slate-700 rounded-lg p-2 text-white">
+            <select id="newUserRole" class="bg-slate-800 border border-slate-700 rounded-lg p-2 text-white">
               <option value="user">User 一般</option>
               <option value="admin">Admin 管理員</option>
             </select>
           </div>
-          <button type="button" onclick="handleAddUser()" id="btnAddUser" class="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-semibold transition">
-            <i class="fa-solid fa-user-plus mr-1"></i> Create Account 建立帳號
-          </button>
+          <button type="button" onclick="handleAddUser()" id="btnAddUser" class="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-semibold">Create Account 建立帳號</button>
         </div>
-
-        <div>
-          <p class="font-bold text-slate-200 mb-2">Existing Users / 現有帳號清單 (Users Sheet)</p>
-          <div id="usersListContainer" class="max-h-48 overflow-y-auto space-y-1.5 rounded-xl border border-slate-800 p-2.5 bg-slate-950/60">
-            <div class="text-center text-slate-400 py-4">Loading... 載入中...</div>
-          </div>
-        </div>
+        <div id="usersListContainer" class="max-h-48 overflow-y-auto space-y-1.5 rounded-xl border border-slate-800 p-2.5 bg-slate-950/60"></div>
       </div>
     </div>
   </div>
 
-  <!-- 彈窗 1：零件 QR Code 標籤預覽與列印 -->
+  <!-- 彈窗：QR 標籤 -->
   <div id="qrLabelModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
     <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-xs w-full p-5 shadow-2xl space-y-4 text-center">
       <div class="flex justify-between items-center pb-2.5 border-b border-slate-800">
-        <h3 class="font-bold text-sm text-white flex items-center gap-2">
-          <i class="fa-solid fa-qrcode text-cyan-400"></i> QR Label 零件標籤
-        </h3>
+        <h3 class="font-bold text-sm text-white"><i class="fa-solid fa-qrcode text-cyan-400 mr-1.5"></i>QR Label 零件標籤</h3>
         <button onclick="closeQrLabelModal()" class="text-slate-400 hover:text-white text-2xl leading-none p-1">&times;</button>
       </div>
-
-      <div class="bg-white p-3 rounded-xl shadow-inner inline-flex flex-col items-center justify-center mx-auto border border-slate-300" id="qrPrintArea">
-        <div id="qrCanvasBox" class="flex justify-center"></div>
+      <div class="bg-white p-3 rounded-xl inline-flex flex-col items-center justify-center mx-auto border border-slate-300" id="qrPrintArea">
+        <div id="qrCanvasBox"></div>
         <div class="mt-1.5 text-center leading-tight max-w-[140px]">
           <p class="text-slate-900 font-extrabold text-[10px] font-mono m-0" id="qrLabelCodeText"></p>
           <p class="text-slate-800 font-bold text-[9.5px] mt-0.5 break-words m-0" id="qrLabelNameText"></p>
           <p class="text-slate-500 text-[8.5px] mt-0.5 m-0" id="qrLabelModelText"></p>
         </div>
       </div>
-
       <div class="grid grid-cols-2 gap-2.5 pt-1">
-        <button type="button" onclick="downloadQrImage()" class="py-2 px-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5">
-          <i class="fa-solid fa-download"></i> Download 下載
-        </button>
-        <button type="button" onclick="printQrLabel()" class="py-2 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5">
-          <i class="fa-solid fa-print"></i> Print 列印
-        </button>
+        <button type="button" onclick="downloadQrImage()" class="py-2 px-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold">Download 下載</button>
+        <button type="button" onclick="printQrLabel()" class="py-2 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold">Print 列印</button>
       </div>
     </div>
   </div>
 
-  <!-- 彈窗 2：手機相機 QR Code 掃碼進出庫（含 2 欄：Repair/Exchange 與 To Singapore/To Customer） -->
+  <!-- 彈窗：掃碼進出庫 -->
   <div id="scannerModal" class="fixed inset-0 bg-black/85 backdrop-blur-md hidden z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
     <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-4 sm:p-5 shadow-2xl space-y-2.5 my-auto">
       <div class="flex justify-between items-center pb-2 border-b border-slate-800">
         <div>
-          <h3 class="font-bold text-base text-white flex items-center gap-2">
-            <i class="fa-solid fa-qrcode text-cyan-400 text-lg"></i> QR Scan In/Out 掃碼進出庫
-          </h3>
-          <p class="text-[11px] text-indigo-300 mt-0.5">Operator 操作人員：<span id="scanOperatorName" class="font-bold text-cyan-300"></span></p>
+          <h3 class="font-bold text-base text-white"><i class="fa-solid fa-qrcode text-cyan-400 mr-1.5"></i>QR Scan In/Out 掃碼進出庫</h3>
+          <p class="text-[11px] text-indigo-300">Operator 操作人員：<span id="scanOperatorName" class="font-bold text-cyan-300"></span></p>
         </div>
         <button onclick="closeScannerModal()" class="text-slate-400 hover:text-white text-2xl leading-none p-1">&times;</button>
       </div>
-
       <div class="grid grid-cols-2 gap-2">
-        <button type="button" id="btnScanOutMode" onclick="setScanMode('OUT')" class="py-2 px-3 rounded-xl font-bold text-xs sm:text-sm bg-rose-600 text-white shadow-lg shadow-rose-600/30 border border-rose-400/50 transition flex items-center justify-center gap-1.5">
-          <i class="fa-solid fa-arrow-up-from-bracket"></i> Stock Out 出貨 (-)
-        </button>
-        <button type="button" id="btnScanInMode" onclick="setScanMode('IN')" class="py-2 px-3 rounded-xl font-semibold text-xs sm:text-sm bg-slate-800 text-slate-400 border border-slate-700 hover:text-white transition flex items-center justify-center gap-1.5">
-          <i class="fa-solid fa-arrow-right-to-bracket"></i> Stock In 進貨 (+)
-        </button>
+        <button type="button" id="btnScanOutMode" onclick="setScanMode('OUT')" class="py-2 px-3 rounded-xl font-bold text-xs sm:text-sm bg-rose-600 text-white shadow-lg border border-rose-400/50">Stock Out 出貨 (-)</button>
+        <button type="button" id="btnScanInMode" onclick="setScanMode('IN')" class="py-2 px-3 rounded-xl font-semibold text-xs sm:text-sm bg-slate-800 text-slate-400 border border-slate-700">Stock In 進貨 (+)</button>
       </div>
-
       <div class="grid grid-cols-3 gap-2 text-xs">
         <div class="col-span-2">
-          <label class="block text-slate-400 font-medium mb-1">Target Location 目標庫房</label>
-          <select id="scanLocationSelect" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-white font-semibold focus:outline-none focus:border-cyan-500">
+          <label class="block text-slate-400 mb-1">Target Location 目標庫房</label>
+          <select id="scanLocationSelect" onchange="updateConfirmButtonAppearance()" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-white font-semibold">
             <option value="S2">S2</option>
             <option value="S3">S3</option>
             <option value="S4">S4</option>
@@ -430,16 +324,14 @@
           </select>
         </div>
         <div>
-          <label class="block text-slate-400 font-medium mb-1">Qty 數量</label>
-          <input type="number" id="scanStepQty" value="1" min="1" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-white font-mono text-center font-bold focus:outline-none focus:border-cyan-500">
+          <label class="block text-slate-400 mb-1">Qty 數量</label>
+          <input type="number" id="scanStepQty" value="1" min="1" oninput="updateConfirmButtonAppearance()" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-white font-mono text-center font-bold">
         </div>
       </div>
-
-      <!-- 雙欄位：Repair/Exchange 與 To Singapore/To Customer -->
       <div id="scanTrackingFields" class="grid grid-cols-2 gap-2 text-xs">
         <div>
-          <label class="block text-cyan-300 font-semibold mb-1">Type 類別 (Repair/Exch)</label>
-          <select id="scanTrackType" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-white font-medium focus:outline-none focus:border-cyan-500">
+          <label class="block text-cyan-300 font-semibold mb-1">Type (Repair/Exchange)</label>
+          <select id="scanTrackType" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-white">
             <option value="Normal">Normal 一般進出</option>
             <option value="Repair">Repair 送修</option>
             <option value="Exchange">Exchange 交換品</option>
@@ -447,120 +339,88 @@
         </div>
         <div>
           <label class="block text-cyan-300 font-semibold mb-1">Destination 去向對象</label>
-          <select id="scanDestination" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-white font-medium focus:outline-none focus:border-cyan-500">
-            <option value="N/A">N/A 無 (一般領用)</option>
+          <select id="scanDestination" class="w-full bg-slate-800 border border-slate-700 rounded-xl p-2 text-white">
+            <option value="N/A">N/A 無</option>
             <option value="To Singapore">To Singapore 新加坡</option>
             <option value="To Customer">To Customer 給客戶</option>
           </select>
         </div>
       </div>
-
-      <div class="relative rounded-xl overflow-hidden border-2 border-slate-700 bg-black min-h-[165px] flex items-center justify-center">
+      <div class="relative rounded-xl overflow-hidden border-2 border-slate-700 bg-black min-h-[160px] flex items-center justify-center">
         <div id="barcodeReader" class="w-full"></div>
       </div>
-
       <div id="scanPreviewBox" class="bg-slate-800/90 border border-slate-700 rounded-xl p-2.5 space-y-2">
         <div class="flex items-center justify-between">
-          <span class="text-xs font-medium text-slate-400" id="scanStatusTitle">Point camera at QR Code / 請將 QR Code 對準鏡頭</span>
-          <button type="button" id="btnClearScanned" onclick="clearScannedItem()" class="hidden text-xs text-slate-400 hover:text-rose-400 transition">
-            <i class="fa-solid fa-xmark mr-0.5"></i>Clear 清除
-          </button>
+          <span class="text-xs text-slate-400" id="scanStatusTitle">Point camera at QR Code / 請將 QR Code 對準鏡頭</span>
+          <button type="button" id="btnClearScanned" onclick="clearScannedItem()" class="hidden text-xs text-slate-400 hover:text-rose-400">Clear 清除</button>
         </div>
-
-        <div id="scanPendingInfo" class="bg-slate-900/80 border border-slate-700/80 rounded-lg p-2 text-left space-y-0.5">
+        <div class="bg-slate-900/80 border border-slate-700/80 rounded-lg p-2 text-left space-y-0.5">
           <div class="flex justify-between items-start gap-2">
-            <p class="text-sm font-bold text-slate-400 font-mono truncate" id="scanPreviewName">Waiting for scan... 尚未掃描零件...</p>
+            <p class="text-sm font-bold text-slate-400 font-mono truncate" id="scanPreviewName">Waiting for scan... 尚未掃描...</p>
             <span id="scanLocStockBadge" class="hidden shrink-0 px-2 py-0.5 rounded text-[11px] font-mono font-bold"></span>
           </div>
-          <p class="text-xs text-cyan-400 font-mono truncate" id="scanPreviewSub">Scan QR to preview details / 掃描後顯示品名與在庫量</p>
+          <p class="text-xs text-cyan-400 font-mono truncate" id="scanPreviewSub">Scan QR to preview details</p>
         </div>
-
-        <div id="scanZeroStockAlert" class="hidden bg-rose-950/80 border border-rose-500/60 rounded-lg p-2 text-xs text-rose-300 font-semibold flex items-start gap-2">
-          <i class="fa-solid fa-circle-xmark text-rose-400 text-base mt-0.5 shrink-0"></i>
-          <div>
-            <p class="font-bold text-rose-200">Insufficient Stock / 該庫房目前無庫存 (QTY = 0)</p>
-            <p class="text-[11px] text-rose-300/90">Cannot Stock Out when balance is 0. Check target location! 庫存為 0 禁止出貨。</p>
-          </div>
+        <div id="scanZeroStockAlert" class="hidden bg-rose-950/80 border border-rose-500/60 rounded-lg p-2 text-xs text-rose-300 font-semibold">
+          ⚠️ Insufficient Stock (QTY = 0) / 該庫房目前無庫存，禁止出貨！
         </div>
-
         <div>
-          <label class="block text-xs font-bold text-amber-300 mb-1">
-            Reason / Remark 進出理由 <span class="text-rose-400">* (Required 必填)</span>
-          </label>
-          <input type="text" id="scanRemarkInput" oninput="updateConfirmButtonAppearance()" placeholder="e.g., UMC 8F repair, Send to SG / 請填寫進出理由..." class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-1.5 text-xs sm:text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-400 transition">
+          <label class="block text-xs font-bold text-amber-300 mb-1">Reason / Remark 進出理由 <span class="text-rose-400">* (Required 必填)</span></label>
+          <input type="text" id="scanRemarkInput" oninput="updateConfirmButtonAppearance()" placeholder="e.g., UMC 8F repair, Send to SG..." class="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-1.5 text-xs sm:text-sm text-white">
         </div>
-
-        <button type="button" id="btnConfirmScanSubmit" onclick="confirmSubmitScannedData()" disabled class="w-full py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-slate-700 text-slate-500 cursor-not-allowed transition flex items-center justify-center gap-2">
-          <i class="fa-solid fa-paper-plane"></i> <span id="btnConfirmScanText">Scan QR First / 請先掃描零件條碼</span>
+        <button type="button" id="btnConfirmScanSubmit" onclick="confirmSubmitScannedData()" disabled class="w-full py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-slate-700 text-slate-500 cursor-not-allowed">
+          <span id="btnConfirmScanText">Scan QR First / 請先掃描零件條碼</span>
         </button>
       </div>
-
       <div class="flex gap-2">
-        <input type="text" id="manualBarcodeInput" placeholder="Manual P/N or Name / 手動輸入料號或品名..." onkeydown="if(event.key==='Enter'){ event.preventDefault(); handleScannedPreview(this.value); this.value=''; }" class="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5 text-xs sm:text-sm text-white font-mono focus:outline-none focus:border-cyan-500">
-        <button type="button" onclick="const inp=document.getElementById('manualBarcodeInput'); handleScannedPreview(inp.value); inp.value='';" class="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl text-xs sm:text-sm font-semibold transition">Load 帶入</button>
+        <input type="text" id="manualBarcodeInput" placeholder="Manual P/N or Name / 手動輸入料號或品名..." onkeydown="if(event.key==='Enter'){event.preventDefault();handleScannedPreview(this.value);this.value='';}" class="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white font-mono">
+        <button type="button" onclick="const inp=document.getElementById('manualBarcodeInput');handleScannedPreview(inp.value);inp.value='';" class="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-xl text-xs font-semibold">Load 帶入</button>
       </div>
-
-      <div>
-        <button type="button" onclick="closeScannerModal()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition">Close & Refresh / 關閉並刷新列表</button>
-      </div>
+      <button type="button" onclick="closeScannerModal()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold">Close & Refresh / 關閉並刷新</button>
     </div>
   </div>
 
   <!-- 彈窗：安全水位設定 -->
   <div id="thresholdModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 overflow-y-auto">
-    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4 my-auto">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-4 my-auto">
       <div class="flex justify-between items-center pb-3 border-b border-slate-800">
-        <h3 class="font-bold text-base text-white flex items-center gap-2">
-          <i class="fa-solid fa-sliders text-amber-400"></i> Safety Threshold 安全水位設定
-        </h3>
+        <h3 class="font-bold text-base text-white">Safety Threshold 安全水位設定</h3>
         <button onclick="closeThresholdModal()" class="text-slate-400 hover:text-white text-2xl leading-none p-1">&times;</button>
       </div>
-
       <div class="space-y-4 text-xs sm:text-sm">
         <div class="bg-slate-800/60 p-3.5 rounded-xl border border-slate-700/50">
-          <label class="block text-slate-200 font-bold mb-1">Global Default Threshold / 系統預設通用安全水位</label>
-          <p class="text-xs text-slate-400 mb-2">Applies to parts without custom threshold. 未個別指定水位的零件將套用此門檻。</p>
+          <label class="block text-slate-200 font-bold mb-1">Global Default Threshold / 通用安全水位</label>
           <div class="flex gap-2">
-            <input type="number" id="globalThresholdInput" min="0" class="flex-1 bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white font-mono focus:outline-none focus:border-amber-500">
-            <button type="button" onclick="saveGlobalThreshold()" class="px-4 py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-semibold transition whitespace-nowrap">Save 儲存</button>
+            <input type="number" id="globalThresholdInput" min="0" class="flex-1 bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono">
+            <button type="button" onclick="saveGlobalThreshold()" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-semibold">Save 儲存</button>
           </div>
         </div>
-
         <div>
-          <label class="block text-slate-200 font-bold mb-1">Custom Part Threshold / 個別指定料號或品名水位</label>
-          <div class="flex flex-col sm:flex-row gap-2 mb-2">
-            <input type="text" id="customPnInput" placeholder="Enter P/N or Name 輸入料號或品名" class="flex-1 bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-amber-500">
-            <div class="flex gap-2">
-              <input type="number" id="customThresholdInput" placeholder="Qty 水位" min="0" class="w-24 bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-amber-500">
-              <button type="button" onclick="addCustomThreshold()" class="flex-1 sm:flex-none px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-semibold transition whitespace-nowrap">Add/Set 設定</button>
-            </div>
+          <label class="block text-slate-200 font-bold mb-1">Custom Part Threshold / 個別指定水位</label>
+          <div class="flex gap-2 mb-2">
+            <input type="text" id="customPnInput" placeholder="P/N or Name" class="flex-1 bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono">
+            <input type="number" id="customThresholdInput" placeholder="Qty" min="0" class="w-20 bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono">
+            <button type="button" onclick="addCustomThreshold()" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-semibold">Set</button>
           </div>
-          
-          <div class="max-h-40 overflow-y-auto space-y-1 rounded-xl border border-slate-800 p-2.5 bg-slate-950/60" id="customThresholdList"></div>
+          <div class="max-h-40 overflow-y-auto space-y-1 rounded-xl border border-slate-800 p-2 bg-slate-950/60" id="customThresholdList"></div>
         </div>
-
-        <div class="flex justify-end pt-3 border-t border-slate-800">
-          <button type="button" onclick="closeThresholdModal()" class="w-full sm:w-auto px-5 py-2 border border-slate-700 rounded-xl text-slate-300 hover:bg-slate-800 font-medium transition">Done 完成關閉</button>
-        </div>
+        <button type="button" onclick="closeThresholdModal()" class="w-full py-2 border border-slate-700 rounded-xl text-slate-300 hover:bg-slate-800">Done 完成關閉</button>
       </div>
     </div>
   </div>
 
   <!-- 彈窗：新增項目 -->
   <div id="addModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 overflow-y-auto">
-    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-3.5 my-auto">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-3.5 my-auto">
       <div class="flex justify-between items-center pb-3 border-b border-slate-800">
-        <h3 class="font-bold text-base text-white flex items-center gap-2">
-          <i class="fa-solid fa-plus-circle text-indigo-400"></i> <span id="addModalTitle">Add Item 新增項目</span>
-        </h3>
+        <h3 class="font-bold text-base text-white" id="addModalTitle">Add Item 新增項目</h3>
         <button onclick="closeAddModal()" class="text-slate-400 hover:text-white text-2xl leading-none p-1">&times;</button>
       </div>
-
-      <form id="addForm" onsubmit="handleAddSubmit(event)" class="space-y-3 text-xs sm:text-sm">
+      <div class="space-y-3 text-xs sm:text-sm">
         <div id="stockOnlyFields" class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-slate-400 font-medium mb-1">Location 存放庫房 *</label>
-            <select id="addLocation" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-indigo-500">
+            <label class="block text-slate-400 mb-1">Location 庫房 *</label>
+            <select id="addLocation" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white">
               <option value="S2">S2</option>
               <option value="S3">S3</option>
               <option value="S4">S4</option>
@@ -571,41 +431,37 @@
             </select>
           </div>
           <div>
-            <label class="block text-slate-400 font-medium mb-1">QTY 入庫數量</label>
-            <input type="number" id="addStockQty" value="1" min="0" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white font-mono focus:outline-none focus:border-indigo-500">
+            <label class="block text-slate-400 mb-1">QTY 數量</label>
+            <input type="number" id="addStockQty" value="1" min="0" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono">
           </div>
         </div>
-
         <div id="logOnlyFields" class="hidden space-y-3">
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div class="grid grid-cols-3 gap-2">
             <div>
-              <label class="block text-slate-400 font-medium mb-1">Date 日期</label>
-              <input type="date" id="addDate" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-indigo-500">
+              <label class="block text-slate-400 mb-1">Date 日期</label>
+              <input type="date" id="addDate" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono">
             </div>
-            <div class="grid grid-cols-2 sm:col-span-2 gap-3">
-              <div>
-                <label class="block text-emerald-400 font-medium mb-1">IN 入庫數</label>
-                <input type="number" id="addInQty" min="0" value="0" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-indigo-500">
-              </div>
-              <div>
-                <label class="block text-rose-400 font-medium mb-1">OUT 出庫數</label>
-                <input type="number" id="addOutQty" min="0" value="0" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-indigo-500">
-              </div>
+            <div>
+              <label class="block text-emerald-400 mb-1">IN 入庫</label>
+              <input type="number" id="addInQty" min="0" value="0" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono">
+            </div>
+            <div>
+              <label class="block text-rose-400 mb-1">OUT 出庫</label>
+              <input type="number" id="addOutQty" min="0" value="0" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono">
             </div>
           </div>
-
-          <div class="grid grid-cols-2 gap-3 bg-slate-800/50 p-2.5 rounded-xl border border-slate-700/70">
+          <div class="grid grid-cols-2 gap-2 bg-slate-800/50 p-2 rounded-xl border border-slate-700">
             <div>
-              <label class="block text-cyan-300 font-semibold mb-1">Type 類別 (Repair/Exch)</label>
-              <select id="addTrackType" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-cyan-500">
-                <option value="Normal">Normal 一般進出</option>
+              <label class="block text-cyan-300 font-semibold mb-1">Type (Repair/Exch)</label>
+              <select id="addTrackType" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white">
+                <option value="Normal">Normal 一般</option>
                 <option value="Repair">Repair 送修</option>
                 <option value="Exchange">Exchange 交換品</option>
               </select>
             </div>
             <div>
-              <label class="block text-cyan-300 font-semibold mb-1">Destination 去向對象</label>
-              <select id="addDestination" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-cyan-500">
+              <label class="block text-cyan-300 font-semibold mb-1">Destination 去向</label>
+              <select id="addDestination" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white">
                 <option value="N/A">N/A 無</option>
                 <option value="To Singapore">To Singapore 新加坡</option>
                 <option value="To Customer">To Customer 給客戶</option>
@@ -613,61 +469,46 @@
             </div>
           </div>
         </div>
-
         <div class="relative">
-          <label class="block text-slate-400 font-medium mb-1 flex justify-between">
-            <span>P/N 料號</span>
-            <span class="text-xs text-cyan-400"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Auto-fill 自動帶入</span>
-          </label>
-          <input type="text" id="addPn" placeholder="e.g. 560-5521" autocomplete="off" oninput="onInputSearch(this, 'pn')" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-indigo-500">
+          <label class="block text-slate-400 mb-1">P/N 料號</label>
+          <input type="text" id="addPn" oninput="onInputSearch(this, 'pn')" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono">
           <ul id="addPnSuggestions" class="autocomplete-list absolute left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl hidden z-50 divide-y divide-slate-700"></ul>
         </div>
-
         <div class="relative">
-          <label class="block text-slate-400 font-medium mb-1 flex justify-between">
-            <span>Parts Name 零件品名 *</span>
-            <span class="text-xs text-cyan-400"><i class="fa-solid fa-wand-magic-sparkles mr-1"></i>Auto-suggest 品名聯想</span>
-          </label>
-          <input type="text" id="addPartsName" placeholder="e.g. Power supply" autocomplete="off" oninput="onInputSearch(this, 'partsName')" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-medium focus:outline-none focus:border-indigo-500" required>
+          <label class="block text-slate-400 mb-1">Parts Name 品名 *</label>
+          <input type="text" id="addPartsName" oninput="onInputSearch(this, 'partsName')" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white">
           <ul id="addNameSuggestions" class="autocomplete-list absolute left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl hidden z-50 divide-y divide-slate-700"></ul>
         </div>
-
         <div>
-          <label class="block text-slate-400 font-medium mb-1">Model 機種 / 型號</label>
-          <input type="text" id="addModel" placeholder="e.g. CG4100 / 92xx" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-indigo-500">
+          <label class="block text-slate-400 mb-1">Model 型號</label>
+          <input type="text" id="addModel" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white">
         </div>
-
         <div>
-          <label class="block text-slate-400 font-medium mb-1">Reason / Remark 進出理由與備註 *</label>
-          <input type="text" id="addRemark" placeholder="Reason / Source (Auto-tagged with operator / 自動標記操作人)" required class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-indigo-500">
+          <label class="block text-slate-400 mb-1">Reason / Remark 進出理由 *</label>
+          <input type="text" id="addRemark" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white">
         </div>
-
-        <div class="flex justify-end gap-2.5 pt-3 border-t border-slate-800">
-          <button type="button" onclick="closeAddModal()" class="px-4 py-2 border border-slate-700 rounded-xl text-slate-300 hover:bg-slate-800 font-medium transition">Cancel 取消</button>
-          <button type="submit" id="btnSaveAdd" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold shadow-lg shadow-indigo-600/30 transition">Save 確認儲存</button>
+        <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
+          <button type="button" onclick="closeAddModal()" class="px-4 py-2 border border-slate-700 rounded-xl text-slate-300">Cancel 取消</button>
+          <button type="button" id="btnSaveAdd" onclick="handleAddSubmit()" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold">Save 儲存</button>
         </div>
-      </form>
+      </div>
     </div>
   </div>
 
-  <!-- 彈窗：編輯 Stock in TW 總庫存項目 -->
+  <!-- 彈窗：編輯總庫存 -->
   <div id="editStockModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 overflow-y-auto">
-    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4 my-auto">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-3.5 my-auto">
       <div class="flex justify-between items-center pb-3 border-b border-slate-800">
-        <h3 class="font-bold text-base text-white flex items-center gap-2">
-          <i class="fa-solid fa-pen-to-square text-cyan-400"></i> Edit Stock Item 編輯總庫存
-        </h3>
+        <h3 class="font-bold text-base text-white">Edit Stock Item 編輯總庫存</h3>
         <button onclick="closeEditStockModal()" class="text-slate-400 hover:text-white text-2xl leading-none p-1">&times;</button>
       </div>
-
-      <form id="editStockForm" onsubmit="handleEditStockSubmit(event)" class="space-y-3.5 text-xs sm:text-sm">
+      <div class="space-y-3 text-xs sm:text-sm">
         <input type="hidden" id="editStockOldPn">
         <input type="hidden" id="editStockOldPartsName">
-
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-slate-400 font-medium mb-1">Location 存放庫房 *</label>
-            <select id="editStockLocation" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-cyan-500">
+            <label class="block text-slate-400 mb-1">Location 庫房 *</label>
+            <select id="editStockLocation" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white">
               <option value="S2">S2</option>
               <option value="S3">S3</option>
               <option value="S4">S4</option>
@@ -678,103 +519,62 @@
             </select>
           </div>
           <div>
-            <label class="block text-emerald-400 font-medium mb-1">QTY 最新在庫總數 *</label>
-            <input type="number" id="editStockQty" min="0" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white font-mono focus:outline-none focus:border-cyan-500" required>
+            <label class="block text-emerald-400 mb-1">QTY 最新數量 *</label>
+            <input type="number" id="editStockQty" min="0" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono">
           </div>
         </div>
-
-        <div>
-          <label class="block text-slate-400 font-medium mb-1">P/N 料號</label>
-          <input type="text" id="editStockPn" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white font-mono focus:outline-none focus:border-cyan-500">
+        <div><label class="block text-slate-400 mb-1">P/N</label><input type="text" id="editStockPn" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono"></div>
+        <div><label class="block text-slate-400 mb-1">Parts Name *</label><input type="text" id="editStockPartsName" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white"></div>
+        <div><label class="block text-slate-400 mb-1">Model</label><input type="text" id="editStockModel" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white"></div>
+        <div><label class="block text-slate-400 mb-1">Remark</label><input type="text" id="editStockRemark" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white"></div>
+        <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
+          <button type="button" onclick="closeEditStockModal()" class="px-4 py-2 border border-slate-700 rounded-xl text-slate-300">Cancel 取消</button>
+          <button type="button" id="btnSaveEditStock" onclick="handleEditStockSubmit()" class="px-5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-semibold">Save 儲存</button>
         </div>
-
-        <div>
-          <label class="block text-slate-400 font-medium mb-1">Parts Name 零件品名 *</label>
-          <input type="text" id="editStockPartsName" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white font-medium focus:outline-none focus:border-cyan-500" required>
-        </div>
-
-        <div>
-          <label class="block text-slate-400 font-medium mb-1">Model 機種 / 型號</label>
-          <input type="text" id="editStockModel" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-cyan-500">
-        </div>
-
-        <div>
-          <label class="block text-slate-400 font-medium mb-1">Remark 備註</label>
-          <input type="text" id="editStockRemark" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-cyan-500">
-        </div>
-
-        <div class="flex justify-end gap-2.5 pt-3 border-t border-slate-800">
-          <button type="button" onclick="closeEditStockModal()" class="px-4 py-2 border border-slate-700 rounded-xl text-slate-300 hover:bg-slate-800 font-medium transition">Cancel 取消</button>
-          <button type="submit" id="btnSaveEditStock" class="px-5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-semibold shadow-lg shadow-cyan-600/30 transition">Save 儲存修改</button>
-        </div>
-      </form>
+      </div>
     </div>
   </div>
 
-  <!-- 彈窗：編輯流水帳明細 (S2 ~ clean room) -->
+  <!-- 彈窗：編輯流水帳 -->
   <div id="editModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 overflow-y-auto">
-    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4 my-auto">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-3.5 my-auto">
       <div class="flex justify-between items-center pb-3 border-b border-slate-800">
-        <h3 class="font-bold text-base text-white flex items-center gap-2">
-          <i class="fa-solid fa-pen-to-square text-cyan-400"></i> Edit Log Record 編輯明細
-        </h3>
+        <h3 class="font-bold text-base text-white">Edit Log Record 編輯明細</h3>
         <button onclick="closeEditModal()" class="text-slate-400 hover:text-white text-2xl leading-none p-1">&times;</button>
       </div>
-
-      <form id="editForm" onsubmit="handleEditSubmit(event)" class="space-y-3.5 text-xs sm:text-sm">
+      <div class="space-y-3 text-xs sm:text-sm">
         <input type="hidden" id="editRowId">
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label class="block text-slate-400 font-medium mb-1">Date 日期</label>
-            <input type="date" id="editDate" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-cyan-500" required>
-          </div>
-          <div>
-            <label class="block text-slate-400 font-medium mb-1">P/N 料號</label>
-            <input type="text" id="editPn" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-cyan-500">
-          </div>
-        </div>
-        <div>
-          <label class="block text-slate-400 font-medium mb-1">Parts Name 品名 *</label>
-          <input type="text" id="editPartsName" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white font-medium focus:outline-none focus:border-cyan-500" required>
-        </div>
-        <div>
-          <label class="block text-slate-400 font-medium mb-1">Model 型號</label>
-          <input type="text" id="editModel" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-cyan-500">
-        </div>
         <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-emerald-400 font-medium mb-1">IN 入庫數</label>
-            <input type="number" id="editInQty" min="0" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-cyan-500">
-          </div>
-          <div>
-            <label class="block text-rose-400 font-medium mb-1">OUT 出庫數</label>
-            <input type="number" id="editOutQty" min="0" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono focus:outline-none focus:border-cyan-500">
-          </div>
+          <div><label class="block text-slate-400 mb-1">Date</label><input type="date" id="editDate" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono"></div>
+          <div><label class="block text-slate-400 mb-1">P/N</label><input type="text" id="editPn" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono"></div>
         </div>
-        <div>
-          <label class="block text-slate-400 font-medium mb-1">Remark 備註</label>
-          <input type="text" id="editRemark" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-white focus:outline-none focus:border-cyan-500">
+        <div><label class="block text-slate-400 mb-1">Parts Name *</label><input type="text" id="editPartsName" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white"></div>
+        <div><label class="block text-slate-400 mb-1">Model</label><input type="text" id="editModel" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white"></div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="block text-emerald-400 mb-1">IN</label><input type="number" id="editInQty" min="0" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono"></div>
+          <div><label class="block text-rose-400 mb-1">OUT</label><input type="number" id="editOutQty" min="0" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono"></div>
         </div>
-
-        <div class="flex justify-end gap-2.5 pt-3 border-t border-slate-800">
-          <button type="button" onclick="closeEditModal()" class="px-4 py-2 border border-slate-700 rounded-xl text-slate-300 hover:bg-slate-800 font-medium transition">Cancel 取消</button>
-          <button type="submit" id="btnSaveEdit" class="px-5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-semibold shadow-lg shadow-cyan-600/30 transition">Save 儲存修改</button>
+        <div><label class="block text-slate-400 mb-1">Remark</label><input type="text" id="editRemark" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-white"></div>
+        <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
+          <button type="button" onclick="closeEditModal()" class="px-4 py-2 border border-slate-700 rounded-xl text-slate-300">Cancel 取消</button>
+          <button type="button" id="btnSaveEdit" onclick="handleEditSubmit()" class="px-5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-semibold">Save 儲存</button>
         </div>
-      </form>
+      </div>
     </div>
   </div>
 
-  <!-- 隱藏的批次 QR Code 暫存容器 -->
   <div id="batchQrTempContainer" class="hidden"></div>
 
   <script>
     const GAS_API_URL = "https://script.google.com/macros/s/AKfycbw_VVXuxH1xqznn2ZGhLR6DAY_tO6460ui7iKtJJtxqJvkhA7q1eleDBlEz1K2dK5LbKw/exec";
-
-    // 閒置自動登出時間（單位：分鐘）
     const IDLE_TIMEOUT_MINUTES = 15;
     let idleTimer = null;
 
-    let currentUser = JSON.parse(localStorage.getItem('PTW_CURRENT_USER') || 'null');
+    function safeJsonParse(str, fallback) {
+      try { const v = JSON.parse(str); return v !== null && v !== undefined ? v : fallback; } catch (e) { return fallback; }
+    }
+
+    let currentUser = safeJsonParse(localStorage.getItem('PTW_CURRENT_USER'), null);
     let currentTab = "Stock in TW";
     let rawDataList = [];
     let stockSummaryCache = [];
@@ -784,18 +584,15 @@
     let isOnlyInStockActive = false;
 
     const KNOWN_LOCATIONS = ['s2', 's3', 's4', 's5', 's6', 'dry box', 'clean room'];
-
     let globalThreshold = Number(localStorage.getItem('GLOBAL_PARTS_THRESHOLD')) || 5;
-    let customThresholds = JSON.parse(localStorage.getItem('CUSTOM_PARTS_THRESHOLDS') || '{}');
+    let customThresholds = safeJsonParse(localStorage.getItem('CUSTOM_PARTS_THRESHOLDS'), {});
     let outOfDateDaysLimit = Number(localStorage.getItem('PTW_OUT_OF_DATE_DAYS')) || 14;
 
-    // QR Code 掃描器變數
     let html5QrCode = null;
     let scanMode = 'OUT';
     let currentQrLabelTitle = '';
     let pendingScannedItem = null;
 
-    // ====== 計算寄出至今經過天數與是否逾期 (Out of Date) ======
     function calcDaysElapsed(dateStr) {
       if (!dateStr) return 0;
       const d = new Date(dateStr);
@@ -803,101 +600,71 @@
       const now = new Date();
       const d1 = new Date(d.getFullYear(), d.getMonth(), d.getDate());
       const d2 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const diffMs = d2 - d1;
-      return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+      return Math.max(0, Math.floor((d2 - d1) / 86400000));
     }
 
     function editOutOfDateDays() {
-      const val = prompt("Set 'Out of Date' overdue threshold in days (e.g., 14 or 30):\n請設定「逾期未歸還 (Out of Date)」的天數門檻：", outOfDateDaysLimit);
+      const val = prompt("Set 'Out of Date' overdue threshold in days:\n請設定「逾期未歸還」天數門檻：", outOfDateDaysLimit);
       if (val !== null) {
         const num = parseInt(val.trim(), 10);
         if (!isNaN(num) && num >= 1) {
           outOfDateDaysLimit = num;
           localStorage.setItem('PTW_OUT_OF_DATE_DAYS', outOfDateDaysLimit);
-          document.getElementById("outOfDateDaysLabel").innerText = outOfDateDaysLimit;
           updateOutOfDateSummary();
-          if (currentTab === "Repair & Exchange") {
-            applyFilter();
-          }
+          if (currentTab === "Repair & Exchange") applyFilter();
         }
       }
     }
 
     function updateOutOfDateSummary() {
       document.getElementById("outOfDateDaysLabel").innerText = outOfDateDaysLimit;
-      const pendingItems = trackingCache.filter(item => item.status !== 'Returned');
-      const overdueItems = pendingItems.filter(item => calcDaysElapsed(item.dateSent) > outOfDateDaysLimit);
-      document.getElementById("statPendingTotal").innerText = pendingItems.length;
-      document.getElementById("statOutOfDate").innerText = overdueItems.length;
+      const pending = trackingCache.filter(i => i.status !== 'Returned');
+      const overdue = pending.filter(i => calcDaysElapsed(i.dateSent) > outOfDateDaysLimit);
+      document.getElementById("statPendingTotal").innerText = pending.length;
+      document.getElementById("statOutOfDate").innerText = overdue.length;
     }
 
     async function fetchTrackingSilent() {
-      try {
-        const cached = localStorage.getItem('PTW_CACHE_TRACKING');
-        if (cached) {
-          trackingCache = JSON.parse(cached) || [];
-          updateOutOfDateSummary();
-        }
-      } catch (e) {}
-
+      trackingCache = safeJsonParse(localStorage.getItem('PTW_CACHE_TRACKING'), []);
+      updateOutOfDateSummary();
       try {
         const res = await fetchJSONP(`${GAS_API_URL}?action=getTracking`);
         if (res.status === 'success') {
           trackingCache = res.data || [];
           localStorage.setItem('PTW_CACHE_TRACKING', JSON.stringify(trackingCache));
           updateOutOfDateSummary();
-          if (currentTab === "Repair & Exchange") {
-            rawDataList = trackingCache;
-            applyFilter();
-          }
+          if (currentTab === "Repair & Exchange") { rawDataList = trackingCache; applyFilter(); }
         }
-      } catch (err) {
-        console.warn("Tracking sync error", err);
-      }
+      } catch (e) {}
     }
 
     function rebuildPartsCatalogFromStock(stockList) {
       const map = {};
       (stockList || []).forEach(r => {
-        const pn = String(r.pn || '').trim();
-        const partsName = String(r.partsName || '').trim();
-        const model = String(r.model || '').trim();
+        const pn = String(r.pn || '').trim(), partsName = String(r.partsName || '').trim(), model = String(r.model || '').trim();
         if (!partsName && !pn) return;
         const key = `${partsName.toLowerCase()}|||${pn.toLowerCase()}`;
-        if (!map[key]) {
-          map[key] = { pn, partsName, model };
-        }
+        if (!map[key]) map[key] = { pn, partsName, model };
       });
       partsCatalog = Object.values(map);
     }
 
-    // ====== 閒置自動登出監聽器 ======
     function resetIdleTimer() {
       if (idleTimer) clearTimeout(idleTimer);
       if (!currentUser) return;
-      idleTimer = setTimeout(() => {
-        logoutUser(true);
-      }, IDLE_TIMEOUT_MINUTES * 60 * 1000);
+      idleTimer = setTimeout(() => logoutUser(true), IDLE_TIMEOUT_MINUTES * 60000);
     }
+    ['mousemove', 'mousedown', 'keypress', 'touchstart', 'scroll', 'click'].forEach(evt => document.addEventListener(evt, resetIdleTimer, { passive: true }));
 
-    ['mousemove', 'mousedown', 'keypress', 'touchstart', 'scroll', 'click'].forEach(evt => {
-      document.addEventListener(evt, resetIdleTimer, { passive: true });
-    });
-
-    // ====== 使用者登入與權限控制 ======
     function checkLoginState() {
       const overlay = document.getElementById("loginOverlay");
       const userDisp = document.getElementById("currentUserDisplay");
       const adminBtn = document.getElementById("btnManageUsers");
-
       if (currentUser && currentUser.username) {
         overlay.classList.add("hidden");
         userDisp.innerText = currentUser.name || currentUser.username;
-        if (currentUser.role === 'admin') {
-          adminBtn.classList.remove("hidden");
-        } else {
-          adminBtn.classList.add("hidden");
-        }
+        if (currentUser.role === 'admin') adminBtn.classList.remove("hidden");
+        else adminBtn.classList.add("hidden");
         resetIdleTimer();
         switchTab("Stock in TW");
         fetchTrackingSilent();
@@ -907,17 +674,19 @@
       }
     }
 
-    async function handleLoginSubmit(e) {
-      e.preventDefault();
+    async function handleLoginSubmit() {
       const username = document.getElementById("loginUsername").value.trim();
       const password = document.getElementById("loginPassword").value.trim();
       const errElem = document.getElementById("loginErrorMsg");
       const btn = document.getElementById("btnLoginSubmit");
-
+      if (!username || !password) {
+        errElem.innerText = "Please enter username and password / 請輸入帳號與密碼";
+        errElem.classList.remove("hidden");
+        return;
+      }
       errElem.classList.add("hidden");
       btn.disabled = true;
       btn.innerText = "Verifying... 驗證帳號中...";
-
       try {
         const url = `${GAS_API_URL}?action=login&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`;
         const res = await fetchJSONP(url);
@@ -938,696 +707,287 @@
       }
     }
 
-    function logoutUser(isAutoTimeout = false) {
+    function logoutUser(isAutoTimeout) {
       if (!isAutoTimeout && !confirm("Confirm logout? / 確定要登出目前帳號嗎？")) return;
-      
-      if (html5QrCode) {
-        html5QrCode.stop().catch(() => {});
-        html5QrCode = null;
-      }
+      if (html5QrCode) { html5QrCode.stop().catch(() => {}); html5QrCode = null; }
       document.getElementById("scannerModal").classList.add("hidden");
-
       currentUser = null;
       localStorage.removeItem('PTW_CURRENT_USER');
-      document.getElementById("loginForm").reset();
+      document.getElementById("loginUsername").value = "";
+      document.getElementById("loginPassword").value = "";
       if (idleTimer) clearTimeout(idleTimer);
-
       const errElem = document.getElementById("loginErrorMsg");
       if (isAutoTimeout) {
-        errElem.innerText = `Session expired after ${IDLE_TIMEOUT_MINUTES} mins of inactivity. Please sign in again. / 系統已閒置超過 ${IDLE_TIMEOUT_MINUTES} 分鐘自動登出，請重新登入。`;
+        errElem.innerText = `Session expired after ${IDLE_TIMEOUT_MINUTES} mins of inactivity. / 系統已閒置自動登出，請重新登入。`;
         errElem.classList.remove("hidden");
       } else {
         errElem.classList.add("hidden");
       }
-
       checkLoginState();
     }
 
-    function openUsersModal() {
-      document.getElementById("usersModal").classList.remove("hidden");
-      loadUsersList();
-    }
-
-    function closeUsersModal() {
-      document.getElementById("usersModal").classList.add("hidden");
-    }
+    function openUsersModal() { document.getElementById("usersModal").classList.remove("hidden"); loadUsersList(); }
+    function closeUsersModal() { document.getElementById("usersModal").classList.add("hidden"); }
 
     async function loadUsersList() {
       const container = document.getElementById("usersListContainer");
-      container.innerHTML = `<div class="text-center text-slate-400 py-4 text-xs">Loading users... 載入中...</div>`;
+      container.innerHTML = `<div class="text-center text-slate-400 py-4 text-xs">Loading...</div>`;
       try {
         const res = await fetchJSONP(`${GAS_API_URL}?action=getUsers`);
         if (res.status === 'success') {
-          const list = res.data || [];
-          container.innerHTML = list.map(u => `
+          container.innerHTML = (res.data || []).map(u => `
             <div class="flex items-center justify-between bg-slate-900 px-3 py-2 rounded-lg border border-slate-800 text-xs">
-              <div>
-                <span class="font-bold text-white">${u.name}</span>
-                <span class="font-mono text-cyan-400 ml-1">(${u.username})</span>
-                <span class="ml-1.5 px-1.5 py-0.5 rounded text-[10px] ${u.role === 'admin' ? 'bg-amber-500/20 text-amber-300' : 'bg-slate-800 text-slate-400'}">${u.role === 'admin' ? 'Admin' : 'User'}</span>
-              </div>
+              <div><span class="font-bold text-white">${u.name}</span> <span class="font-mono text-cyan-400">(${u.username})</span></div>
               <div class="flex items-center gap-2">
                 <span class="text-slate-500 font-mono">PW: ${u.password}</span>
-                ${u.username !== 'admin' ? `<button onclick="handleDeleteUser(${u.rowId})" class="text-rose-400 hover:text-rose-300 p-1"><i class="fa-solid fa-trash"></i></button>` : ''}
+                ${u.username !== 'admin' ? `<button onclick="handleDeleteUser(${u.rowId})" class="text-rose-400 p-1"><i class="fa-solid fa-trash"></i></button>` : ''}
               </div>
-            </div>
-          `).join('');
+            </div>`).join('');
         }
-      } catch (err) {
-        container.innerHTML = `<div class="text-center text-rose-400 py-4 text-xs">Load failed / 載入失敗</div>`;
-      }
+      } catch (e) { container.innerHTML = `<div class="text-center text-rose-400 py-4 text-xs">Load failed</div>`; }
     }
 
     async function handleAddUser() {
-      const u = document.getElementById("newUsername").value.trim();
-      const p = document.getElementById("newPassword").value.trim();
-      const n = document.getElementById("newDisplayName").value.trim() || u;
-      const role = document.getElementById("newUserRole").value;
-      if (!u || !p) {
-        alert("Please enter username & password / 請填寫帳號與密碼");
-        return;
-      }
-      const btn = document.getElementById("btnAddUser");
-      btn.disabled = true;
-      btn.innerText = "Creating... 建立中...";
-      try {
-        await fetch(GAS_API_URL, {
-          method: "POST",
-          mode: "no-cors",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "addUser", username: u, password: p, name: n, role: role })
-        });
-        document.getElementById("newUsername").value = '';
-        document.getElementById("newPassword").value = '';
-        document.getElementById("newDisplayName").value = '';
-        setTimeout(loadUsersList, 1200);
-      } finally {
-        btn.disabled = false;
-        btn.innerHTML = `<i class="fa-solid fa-user-plus mr-1"></i> Create Account 建立帳號`;
-      }
+      const u = document.getElementById("newUsername").value.trim(), p = document.getElementById("newPassword").value.trim();
+      const n = document.getElementById("newDisplayName").value.trim() || u, role = document.getElementById("newUserRole").value;
+      if (!u || !p) return alert("Enter username & password / 請填寫帳號與密碼");
+      await fetch(GAS_API_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "addUser", username: u, password: p, name: n, role: role }) });
+      document.getElementById("newUsername").value = ''; document.getElementById("newPassword").value = ''; document.getElementById("newDisplayName").value = '';
+      setTimeout(loadUsersList, 1200);
     }
 
     async function handleDeleteUser(rowId) {
-      if (!confirm("Delete this user? / 確定刪除此帳號？")) return;
-      await fetch(GAS_API_URL, {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "deleteUser", rowId: rowId })
-      });
+      if (!confirm("Delete user? / 確定刪除？")) return;
+      await fetch(GAS_API_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "deleteUser", rowId: rowId }) });
       setTimeout(loadUsersList, 1200);
     }
 
     function formatRemarkWithUser(rawRemark) {
-      const operator = currentUser ? (currentUser.name || currentUser.username) : 'Unknown';
-      const cleanText = String(rawRemark || '').trim();
-      if (!cleanText) return `[${operator}]`;
-      if (cleanText.startsWith(`[${operator}]`)) return cleanText;
-      return `[${operator}] ${cleanText}`;
+      const op = currentUser ? (currentUser.name || currentUser.username) : 'Unknown';
+      const txt = String(rawRemark || '').trim();
+      return !txt ? `[${op}]` : (txt.startsWith(`[${op}]`) ? txt : `[${op}] ${txt}`);
     }
 
-    // ====== 一鍵生成單張與批次列印所有 QR Code（A4 4x8格精準縮小版） ======
     function openQrLabelModal(record) {
-      if (typeof QRCode === 'undefined') {
-        alert("QR generator still loading, please wait 1 second / 元件載入中請稍候一秒");
-        return;
-      }
+      if (typeof QRCode === 'undefined') return alert("Loading QR module... / 載入中請稍候");
       const cleanPn = (record.pn && record.pn !== '-') ? record.pn.trim() : '';
       const cleanName = (record.partsName || '').trim();
       const qrPayload = cleanPn || cleanName;
-
-      if (!qrPayload) {
-        alert("No P/N or Parts Name available / 無料號或品名可產生 QR Code");
-        return;
-      }
-
+      if (!qrPayload) return;
       currentQrLabelTitle = qrPayload;
       document.getElementById("qrLabelCodeText").innerText = cleanPn ? `P/N: ${cleanPn}` : "NO P/N";
       document.getElementById("qrLabelNameText").innerText = cleanName;
       document.getElementById("qrLabelModelText").innerText = record.model ? `Model: ${record.model}` : "";
-
       const box = document.getElementById("qrCanvasBox");
       box.innerHTML = "";
-      new QRCode(box, {
-        text: qrPayload,
-        width: 110,
-        height: 110,
-        colorDark: "#000000",
-        colorLight: "#ffffff",
-        correctLevel: QRCode.CorrectLevel.M
-      });
-
+      new QRCode(box, { text: qrPayload, width: 110, height: 110, colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.M });
       document.getElementById("qrLabelModal").classList.remove("hidden");
     }
-
-    function closeQrLabelModal() {
-      document.getElementById("qrLabelModal").classList.add("hidden");
-    }
+    function closeQrLabelModal() { document.getElementById("qrLabelModal").classList.add("hidden"); }
 
     function downloadQrImage() {
-      const img = document.querySelector("#qrCanvasBox img");
-      const canvas = document.querySelector("#qrCanvasBox canvas");
-      const dataUrl = img && img.src ? img.src : (canvas ? canvas.toDataURL("image/png") : "");
-      if (!dataUrl) return;
-
-      const link = document.createElement("a");
-      link.download = `QR_${currentQrLabelTitle}.png`;
-      link.href = dataUrl;
-      link.click();
+      const img = document.querySelector("#qrCanvasBox img"), canvas = document.querySelector("#qrCanvasBox canvas");
+      const url = img && img.src ? img.src : (canvas ? canvas.toDataURL("image/png") : "");
+      if (!url) return;
+      const a = document.createElement("a"); a.download = `QR_${currentQrLabelTitle}.png`; a.href = url; a.click();
     }
 
     function printQrLabel() {
-      const canvas = document.querySelector("#qrCanvasBox canvas");
-      const img = document.querySelector("#qrCanvasBox img");
+      const canvas = document.querySelector("#qrCanvasBox canvas"), img = document.querySelector("#qrCanvasBox img");
       const qrSrc = canvas ? canvas.toDataURL("image/png") : (img ? img.src : "");
-      const codeText = document.getElementById("qrLabelCodeText").innerText;
-      const nameText = document.getElementById("qrLabelNameText").innerText;
-      const modelText = document.getElementById("qrLabelModelText").innerText;
-
+      const codeText = document.getElementById("qrLabelCodeText").innerText, nameText = document.getElementById("qrLabelNameText").innerText, modelText = document.getElementById("qrLabelModelText").innerText;
       const win = window.open("", "", "width=340,height=360");
-      win.document.write(`
-        <html>
-          <head>
-            <title>Print QR Label</title>
-            <style>
-              @page { margin: 4mm; }
-              body { margin: 0; padding: 8px; font-family: Arial, sans-serif; display: flex; justify-content: center; }
-              .sticker { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; border: 1px dashed #999; padding: 5px 6px; width: 130px; text-align: center; }
-              .sticker img { width: 62px; height: 62px; display: block; margin: 0 auto 2px auto; }
-              .pn { font-family: monospace; font-size: 8.5px; font-weight: bold; color: #000; margin: 0; line-height: 1.1; }
-              .name { font-size: 8px; font-weight: bold; color: #111; margin: 1px 0 0 0; line-height: 1.1; word-break: break-word; }
-              .model { font-size: 7px; color: #555; margin: 1px 0 0 0; line-height: 1.05; }
-            </style>
-          </head>
-          <body>
-            <div class="sticker">
-              <img src="${qrSrc}" />
-              <p class="pn">${codeText}</p>
-              <p class="name">${nameText}</p>
-              ${modelText ? `<p class="model">${modelText}</p>` : ''}
-            </div>
-          </body>
-        </html>
-      `);
-      win.document.close();
-      win.focus();
-      setTimeout(() => { win.print(); win.close(); }, 300);
+      win.document.write(`<html><head><title>Print QR</title><style>@page{margin:4mm}body{margin:0;padding:8px;font-family:Arial;display:flex;justify-content:center}.sticker{display:inline-flex;flex-direction:column;align-items:center;border:1px dashed #999;padding:5px;width:130px;text-align:center}.sticker img{width:62px;height:62px;margin-bottom:2px}.pn{font-family:monospace;font-size:8.5px;font-weight:bold;margin:0}.name{font-size:8px;font-weight:bold;margin:1px 0 0 0}.model{font-size:7px;color:#555;margin:1px 0 0 0}</style></head><body><div class="sticker"><img src="${qrSrc}"/><p class="pn">${codeText}</p><p class="name">${nameText}</p>${modelText?`<p class="model">${modelText}</p>`:''}</div></body></html>`);
+      win.document.close(); setTimeout(() => { win.print(); win.close(); }, 300);
     }
 
     function printAllQrCodes() {
-      if (typeof QRCode === 'undefined') {
-        alert("QR generator still loading, please wait 1 second / 元件載入中請稍候一秒");
-        return;
-      }
-      const targetList = currentFilteredList || [];
-      if (targetList.length === 0) {
-        alert("No items to print / 目前列表無任何零件可列印 QR Code");
-        return;
-      }
-
+      if (typeof QRCode === 'undefined') return alert("Loading QR module... / 載入中請稍候");
+      if (!currentFilteredList.length) return alert("No items to print / 無資料可列印");
       const uniqueMap = {};
-      targetList.forEach(item => {
-        const cleanPn = (item.pn && item.pn !== '-') ? item.pn.trim() : '';
-        const cleanName = (item.partsName || '').trim();
+      currentFilteredList.forEach(item => {
+        const cleanPn = (item.pn && item.pn !== '-') ? item.pn.trim() : '', cleanName = (item.partsName || '').trim();
         const qrPayload = cleanPn || cleanName;
         if (!qrPayload) return;
         const key = `${cleanName.toLowerCase()}###${cleanPn.toLowerCase()}`;
-        if (!uniqueMap[key]) {
-          uniqueMap[key] = {
-            qrPayload: qrPayload,
-            pnText: cleanPn ? `P/N: ${cleanPn}` : 'NO P/N',
-            nameText: cleanName,
-            modelText: item.model ? `Model: ${item.model}` : ''
-          };
-        }
+        if (!uniqueMap[key]) uniqueMap[key] = { qrPayload, pnText: cleanPn ? `P/N: ${cleanPn}` : 'NO P/N', nameText: cleanName, modelText: item.model ? `Model: ${item.model}` : '' };
       });
-
-      const itemsToPrint = Object.values(uniqueMap);
-      if (itemsToPrint.length === 0) return;
-
-      const btn = document.getElementById("btnPrintAllQr");
-      const btnText = document.getElementById("btnPrintAllQrText");
-      btn.disabled = true;
-      btnText.innerText = `Generating (${itemsToPrint.length})...`;
-
+      const items = Object.values(uniqueMap);
       const tempBox = document.getElementById("batchQrTempContainer");
       tempBox.innerHTML = "";
-      const stickerHtmlArray = [];
-
-      itemsToPrint.forEach((info) => {
-        const cellDiv = document.createElement("div");
-        tempBox.appendChild(cellDiv);
-        new QRCode(cellDiv, {
-          text: info.qrPayload,
-          width: 90,
-          height: 90,
-          colorDark: "#000000",
-          colorLight: "#ffffff",
-          correctLevel: QRCode.CorrectLevel.M
-        });
-        const canvas = cellDiv.querySelector("canvas");
-        const dataUrl = canvas ? canvas.toDataURL("image/png") : "";
-
-        stickerHtmlArray.push(`
-          <div class="sticker">
-            <img src="${dataUrl}" />
-            <p class="pn">${info.pnText}</p>
-            <p class="name">${info.nameText}</p>
-            ${info.modelText ? `<p class="model">${info.modelText}</p>` : ''}
-          </div>
-        `);
+      const stickers = items.map(info => {
+        const div = document.createElement("div"); tempBox.appendChild(div);
+        new QRCode(div, { text: info.qrPayload, width: 90, height: 90, colorDark: "#000", colorLight: "#fff", correctLevel: QRCode.CorrectLevel.M });
+        const url = div.querySelector("canvas").toDataURL("image/png");
+        return `<div class="sticker"><img src="${url}"/><p class="pn">${info.pnText}</p><p class="name">${info.nameText}</p>${info.modelText?`<p class="model">${info.modelText}</p>`:''}</div>`;
       });
-
       tempBox.innerHTML = "";
-      btn.disabled = false;
-      btnText.innerText = "Print All QR 批次列印";
-
       const win = window.open("", "", "width=850,height=700");
-      win.document.write(`
-        <html>
-          <head>
-            <title>Batch Print QR Labels - 4x8 (${itemsToPrint.length} items)</title>
-            <style>
-              @page { size: A4 portrait; margin: 6mm; }
-              * { box-sizing: border-box; }
-              body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
-              .grid { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 34.5mm; gap: 2mm; }
-              .sticker { border: 1px dashed #999; padding: 2mm 3mm; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; break-inside: avoid; page-break-inside: avoid; }
-              .sticker img { width: 62px; height: 62px; display: block; margin: 0 auto 2px auto; flex-shrink: 0; }
-              .pn { font-family: monospace; font-size: 8.5px; font-weight: bold; color: #000; margin: 0; line-height: 1.1; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-              .name { font-size: 8px; font-weight: bold; color: #111; margin: 1px 0 0 0; line-height: 1.1; max-width: 100%; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
-              .model { font-size: 7px; color: #555; margin: 1px 0 0 0; line-height: 1.05; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-            </style>
-          </head>
-          <body>
-            <div class="grid">${stickerHtmlArray.join('')}</div>
-          </body>
-        </html>
-      `);
-      win.document.close();
-      win.focus();
-      setTimeout(() => { win.print(); win.close(); }, 450);
+      win.document.write(`<html><head><title>Batch QR 4x8</title><style>@page{size:A4 portrait;margin:6mm}*{box-sizing:border-box}body{margin:0;font-family:Arial}.grid{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:34.5mm;gap:2mm}.sticker{border:1px dashed #999;padding:2mm 3mm;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;break-inside:avoid}.sticker img{width:62px;height:62px;margin-bottom:2px}.pn{font-family:monospace;font-size:8.5px;font-weight:bold;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}.name{font-size:8px;font-weight:bold;margin:1px 0 0 0;line-height:1.1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.model{font-size:7px;color:#555;margin:1px 0 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}</style></head><body><div class="grid">${stickers.join('')}</div></body></html>`);
+      win.document.close(); setTimeout(() => { win.print(); win.close(); }, 450);
     }
 
-    // ====== 查詢特定零件在目標庫房的現有庫存數量 ======
     function getAvailableStockInLocation(pn, partsName, targetLoc) {
-      const pnLower = String(pn || '').trim().toLowerCase();
-      const nameLower = String(partsName || '').trim().toLowerCase();
-      const locLower = String(targetLoc || '').trim().toLowerCase();
-
-      const found = stockSummaryCache.find(item => 
-        String(item.partsName || '').trim().toLowerCase() === nameLower &&
-        String(item.pn || '').trim().toLowerCase() === pnLower
-      );
-
+      const pnL = String(pn || '').trim().toLowerCase(), nameL = String(partsName || '').trim().toLowerCase(), locL = String(targetLoc || '').trim().toLowerCase();
+      const found = stockSummaryCache.find(i => String(i.partsName || '').trim().toLowerCase() === nameL && String(i.pn || '').trim().toLowerCase() === pnL);
       if (!found) return 0;
-
       if (found.locQtyMap) {
-        for (const k in found.locQtyMap) {
-          if (k.trim().toLowerCase() === locLower) {
-            return Number(found.locQtyMap[k]) || 0;
-          }
-        }
+        for (const k in found.locQtyMap) if (k.trim().toLowerCase() === locL) return Number(found.locQtyMap[k]) || 0;
         return 0;
       }
-
       const locStr = String(found.location || '').trim();
-      if (locStr.toLowerCase() === locLower) {
-        return Number(found.qty) || 0;
-      }
-      const regex = new RegExp(`${targetLoc}\\s*\\((-?\\d+)`, 'i');
-      const m = locStr.match(regex);
-      if (m) return Number(m[1]) || 0;
-
-      return 0;
+      if (locStr.toLowerCase() === locL) return Number(found.qty) || 0;
+      const m = locStr.match(new RegExp(`${targetLoc}\\s*\\((-?\\d+)`, 'i'));
+      return m ? (Number(m[1]) || 0) : 0;
     }
 
-    // ====== 手機相機 QR Code 掃碼進出庫 ======
-    function playBeepSound(success = true) {
+    function playBeepSound(ok) {
       try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(success ? 880 : 300, ctx.currentTime);
-        gain.gain.setValueAtTime(0.15, ctx.currentTime);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + (success ? 0.12 : 0.25));
+        const ctx = new (window.AudioContext || window.webkitAudioContext)(), osc = ctx.createOscillator(), g = ctx.createGain();
+        osc.frequency.setValueAtTime(ok ? 880 : 300, ctx.currentTime); g.gain.setValueAtTime(0.15, ctx.currentTime);
+        osc.connect(g); g.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + 0.15);
       } catch (e) {}
     }
 
     function updateConfirmButtonAppearance() {
-      const btn = document.getElementById("btnConfirmScanSubmit");
-      const btnText = document.getElementById("btnConfirmScanText");
-      const stockBadge = document.getElementById("scanLocStockBadge");
-      const zeroAlert = document.getElementById("scanZeroStockAlert");
-      const stepQty = Math.max(1, parseInt(document.getElementById("scanStepQty").value, 10) || 1);
-      const loc = document.getElementById("scanLocationSelect").value;
-      const remarkVal = document.getElementById("scanRemarkInput").value.trim();
+      const btn = document.getElementById("btnConfirmScanSubmit"), txt = document.getElementById("btnConfirmScanText");
+      const badge = document.getElementById("scanLocStockBadge"), alertBox = document.getElementById("scanZeroStockAlert");
+      const qty = Math.max(1, parseInt(document.getElementById("scanStepQty").value, 10) || 1);
+      const loc = document.getElementById("scanLocationSelect").value, rem = document.getElementById("scanRemarkInput").value.trim();
 
       if (!pendingScannedItem) {
-        stockBadge.classList.add("hidden");
-        zeroAlert.classList.add("hidden");
+        badge.classList.add("hidden"); alertBox.classList.add("hidden"); btn.disabled = true;
+        btn.className = "w-full py-2.5 rounded-xl font-bold text-xs bg-slate-700 text-slate-500 cursor-not-allowed";
+        txt.innerText = "Scan QR First / 請先掃描零件條碼"; return;
+      }
+      const curQty = getAvailableStockInLocation(pendingScannedItem.pn, pendingScannedItem.partsName, loc);
+      badge.classList.remove("hidden"); badge.innerText = `${loc} Stock: ${curQty}`;
+      badge.className = curQty <= 0 ? "shrink-0 px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-rose-500/20 text-rose-300" : "shrink-0 px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-emerald-500/20 text-emerald-300";
+
+      if (scanMode === 'OUT' && (curQty <= 0 || curQty < qty)) {
+        alertBox.classList.remove("hidden"); btn.disabled = true;
+        btn.className = "w-full py-2.5 rounded-xl font-bold text-xs bg-rose-950/70 border border-rose-500/50 text-rose-400 cursor-not-allowed";
+        txt.innerText = `Cannot Stock Out (Stock: ${curQty}) / 庫存不足無法出貨`; return;
+      }
+      alertBox.classList.add("hidden");
+      if (!rem) {
         btn.disabled = true;
-        btn.className = "w-full py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-slate-700 text-slate-500 cursor-not-allowed transition flex items-center justify-center gap-2";
-        btnText.innerText = "Scan QR First / 請先掃描零件條碼";
-        return;
+        btn.className = "w-full py-2.5 rounded-xl font-bold text-xs bg-amber-950/60 border border-amber-500/40 text-amber-300/80 cursor-not-allowed";
+        txt.innerText = "Enter Reason (Remark) / 請先填寫進出理由"; return;
       }
-
-      const currentLocQty = getAvailableStockInLocation(pendingScannedItem.pn, pendingScannedItem.partsName, loc);
-      stockBadge.classList.remove("hidden");
-      stockBadge.innerText = `${loc} Stock: ${currentLocQty}`;
-
-      if (currentLocQty <= 0) {
-        stockBadge.className = "shrink-0 px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40";
-      } else {
-        stockBadge.className = "shrink-0 px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40";
-      }
-
-      if (scanMode === 'OUT' && (currentLocQty <= 0 || currentLocQty < stepQty)) {
-        zeroAlert.classList.remove("hidden");
-        btn.disabled = true;
-        btn.className = "w-full py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-rose-950/70 border border-rose-500/50 text-rose-400 cursor-not-allowed transition flex items-center justify-center gap-2";
-        btnText.innerText = `Cannot Stock Out (Stock: ${currentLocQty}) / 庫存不足無法出貨`;
-        return;
-      } else {
-        zeroAlert.classList.add("hidden");
-      }
-
-      if (!remarkVal) {
-        btn.disabled = true;
-        btn.className = "w-full py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-amber-950/60 border border-amber-500/40 text-amber-300/80 cursor-not-allowed transition flex items-center justify-center gap-2";
-        btnText.innerText = "Enter Reason (Remark) / 請先填寫進出理由";
-        return;
-      }
-
       btn.disabled = false;
-      if (scanMode === 'OUT') {
-        btn.className = "w-full py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 active:scale-95 text-white shadow-lg shadow-rose-600/30 transition flex items-center justify-center gap-2";
-        btnText.innerText = `Confirm Out (-${stepQty}) from ${loc} / 確認出貨`;
-      } else {
-        btn.className = "w-full py-2.5 rounded-xl font-bold text-xs sm:text-sm bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 active:scale-95 text-white shadow-lg shadow-emerald-600/30 transition flex items-center justify-center gap-2";
-        btnText.innerText = `Confirm In (+${stepQty}) to ${loc} / 確認進貨`;
-      }
+      btn.className = scanMode === 'OUT' ? "w-full py-2.5 rounded-xl font-bold text-xs bg-rose-600 hover:bg-rose-500 text-white shadow-lg" : "w-full py-2.5 rounded-xl font-bold text-xs bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg";
+      txt.innerText = scanMode === 'OUT' ? `Confirm Out (-${qty}) from ${loc} / 確認出貨` : `Confirm In (+${qty}) to ${loc} / 確認進貨`;
     }
 
     function setScanMode(mode) {
       scanMode = mode;
-      const btnOut = document.getElementById("btnScanOutMode");
-      const btnIn = document.getElementById("btnScanInMode");
-      const trackFields = document.getElementById("scanTrackingFields");
-      if (mode === 'OUT') {
-        btnOut.className = "py-2 px-3 rounded-xl font-bold text-xs sm:text-sm bg-rose-600 text-white shadow-lg shadow-rose-600/30 border border-rose-400/50 transition flex items-center justify-center gap-1.5";
-        btnIn.className = "py-2 px-3 rounded-xl font-semibold text-xs sm:text-sm bg-slate-800 text-slate-400 border border-slate-700 hover:text-white transition flex items-center justify-center gap-1.5";
-        if (trackFields) trackFields.classList.remove("hidden");
-      } else {
-        btnIn.className = "py-2 px-3 rounded-xl font-bold text-xs sm:text-sm bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 border border-emerald-400/50 transition flex items-center justify-center gap-1.5";
-        btnOut.className = "py-2 px-3 rounded-xl font-semibold text-xs sm:text-sm bg-slate-800 text-slate-400 border border-slate-700 hover:text-white transition flex items-center justify-center gap-1.5";
-        if (trackFields) trackFields.classList.add("hidden");
-      }
+      document.getElementById("btnScanOutMode").className = mode === 'OUT' ? "py-2 px-3 rounded-xl font-bold text-xs bg-rose-600 text-white shadow-lg" : "py-2 px-3 rounded-xl font-semibold text-xs bg-slate-800 text-slate-400";
+      document.getElementById("btnScanInMode").className = mode === 'IN' ? "py-2 px-3 rounded-xl font-bold text-xs bg-emerald-600 text-white shadow-lg" : "py-2 px-3 rounded-xl font-semibold text-xs bg-slate-800 text-slate-400";
+      document.getElementById("scanTrackingFields").classList.toggle("hidden", mode !== 'OUT');
       updateConfirmButtonAppearance();
     }
-
-    document.addEventListener("DOMContentLoaded", () => {
-      const locSel = document.getElementById("scanLocationSelect");
-      const qtyInp = document.getElementById("scanStepQty");
-      if (locSel) locSel.addEventListener("change", updateConfirmButtonAppearance);
-      if (qtyInp) qtyInp.addEventListener("input", updateConfirmButtonAppearance);
-    });
 
     function clearScannedItem() {
       pendingScannedItem = null;
       document.getElementById("btnClearScanned").classList.add("hidden");
       document.getElementById("scanStatusTitle").innerText = "Point camera at QR Code / 請將 QR Code 對準鏡頭";
-      document.getElementById("scanPreviewName").innerText = "Waiting for scan... 尚未掃描零件...";
-      document.getElementById("scanPreviewName").className = "text-sm font-bold text-slate-400 font-mono truncate";
-      document.getElementById("scanPreviewSub").innerText = "Scan QR to preview details / 掃描後顯示品名與在庫量";
+      document.getElementById("scanPreviewName").innerText = "Waiting for scan... 尚未掃描...";
+      document.getElementById("scanPreviewSub").innerText = "Scan QR to preview details";
       updateConfirmButtonAppearance();
     }
 
     async function openScannerModal() {
       if (currentTab !== "Stock in TW" && currentTab !== "Repair & Exchange") {
-        const locSel = document.getElementById("scanLocationSelect");
-        const opts = Array.from(locSel.options).map(o => o.value);
-        if (opts.includes(currentTab)) locSel.value = currentTab;
+        const sel = document.getElementById("scanLocationSelect");
+        if (Array.from(sel.options).some(o => o.value === currentTab)) sel.value = currentTab;
       }
-
       document.getElementById("scanOperatorName").innerText = currentUser ? (currentUser.name || currentUser.username) : "Unknown";
       document.getElementById("scanRemarkInput").value = "";
       document.getElementById("scanTrackType").value = "Normal";
       document.getElementById("scanDestination").value = "N/A";
       clearScannedItem();
       document.getElementById("scannerModal").classList.remove("hidden");
-      document.getElementById("scanStatusTitle").innerText = "Starting camera... 正在啟動相機鏡頭...";
-
-      if (stockSummaryCache.length === 0) {
-        fetchJSONP(`${GAS_API_URL}?action=getStock`).then(res => {
-          if (res.status === 'success') {
-            stockSummaryCache = res.data || [];
-            rebuildPartsCatalogFromStock(stockSummaryCache);
-          }
-        }).catch(() => {});
-      }
-
-      if (typeof Html5Qrcode === 'undefined') {
-        document.getElementById("scanStatusTitle").innerText = "Scanner library loading (Use manual input below)";
-        return;
-      }
-
+      if (typeof Html5Qrcode === 'undefined') return;
       html5QrCode = new Html5Qrcode("barcodeReader");
-      const config = {
-        fps: 10,
-        qrbox: { width: 180, height: 180 },
-        aspectRatio: 1.0
-      };
-
-      html5QrCode.start(
-        { facingMode: "environment" },
-        config,
-        (decodedText) => {
-          handleScannedPreview(decodedText);
-        },
-        (errorMessage) => {}
-      ).then(() => {
-        if (!pendingScannedItem) {
-          document.getElementById("scanStatusTitle").innerText = "Camera Ready / 鏡頭已就緒，請對準 QR Code";
-        }
-      }).catch((err) => {
-        document.getElementById("scanStatusTitle").innerText = "Camera unavailable (Use manual input below / 可用下方手動輸入)";
-        document.getElementById("scanPreviewSub").innerText = String(err);
-      });
+      html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 180, height: 180 } }, (txt) => handleScannedPreview(txt), () => {}).catch(() => {});
     }
 
     function closeScannerModal() {
       document.getElementById("scannerModal").classList.add("hidden");
-      if (html5QrCode) {
-        html5QrCode.stop().then(() => {
-          html5QrCode.clear();
-          html5QrCode = null;
-        }).catch(() => {
-          html5QrCode = null;
-        });
-      }
-      fetchCurrentTab(true);
-      fetchTrackingSilent();
+      if (html5QrCode) { html5QrCode.stop().then(() => { html5QrCode.clear(); html5QrCode = null; }).catch(() => { html5QrCode = null; }); }
+      fetchCurrentTab(true); fetchTrackingSilent();
     }
 
-    function handleScannedPreview(rawCode) {
-      const code = String(rawCode || '').trim();
-      if (!code) return;
-
-      if (pendingScannedItem && pendingScannedItem.rawCode === code) {
-        return;
-      }
-
-      const matchedPart = partsCatalog.find(p => 
-        (p.pn && p.pn.toLowerCase() === code.toLowerCase()) ||
-        (p.partsName && p.partsName.toLowerCase() === code.toLowerCase())
-      );
-
-      pendingScannedItem = {
-        rawCode: code,
-        pn: matchedPart ? matchedPart.pn : '',
-        partsName: matchedPart ? matchedPart.partsName : code,
-        model: matchedPart ? (matchedPart.model || '') : ''
-      };
-
-      const targetLoc = document.getElementById("scanLocationSelect").value;
-      const curStock = getAvailableStockInLocation(pendingScannedItem.pn, pendingScannedItem.partsName, targetLoc);
+    function handleScannedPreview(raw) {
+      const code = String(raw || '').trim();
+      if (!code || (pendingScannedItem && pendingScannedItem.rawCode === code)) return;
+      const m = partsCatalog.find(p => (p.pn && p.pn.toLowerCase() === code.toLowerCase()) || (p.partsName && p.partsName.toLowerCase() === code.toLowerCase()));
+      pendingScannedItem = { rawCode: code, pn: m ? m.pn : '', partsName: m ? m.partsName : code, model: m ? (m.model || '') : '' };
+      const curStock = getAvailableStockInLocation(pendingScannedItem.pn, pendingScannedItem.partsName, document.getElementById("scanLocationSelect").value);
       playBeepSound(!(scanMode === 'OUT' && curStock <= 0));
-
       document.getElementById("btnClearScanned").classList.remove("hidden");
-      document.getElementById("scanStatusTitle").innerText = "📌 Scanned / 已讀取條碼，請確認庫存與填寫理由";
-      
-      const nameElem = document.getElementById("scanPreviewName");
-      nameElem.innerText = pendingScannedItem.partsName;
-      nameElem.className = "text-base font-extrabold text-white truncate";
-
-      const subParts = [];
-      if (pendingScannedItem.pn) subParts.push(`P/N: ${pendingScannedItem.pn}`);
-      if (pendingScannedItem.model) subParts.push(`Model: ${pendingScannedItem.model}`);
-      document.getElementById("scanPreviewSub").innerText = subParts.length > 0 ? subParts.join(" ｜ ") : `Code: ${code}`;
-
+      document.getElementById("scanStatusTitle").innerText = "📌 Scanned / 已讀取條碼";
+      document.getElementById("scanPreviewName").innerText = pendingScannedItem.partsName;
+      document.getElementById("scanPreviewSub").innerText = pendingScannedItem.pn ? `P/N: ${pendingScannedItem.pn}` : `Code: ${code}`;
       updateConfirmButtonAppearance();
-      if (!(scanMode === 'OUT' && curStock <= 0)) {
-        document.getElementById("scanRemarkInput").focus();
-      }
     }
 
     async function confirmSubmitScannedData() {
       if (!pendingScannedItem) return;
+      const loc = document.getElementById("scanLocationSelect").value;
+      const qty = Math.max(1, parseInt(document.getElementById("scanStepQty").value, 10) || 1);
+      const curQty = getAvailableStockInLocation(pendingScannedItem.pn, pendingScannedItem.partsName, loc);
+      if (scanMode === 'OUT' && (curQty <= 0 || curQty < qty)) return alert("Insufficient stock / 庫存不足無法出貨");
+      const rawRem = document.getElementById("scanRemarkInput").value.trim();
+      if (!rawRem) return alert("Enter Reason / 請填寫進出理由");
 
-      const targetLoc = document.getElementById("scanLocationSelect").value;
-      const stepQty = Math.max(1, parseInt(document.getElementById("scanStepQty").value, 10) || 1);
-      const currentLocQty = getAvailableStockInLocation(pendingScannedItem.pn, pendingScannedItem.partsName, targetLoc);
-
-      if (scanMode === 'OUT' && (currentLocQty <= 0 || currentLocQty < stepQty)) {
-        playBeepSound(false);
-        alert(`Cannot Stock Out! Current stock in ${targetLoc} is ${currentLocQty}.\n庫存不足無法出貨！${targetLoc} 目前庫存僅有 ${currentLocQty}，請確認是否選錯庫房。`);
-        updateConfirmButtonAppearance();
-        return;
-      }
-
-      const rawRemark = document.getElementById("scanRemarkInput").value.trim();
-      if (!rawRemark) {
-        alert("Please enter Reason / Remark! / 請務必填寫進出理由！");
-        document.getElementById("scanRemarkInput").focus();
-        return;
-      }
-
-      const btn = document.getElementById("btnConfirmScanSubmit");
-      const btnText = document.getElementById("btnConfirmScanText");
-      btn.disabled = true;
-      btnText.innerText = "Saving to Google Sheets... 寫入中...";
-
-      const todayStr = new Date().toISOString().split("T")[0];
-      const finalRemark = formatRemarkWithUser(rawRemark);
-      const trackType = scanMode === 'OUT' ? document.getElementById("scanTrackType").value : 'Normal';
-      const destination = scanMode === 'OUT' ? document.getElementById("scanDestination").value : 'N/A';
-
+      const btn = document.getElementById("btnConfirmScanSubmit"), txt = document.getElementById("btnConfirmScanText");
+      btn.disabled = true; txt.innerText = "Saving... 寫入中...";
+      const finalRem = formatRemarkWithUser(rawRem);
       const payload = {
-        action: "addRecord",
-        sheet: targetLoc,
-        date: todayStr,
-        pn: pendingScannedItem.pn,
-        partsName: pendingScannedItem.partsName,
-        model: pendingScannedItem.model,
-        inQty: scanMode === 'IN' ? stepQty : 0,
-        outQty: scanMode === 'OUT' ? stepQty : 0,
-        trackType: trackType,
-        destination: destination,
-        remark: finalRemark
+        action: "addRecord", sheet: loc, date: new Date().toISOString().split("T")[0],
+        pn: pendingScannedItem.pn, partsName: pendingScannedItem.partsName, model: pendingScannedItem.model,
+        inQty: scanMode === 'IN' ? qty : 0, outQty: scanMode === 'OUT' ? qty : 0,
+        trackType: scanMode === 'OUT' ? document.getElementById("scanTrackType").value : 'Normal',
+        destination: scanMode === 'OUT' ? document.getElementById("scanDestination").value : 'N/A',
+        remark: finalRem
       };
-
       try {
-        await fetch(GAS_API_URL, {
-          method: "POST",
-          mode: "no-cors",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-
-        const cacheItem = stockSummaryCache.find(item => 
-          String(item.partsName || '').trim().toLowerCase() === pendingScannedItem.partsName.toLowerCase() &&
-          String(item.pn || '').trim().toLowerCase() === pendingScannedItem.pn.toLowerCase()
-        );
-        if (cacheItem && cacheItem.locQtyMap) {
-          const delta = scanMode === 'IN' ? stepQty : -stepQty;
-          cacheItem.locQtyMap[targetLoc] = (Number(cacheItem.locQtyMap[targetLoc]) || 0) + delta;
-        }
-
-        const submittedName = pendingScannedItem.partsName;
-        const actionDesc = scanMode === 'OUT' ? `Stock Out (-${stepQty})` : `Stock In (+${stepQty})`;
-
+        await fetch(GAS_API_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+        const cacheItem = stockSummaryCache.find(i => String(i.partsName || '').trim().toLowerCase() === pendingScannedItem.partsName.toLowerCase() && String(i.pn || '').trim().toLowerCase() === pendingScannedItem.pn.toLowerCase());
+        if (cacheItem && cacheItem.locQtyMap) cacheItem.locQtyMap[loc] = (Number(cacheItem.locQtyMap[loc]) || 0) + (scanMode === 'IN' ? qty : -qty);
         pendingScannedItem = null;
         document.getElementById("scanRemarkInput").value = "";
-        document.getElementById("scanTrackType").value = "Normal";
-        document.getElementById("scanDestination").value = "N/A";
         document.getElementById("btnClearScanned").classList.add("hidden");
-        document.getElementById("scanStatusTitle").innerText = `✅ Saved (${targetLoc}) / 已完成寫入`;
-        
-        const nameElem = document.getElementById("scanPreviewName");
-        nameElem.innerText = `Submitted: ${submittedName} ${actionDesc}`;
-        nameElem.className = "text-sm font-bold text-emerald-400 truncate";
-        document.getElementById("scanPreviewSub").innerText = `Remark: ${finalRemark}`;
-
+        document.getElementById("scanStatusTitle").innerText = `✅ Saved (${loc}) / 已完成寫入`;
+        document.getElementById("scanPreviewName").innerText = "Ready for next scan / 可繼續掃描下一件";
         updateConfirmButtonAppearance();
-      } catch (err) {
-        playBeepSound(false);
-        alert("Submit failed / 送出失敗：" + err.message);
-        updateConfirmButtonAppearance();
-      }
+      } catch (e) { alert("Error: " + e.message); updateConfirmButtonAppearance(); }
     }
 
     function toggleFullScreen() {
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(err => {
-          alert(`Full screen error: ${err.message}`);
-        });
-      } else {
-        if (document.exitFullscreen) {
-          document.exitFullscreen();
-        }
-      }
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
+      else if (document.exitFullscreen) document.exitFullscreen();
     }
 
-    document.addEventListener("fullscreenchange", () => {
-      const icon = document.getElementById("fullscreenIcon");
-      const text = document.getElementById("fullscreenText");
-      if (document.fullscreenElement) {
-        icon.className = "fa-solid fa-compress";
-        text.innerText = "Exit Full";
-      } else {
-        icon.className = "fa-solid fa-expand";
-        text.innerText = "Full Screen";
-      }
-    });
+    function getPartStorageKey(pn, name) { const p = (pn || '').trim(), n = (name || '').trim(); return (p && p !== '-') ? p : n; }
+    function getPartThreshold(pn, name) { const k = getPartStorageKey(pn, name); return (k && customThresholds[k] !== undefined) ? Number(customThresholds[k]) : globalThreshold; }
 
-    function getPartStorageKey(pn, partsName) {
-      const cleanPn = (pn || '').trim();
-      const cleanName = (partsName || '').trim();
-      if (cleanPn && cleanPn !== '-') return cleanPn;
-      return cleanName;
-    }
-
-    function getPartThreshold(pn, partsName) {
-      const key = getPartStorageKey(pn, partsName);
-      if (key && customThresholds[key] !== undefined) {
-        return Number(customThresholds[key]);
-      }
-      return globalThreshold;
-    }
-
-    const fontSizes = ['font-sm', 'font-md', 'font-lg', 'font-xl'];
-    const fontLabels = ['Sm', 'Std', 'Lg', 'XL'];
+    const fontSizes = ['font-sm', 'font-md', 'font-lg', 'font-xl'], fontLabels = ['Sm', 'Std', 'Lg', 'XL'];
     let currentFontIdx = Number(localStorage.getItem('APP_FONT_IDX')) || 1;
-
     function updateFontSize() {
-      const body = document.getElementById("appBody");
-      fontSizes.forEach(cls => body.classList.remove(cls));
-      body.classList.add(fontSizes[currentFontIdx]);
-      document.getElementById("currentFontSizeLabel").innerText = fontLabels[currentFontIdx];
-      localStorage.setItem('APP_FONT_IDX', currentFontIdx);
+      const b = document.getElementById("appBody"); fontSizes.forEach(c => b.classList.remove(c)); b.classList.add(fontSizes[currentFontIdx]);
+      document.getElementById("currentFontSizeLabel").innerText = fontLabels[currentFontIdx]; localStorage.setItem('APP_FONT_IDX', currentFontIdx);
     }
-
-    function adjustFontSize(delta) {
-      currentFontIdx = Math.max(0, Math.min(fontSizes.length - 1, currentFontIdx + delta));
-      updateFontSize();
-    }
+    function adjustFontSize(d) { currentFontIdx = Math.max(0, Math.min(3, currentFontIdx + d)); updateFontSize(); }
 
     function cleanDateStr(val) {
       if (!val) return '';
       const s = String(val).trim();
       if (!s || s.toLowerCase() === 'nan' || s.toLowerCase() === 'nat') return '';
       const d = new Date(s);
-      if (!isNaN(d.getTime())) {
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${y}-${m}-${day}`;
-      }
+      if (!isNaN(d.getTime())) return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       return s.substring(0, 10).replace(/\//g, '-');
     }
 
@@ -1637,499 +997,310 @@
       checkLoginState();
     };
 
-    document.addEventListener("click", function(e) {
-      if (!e.target.closest("#addPn") && !e.target.closest("#addPnSuggestions")) {
-        document.getElementById("addPnSuggestions").classList.add("hidden");
-      }
-      if (!e.target.closest("#addPartsName") && !e.target.closest("#addNameSuggestions")) {
-        document.getElementById("addNameSuggestions").classList.add("hidden");
-      }
-    });
-
-    function onInputSearch(inputElem, fieldType) {
-      const val = inputElem.value.trim().toLowerCase();
-      const listElem = fieldType === 'pn' 
-        ? document.getElementById("addPnSuggestions") 
-        : document.getElementById("addNameSuggestions");
-
-      if (!val || partsCatalog.length === 0) {
-        listElem.classList.add("hidden");
-        listElem.innerHTML = '';
-        return;
-      }
-
-      const matches = partsCatalog.filter(item => {
-        if (fieldType === 'pn') {
-          return item.pn && item.pn.toLowerCase().includes(val);
-        } else {
-          return item.partsName && item.partsName.toLowerCase().includes(val);
-        }
-      }).slice(0, 8);
-
-      if (matches.length === 0) {
-        listElem.classList.add("hidden");
-        listElem.innerHTML = '';
-        return;
-      }
-
-      listElem.innerHTML = matches.map(item => `
-        <li class="p-3 hover:bg-slate-700/80 cursor-pointer transition flex flex-col" onclick='applyPartSuggestion(${JSON.stringify(item)})'>
-          <div class="flex items-center justify-between">
-            <span class="font-bold text-white text-xs sm:text-sm">${item.partsName}</span>
-            <span class="font-mono text-xs text-cyan-400">${item.pn || 'No P/N'}</span>
-          </div>
-          <span class="text-xs text-slate-400 mt-0.5">${item.model ? 'Model: ' + item.model : ''}</span>
-        </li>
-      `).join('');
-
-      listElem.classList.remove("hidden");
+    function onInputSearch(inp, type) {
+      const val = inp.value.trim().toLowerCase();
+      const ul = document.getElementById(type === 'pn' ? "addPnSuggestions" : "addNameSuggestions");
+      if (!val || !partsCatalog.length) { ul.classList.add("hidden"); return; }
+      const matches = partsCatalog.filter(i => type === 'pn' ? (i.pn && i.pn.toLowerCase().includes(val)) : (i.partsName && i.partsName.toLowerCase().includes(val))).slice(0, 8);
+      if (!matches.length) { ul.classList.add("hidden"); return; }
+      ul.innerHTML = matches.map(i => `<li class="p-2.5 hover:bg-slate-700 cursor-pointer" onclick='applyPartSuggestion(${JSON.stringify(i)})'><div class="flex justify-between"><span class="font-bold text-white text-xs">${i.partsName}</span><span class="font-mono text-xs text-cyan-400">${i.pn||''}</span></div></li>`).join('');
+      ul.classList.remove("hidden");
     }
-
-    function applyPartSuggestion(item) {
-      if (item.pn) document.getElementById("addPn").value = item.pn;
-      if (item.partsName) document.getElementById("addPartsName").value = item.partsName;
-      if (item.model) document.getElementById("addModel").value = item.model;
-      
-      document.getElementById("addPnSuggestions").classList.add("hidden");
-      document.getElementById("addNameSuggestions").classList.add("hidden");
+    function applyPartSuggestion(i) {
+      if (i.pn) document.getElementById("addPn").value = i.pn;
+      if (i.partsName) document.getElementById("addPartsName").value = i.partsName;
+      if (i.model) document.getElementById("addModel").value = i.model;
+      document.getElementById("addPnSuggestions").classList.add("hidden"); document.getElementById("addNameSuggestions").classList.add("hidden");
     }
 
     function fetchJSONP(url) {
       return new Promise((resolve, reject) => {
-        const callbackName = 'gasCallback_' + Math.round(100000 * Math.random());
-        const script = document.createElement('script');
-        
-        const timer = setTimeout(() => {
-          cleanup();
-          reject(new Error("Connection timeout / 連線逾時"));
-        }, 18000);
-
-        function cleanup() {
-          if (window[callbackName]) delete window[callbackName];
-          if (script.parentNode) script.parentNode.removeChild(script);
-          clearTimeout(timer);
-        }
-
-        window[callbackName] = function(data) {
-          cleanup();
-          resolve(data);
-        };
-
-        script.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + callbackName;
-        script.onerror = function() {
-          cleanup();
-          reject(new Error("Load failed / 載入失敗"));
-        };
-        document.body.appendChild(script);
+        const cb = 'gasCb_' + Math.round(100000 * Math.random()), sc = document.createElement('script');
+        const t = setTimeout(() => { cleanup(); reject(new Error("Timeout / 連線逾時")); }, 18000);
+        function cleanup() { delete window[cb]; if (sc.parentNode) sc.parentNode.removeChild(sc); clearTimeout(t); }
+        window[cb] = (d) => { cleanup(); resolve(d); };
+        sc.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + cb;
+        sc.onerror = () => { cleanup(); reject(new Error("Load failed / 載入失敗")); };
+        document.body.appendChild(sc);
       });
     }
 
-    function switchTab(sheetName) {
-      currentTab = sheetName;
-      document.querySelectorAll(".tab-btn").forEach(btn => {
-        if (btn.id === "tab-Repair-&-Exchange") {
-          btn.className = "tab-btn px-3 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold text-rose-300 hover:text-white hover:bg-slate-800 transition flex items-center gap-1.5 whitespace-nowrap";
-        } else {
-          btn.className = "tab-btn px-3 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition whitespace-nowrap";
-        }
+    function switchTab(name) {
+      currentTab = name;
+      document.querySelectorAll(".tab-btn").forEach(b => {
+        b.className = b.id === "tab-Repair-&-Exchange" ? "tab-btn px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold text-rose-300 hover:bg-slate-800 whitespace-nowrap" : "tab-btn px-3 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:bg-slate-800 whitespace-nowrap";
       });
-      const activeId = "tab-" + sheetName.replace(/\s+/g, '-');
-      const activeBtn = document.getElementById(activeId);
-      if (activeBtn) {
-        if (sheetName === "Repair & Exchange") {
-          activeBtn.className = "tab-btn px-3 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-bold transition bg-rose-600 text-white shadow-md shadow-rose-600/30 flex items-center gap-1.5 whitespace-nowrap";
-        } else {
-          activeBtn.className = "tab-btn px-3 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition bg-indigo-600 text-white shadow-md shadow-indigo-600/30 flex items-center gap-1.5 whitespace-nowrap";
-        }
-      }
+      const active = document.getElementById("tab-" + name.replace(/\s+/g, '-'));
+      if (active) active.className = name === "Repair & Exchange" ? "tab-btn px-3 py-2 rounded-lg text-xs sm:text-sm font-bold bg-rose-600 text-white whitespace-nowrap" : "tab-btn px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-indigo-600 text-white whitespace-nowrap";
 
       document.getElementById("statCurrentTab").innerText = currentTab;
       document.getElementById("bannerTabName").innerText = currentTab;
 
-      const locFilterBox = document.getElementById("locFilterContainer");
-      const qtyFilterBox = document.getElementById("qtyFilterContainer");
-      const trackFilterBox = document.getElementById("trackFilterContainer");
-      const btnThreshold = document.getElementById("btnThresholdSetting");
-      const btnQuick = document.getElementById("btnQuickInStock");
-      const btnCsv = document.getElementById("btnCsvImportLabel");
-      const btnAdd = document.getElementById("btnOpenAddModal");
-
-      if (currentTab === "Stock in TW") {
-        document.getElementById("btnAddBtnText").innerText = "+ Add Stock 新增庫存";
-        locFilterBox.classList.remove("hidden");
-        qtyFilterBox.classList.remove("hidden");
-        trackFilterBox.classList.add("hidden");
-        btnThreshold.classList.remove("hidden");
-        btnQuick.classList.remove("hidden");
-        btnCsv.classList.remove("hidden");
-        btnAdd.classList.remove("hidden");
-      } else if (currentTab === "Repair & Exchange") {
-        locFilterBox.classList.add("hidden");
-        qtyFilterBox.classList.add("hidden");
-        trackFilterBox.classList.remove("hidden");
-        btnThreshold.classList.add("hidden");
-        btnQuick.classList.add("hidden");
-        btnCsv.classList.add("hidden");
-        btnAdd.classList.add("hidden");
-      } else {
-        document.getElementById("btnAddBtnText").innerText = `+ Add Log 新增紀錄`;
-        locFilterBox.classList.add("hidden");
-        qtyFilterBox.classList.add("hidden");
-        trackFilterBox.classList.add("hidden");
-        btnThreshold.classList.add("hidden");
-        btnQuick.classList.add("hidden");
-        btnCsv.classList.remove("hidden");
-        btnAdd.classList.remove("hidden");
-      }
+      const isStock = currentTab === "Stock in TW", isTrack = currentTab === "Repair & Exchange";
+      document.getElementById("locFilterContainer").classList.toggle("hidden", !isStock);
+      document.getElementById("qtyFilterContainer").classList.toggle("hidden", !isStock);
+      document.getElementById("btnThresholdSetting").classList.toggle("hidden", !isStock);
+      document.getElementById("btnQuickInStock").classList.toggle("hidden", !isStock);
+      document.getElementById("trackFilterContainer").classList.toggle("hidden", !isTrack);
+      document.getElementById("btnCsvImportLabel").classList.toggle("hidden", isTrack);
+      document.getElementById("btnOpenAddModal").classList.toggle("hidden", isTrack);
+      document.getElementById("btnAddBtnText").innerText = isStock ? "+ Add Stock 新增庫存" : "+ Add Log 新增紀錄";
 
       fetchCurrentTab(false);
     }
 
-    async function fetchCurrentTab(forceReload = false) {
-      const tbody = document.getElementById("tableContent");
-      const mobileList = document.getElementById("mobileCardList");
-      const syncPill = document.getElementById("syncStatusPill");
-      const reloadIcon = document.getElementById("reloadSpinIcon");
-
+    async function fetchCurrentTab(force) {
+      const tbody = document.getElementById("tableContent"), mobile = document.getElementById("mobileCardList");
+      const syncPill = document.getElementById("syncStatusPill"), icon = document.getElementById("reloadSpinIcon");
       const cacheKey = currentTab === "Repair & Exchange" ? "PTW_CACHE_TRACKING" : `PTW_CACHE_${currentTab}`;
-      const cachedRaw = localStorage.getItem(cacheKey);
+      const cached = safeJsonParse(localStorage.getItem(cacheKey), null);
       let hasCached = false;
 
-      if (cachedRaw) {
-        try {
-          const parsedCache = JSON.parse(cachedRaw);
-          if (Array.isArray(parsedCache) && parsedCache.length > 0) {
-            rawDataList = parsedCache;
-            if (currentTab === "Stock in TW") {
-              stockSummaryCache = rawDataList;
-              rebuildPartsCatalogFromStock(rawDataList);
-            } else if (currentTab === "Repair & Exchange") {
-              trackingCache = rawDataList;
-              updateOutOfDateSummary();
-            }
-            applyFilter();
-            updateStatistics(rawDataList);
-            hasCached = true;
-          }
-        } catch (e) {}
+      if (Array.isArray(cached) && cached.length > 0) {
+        rawDataList = cached;
+        if (currentTab === "Stock in TW") { stockSummaryCache = rawDataList; rebuildPartsCatalogFromStock(rawDataList); }
+        else if (currentTab === "Repair & Exchange") { trackingCache = rawDataList; updateOutOfDateSummary(); }
+        applyFilter(); updateStatistics(rawDataList); hasCached = true;
       }
-
       if (!hasCached) {
-        tbody.innerHTML = `<tr><td colspan="10" class="text-center py-16 text-slate-400"><i class="fa-solid fa-circle-notch fa-spin text-3xl mb-3 text-indigo-400 block"></i>Syncing Google Sheets... 正在同步資料庫中...</td></tr>`;
-        mobileList.innerHTML = `<div class="text-center py-12 text-slate-400 text-xs"><i class="fa-solid fa-circle-notch fa-spin text-2xl mb-2 text-indigo-400 block"></i>Syncing... 正在同步資料庫...</div>`;
+        tbody.innerHTML = `<tr><td colspan="10" class="text-center py-12 text-slate-400">Syncing Google Sheets...</td></tr>`;
+        mobile.innerHTML = `<div class="text-center py-10 text-slate-400 text-xs">Syncing...</div>`;
       }
+      syncPill.classList.remove("hidden"); icon.classList.add("fa-spin");
 
-      if (syncPill) syncPill.classList.remove("hidden");
-      if (reloadIcon) reloadIcon.classList.add("fa-spin");
-
-      let targetUrl = `${GAS_API_URL}?action=getLogs&sheet=${encodeURIComponent(currentTab)}`;
-      if (currentTab === "Stock in TW") {
-        targetUrl = `${GAS_API_URL}?action=getStock`;
-      } else if (currentTab === "Repair & Exchange") {
-        targetUrl = `${GAS_API_URL}?action=getTracking`;
-      }
+      let url = `${GAS_API_URL}?action=getLogs&sheet=${encodeURIComponent(currentTab)}`;
+      if (currentTab === "Stock in TW") url = `${GAS_API_URL}?action=getStock`;
+      else if (currentTab === "Repair & Exchange") url = `${GAS_API_URL}?action=getTracking`;
 
       try {
-        const result = await fetchJSONP(targetUrl);
-        if (result.status === 'success') {
-          rawDataList = result.data || [];
+        const res = await fetchJSONP(url);
+        if (res.status === 'success') {
+          rawDataList = res.data || [];
           localStorage.setItem(cacheKey, JSON.stringify(rawDataList));
-          if (currentTab === "Stock in TW") {
-            stockSummaryCache = rawDataList;
-            rebuildPartsCatalogFromStock(rawDataList);
-          } else if (currentTab === "Repair & Exchange") {
-            trackingCache = rawDataList;
-            updateOutOfDateSummary();
-          }
-          applyFilter();
-          updateStatistics(rawDataList);
-        } else {
-          throw new Error(result.message || "Read failed / 讀取失敗");
+          if (currentTab === "Stock in TW") { stockSummaryCache = rawDataList; rebuildPartsCatalogFromStock(rawDataList); }
+          else if (currentTab === "Repair & Exchange") { trackingCache = rawDataList; updateOutOfDateSummary(); }
+          applyFilter(); updateStatistics(rawDataList);
         }
-      } catch (err) {
-        if (!hasCached) {
-          const errHtml = `<div class="text-center py-12 text-rose-400"><i class="fa-solid fa-triangle-exclamation text-2xl mb-2 block"></i><p class="font-bold text-xs">Error 連線失敗：${err.message}</p></div>`;
-          tbody.innerHTML = `<tr><td colspan="10">${errHtml}</td></tr>`;
-          mobileList.innerHTML = errHtml;
-        }
+      } catch (e) {
+        if (!hasCached) tbody.innerHTML = `<tr><td colspan="10" class="text-center py-12 text-rose-400">Error: ${e.message}</td></tr>`;
       } finally {
-        if (syncPill) syncPill.classList.add("hidden");
-        if (reloadIcon) reloadIcon.classList.remove("fa-spin");
+        syncPill.classList.add("hidden"); icon.classList.remove("fa-spin");
       }
     }
 
     function toggleQuickInStock() {
       isOnlyInStockActive = !isOnlyInStockActive;
-      const btn = document.getElementById("btnQuickInStock");
-      if (isOnlyInStockActive) {
-        btn.className = "col-span-2 sm:w-auto px-3.5 py-2 sm:py-1.5 bg-emerald-600/30 hover:bg-emerald-600/40 border border-emerald-500/60 text-emerald-300 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-1.5 shadow-sm";
-        document.getElementById("quickInStockText").innerText = "Showing In-Stock Only 僅看在庫 (Click to reset)";
-      } else {
-        btn.className = "col-span-2 sm:w-auto px-3.5 py-2 sm:py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-1.5";
-        document.getElementById("quickInStockText").innerText = "In-Stock Only 僅看在庫 (QTY > 0)";
-      }
+      document.getElementById("quickInStockText").innerText = isOnlyInStockActive ? "Showing In-Stock Only (Click to reset)" : "In-Stock Only 僅看在庫 (QTY > 0)";
       applyFilter();
     }
 
     function applyFilter() {
       const kw = document.getElementById("searchKeyword").value.trim().toLowerCase();
-      const locFilter = document.getElementById("locFilterSelect") ? document.getElementById("locFilterSelect").value : 'ALL';
-      const qtyFilter = document.getElementById("qtyFilterSelect") ? document.getElementById("qtyFilterSelect").value : 'ALL';
-      const trackStatus = document.getElementById("trackStatusSelect") ? document.getElementById("trackStatusSelect").value : 'UNRETURNED';
+      const locF = document.getElementById("locFilterSelect").value;
+      const qtyF = document.getElementById("qtyFilterSelect").value;
+      const trkF = document.getElementById("trackStatusSelect").value;
+      let list = rawDataList;
 
-      let filtered = rawDataList;
-
-      if (currentTab === "Stock in TW" && locFilter !== 'ALL') {
-        filtered = filtered.filter(item => 
-          String(item.location || '').toLowerCase().includes(locFilter.toLowerCase())
-        );
-      }
-
+      if (currentTab === "Stock in TW" && locF !== 'ALL') list = list.filter(i => String(i.location || '').toLowerCase().includes(locF.toLowerCase()));
       if (currentTab === "Repair & Exchange") {
-        if (trackStatus === 'UNRETURNED') {
-          filtered = filtered.filter(item => item.status !== 'Returned');
-        } else if (trackStatus === 'OVERDUE') {
-          filtered = filtered.filter(item => item.status !== 'Returned' && calcDaysElapsed(item.dateSent) > outOfDateDaysLimit);
-        } else if (trackStatus === 'RETURNED') {
-          filtered = filtered.filter(item => item.status === 'Returned');
-        }
+        if (trkF === 'UNRETURNED') list = list.filter(i => i.status !== 'Returned');
+        else if (trkF === 'OVERDUE') list = list.filter(i => i.status !== 'Returned' && calcDaysElapsed(i.dateSent) > outOfDateDaysLimit);
+        else if (trkF === 'RETURNED') list = list.filter(i => i.status === 'Returned');
       }
-
       if (kw) {
-        if (currentTab === "Stock in TW" && KNOWN_LOCATIONS.includes(kw)) {
-          filtered = filtered.filter(item => 
-            String(item.location || '').toLowerCase().includes(kw)
-          );
-        } else {
-          filtered = filtered.filter(item => 
-            [item.location, item.pn, item.partsName, item.model, item.remark, item.date, item.dateSent, item.trackType, item.destination]
-              .some(v => v && String(v).toLowerCase().includes(kw))
-          );
-        }
+        list = list.filter(i => [i.location, i.pn, i.partsName, i.model, i.remark, i.date, i.dateSent, i.trackType, i.destination].some(v => v && String(v).toLowerCase().includes(kw)));
       }
-
-      if (currentTab === "Stock in TW" && isOnlyInStockActive) {
-        filtered = filtered.filter(item => (Number(item.qty) || 0) > 0);
-      }
-
-      if (currentTab === "Stock in TW" && qtyFilter !== 'ALL') {
-        filtered = filtered.filter(item => {
-          const qty = Number(item.qty) || 0;
-          const threshold = getPartThreshold(item.pn, item.partsName);
-
-          if (qtyFilter === 'LOW') {
-            return qty < threshold || qty <= 0;
-          } else if (qtyFilter === 'OUT') {
-            return qty <= 0;
-          } else if (qtyFilter === 'SAFE') {
-            return qty >= threshold && qty > 0;
-          }
+      if (currentTab === "Stock in TW" && isOnlyInStockActive) list = list.filter(i => (Number(i.qty) || 0) > 0);
+      if (currentTab === "Stock in TW" && qtyF !== 'ALL') {
+        list = list.filter(i => {
+          const q = Number(i.qty) || 0, th = getPartThreshold(i.pn, i.partsName);
+          if (qtyF === 'LOW') return q < th || q <= 0;
+          if (qtyF === 'OUT') return q <= 0;
+          if (qtyF === 'SAFE') return q >= th && q > 0;
           return true;
         });
       }
-
-      currentFilteredList = filtered;
-      renderTableAndCards(filtered);
+      currentFilteredList = list;
+      renderTableAndCards(list);
     }
 
-    async function markTrackingAsReturned(record) {
-      const msg = `Confirm Return for [${record.partsName}] (Qty: ${record.qty})?\n確認【${record.partsName}】已取回並自動加回原庫房 (${record.location}) 庫存嗎？`;
-      if (!confirm(msg)) return;
-
-      const operator = currentUser ? (currentUser.name || currentUser.username) : 'Unknown';
-      try {
-        await fetch(GAS_API_URL, {
-          method: "POST",
-          mode: "no-cors",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "markTrackingReturned",
-            rowId: record.rowId,
-            operator: operator,
-            restockToLocation: true
-          })
-        });
-        alert("Marked as Returned & Restocked! / 已標記歸還並加回庫存！");
-        setTimeout(() => {
-          fetchCurrentTab(true);
-          fetchTrackingSilent();
-        }, 1200);
-      } catch (err) {
-        alert("Failed / 操作失敗：" + err.message);
-      }
+    async function markTrackingAsReturned(r) {
+      if (!confirm(`Confirm Return for [${r.partsName}] (Qty: ${r.qty}) and restock to ${r.location}?\n確認已取回並自動加回原庫房庫存嗎？`)) return;
+      const op = currentUser ? (currentUser.name || currentUser.username) : 'Unknown';
+      await fetch(GAS_API_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "markTrackingReturned", rowId: r.rowId, operator: op, restockToLocation: true }) });
+      alert("Marked as Returned & Restocked! / 已歸還並加回庫存！");
+      setTimeout(() => { fetchCurrentTab(true); fetchTrackingSilent(); }, 1200);
     }
 
     async function deleteTrackingItem(rowId) {
-      if (!confirm("Delete this tracking record? / 確定刪除此筆追蹤紀錄嗎？")) return;
-      await fetch(GAS_API_URL, {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "deleteTrackingRow", rowId: rowId })
-      });
-      setTimeout(() => {
-        fetchCurrentTab(true);
-        fetchTrackingSilent();
-      }, 1200);
+      if (!confirm("Delete tracking record? / 確定刪除此追蹤紀錄？")) return;
+      await fetch(GAS_API_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "deleteTrackingRow", rowId: rowId }) });
+      setTimeout(() => { fetchCurrentTab(true); fetchTrackingSilent(); }, 1200);
     }
 
     function renderTableAndCards(data) {
-      const thead = document.getElementById("tableHeader");
-      const tbody = document.getElementById("tableContent");
-      const mobileList = document.getElementById("mobileCardList");
+      const thead = document.getElementById("tableHeader"), tbody = document.getElementById("tableContent"), mobile = document.getElementById("mobileCardList");
       document.getElementById("filteredCount").innerText = data.length;
 
-      const exportBtnText = document.getElementById("exportBtnLabel");
-      if (exportBtnText) {
-        exportBtnText.innerText = data.length < rawDataList.length 
-          ? `Export (${data.length})` 
-          : `Export 匯出`;
-      }
-
       if (currentTab === "Stock in TW") {
-        thead.innerHTML = `
-          <tr>
-            <th class="px-5 py-3">Location 庫房</th>
-            <th class="px-5 py-3">P/N 料號</th>
-            <th class="px-5 py-3">Parts Name 品名</th>
-            <th class="px-5 py-3">QTY 在庫</th>
-            <th class="px-5 py-3">Threshold 水位</th>
-            <th class="px-5 py-3">Status 狀態</th>
-            <th class="px-5 py-3">Model 型號</th>
-            <th class="px-5 py-3">Remark 備註</th>
-            <th class="px-5 py-3 text-right">Actions 操作</th>
-          </tr>
-        `;
-        if (data.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="9" class="text-center py-12 text-slate-500">No matching inventory records / 無符合條件的庫存資料</td></tr>`;
-          mobileList.innerHTML = `<div class="text-center py-12 text-slate-500 text-xs bg-slate-800/30 rounded-xl border border-slate-800">No matching records / 無符合條件資料</div>`;
-          return;
-        }
-
+        thead.innerHTML = `<tr><th class="px-4 py-3">Location</th><th class="px-4 py-3">P/N</th><th class="px-4 py-3">Parts Name</th><th class="px-4 py-3">QTY</th><th class="px-4 py-3">Min</th><th class="px-4 py-3">Status</th><th class="px-4 py-3">Model</th><th class="px-4 py-3">Remark</th><th class="px-4 py-3 text-right">Actions</th></tr>`;
         tbody.innerHTML = data.map(r => {
-          const qty = Number(r.qty) || 0;
-          const threshold = getPartThreshold(r.pn, r.partsName);
-          const safeKey = encodeURIComponent(getPartStorageKey(r.pn, r.partsName));
-
-          let statusBadge = '';
-          let qtyColor = 'text-emerald-400 font-bold';
-
-          if (qty <= 0) {
-            qtyColor = 'text-rose-400 font-extrabold';
-            statusBadge = '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Out 缺料(0)</span>';
-          } else if (qty < threshold) {
-            qtyColor = 'text-amber-400 font-extrabold';
-            statusBadge = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20"><i class="fa-solid fa-bell mr-1"></i>Low 低水位</span>`;
-          } else {
-            statusBadge = '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><i class="fa-solid fa-check mr-1"></i>In Stock 充足</span>';
-          }
-
-          return `
-            <tr class="hover:bg-slate-800/60 transition group">
-              <td class="px-5 py-3 font-semibold text-slate-300">${r.location || '-'}</td>
-              <td class="px-5 py-3 font-mono text-cyan-400 font-medium">${r.pn || '-'}</td>
-              <td class="px-5 py-3 font-semibold text-white">${r.partsName || '-'}</td>
-              <td class="px-5 py-3 font-mono ${qtyColor}">${qty}</td>
-              <td class="px-5 py-3 font-mono text-slate-300">
-                <span class="inline-flex items-center gap-1.5 cursor-pointer hover:text-amber-400 transition" onclick="quickEditThreshold('${safeKey}')" title="Edit Threshold / 點擊修改水位">
-                  ${threshold}
-                  <i class="fa-solid fa-pen text-xs opacity-50 group-hover:opacity-100 text-amber-400"></i>
-                </span>
-              </td>
-              <td class="px-5 py-3">${statusBadge}</td>
-              <td class="px-5 py-3 text-slate-400">${r.model || '-'}</td>
-              <td class="px-5 py-3 text-slate-400">${r.remark || '-'}</td>
-              <td class="px-5 py-3 text-right space-x-1 whitespace-nowrap">
-                <button onclick='openQrLabelModal(${JSON.stringify(r)})' class="px-2.5 py-1 bg-cyan-950/80 hover:bg-cyan-600 text-cyan-300 hover:text-white rounded-lg transition text-xs font-semibold border border-cyan-700/60" title="QR Label">
-                  <i class="fa-solid fa-qrcode mr-1"></i>QR
-                </button>
-                <button onclick='openEditStockModal(${JSON.stringify(r)})' class="px-2.5 py-1 bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white rounded-lg transition text-xs font-semibold border border-slate-700">
-                  <i class="fa-solid fa-pen mr-1"></i>Edit
-                </button>
-                <button onclick='deleteStockRecord(${JSON.stringify(r)})' class="px-2.5 py-1 bg-slate-800 hover:bg-rose-600 text-slate-300 hover:text-white rounded-lg transition text-xs font-semibold border border-slate-700">
-                  <i class="fa-solid fa-trash mr-1"></i>Del
-                </button>
-              </td>
-            </tr>
-          `;
+          const q = Number(r.qty) || 0, th = getPartThreshold(r.pn, r.partsName), k = encodeURIComponent(getPartStorageKey(r.pn, r.partsName));
+          const badge = q <= 0 ? `<span class="px-2 py-0.5 rounded-full text-xs font-bold bg-rose-500/10 text-rose-400">Out(0)</span>` : (q < th ? `<span class="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-500/10 text-amber-400">Low</span>` : `<span class="px-2 py-0.5 rounded-full text-xs bg-emerald-500/10 text-emerald-400">OK</span>`);
+          return `<tr class="hover:bg-slate-800/60"><td class="px-4 py-3 font-semibold text-slate-300">${r.location||'-'}</td><td class="px-4 py-3 font-mono text-cyan-400">${r.pn||'-'}</td><td class="px-4 py-3 font-semibold text-white">${r.partsName||'-'}</td><td class="px-4 py-3 font-mono font-bold">${q}</td><td class="px-4 py-3 font-mono cursor-pointer text-amber-300" onclick="quickEditThreshold('${k}')">${th}</td><td class="px-4 py-3">${badge}</td><td class="px-4 py-3 text-slate-400">${r.model||'-'}</td><td class="px-4 py-3 text-slate-400">${r.remark||'-'}</td><td class="px-4 py-3 text-right space-x-1 whitespace-nowrap"><button onclick='openQrLabelModal(${JSON.stringify(r)})' class="px-2 py-1 bg-cyan-950 text-cyan-300 rounded text-xs">QR</button><button onclick='openEditStockModal(${JSON.stringify(r)})' class="px-2 py-1 bg-slate-800 text-slate-300 rounded text-xs">Edit</button><button onclick='deleteStockRecord(${JSON.stringify(r)})' class="px-2 py-1 bg-slate-800 text-rose-300 rounded text-xs">Del</button></td></tr>`;
         }).join('');
-
-        mobileList.innerHTML = data.map(r => {
-          const qty = Number(r.qty) || 0;
-          const threshold = getPartThreshold(r.pn, r.partsName);
-          const safeKey = encodeURIComponent(getPartStorageKey(r.pn, r.partsName));
-
-          let statusBadge = '';
-          let qtyColor = 'text-emerald-400';
-
-          if (qty <= 0) {
-            qtyColor = 'text-rose-400';
-            statusBadge = '<span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30">Out 缺料</span>';
-          } else if (qty < threshold) {
-            qtyColor = 'text-amber-400';
-            statusBadge = '<span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">Low 低水位</span>';
-          } else {
-            statusBadge = '<span class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">In Stock 充足</span>';
-          }
-
-          return `
-            <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl p-3.5 space-y-2.5 shadow">
-              <div class="flex justify-between items-start gap-2">
-                <div class="min-w-0">
-                  <div class="flex items-center gap-1.5 flex-wrap">
-                    <span class="px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-xs font-bold text-slate-200">${r.location || '-'}</span>
-                    ${r.pn && r.pn !== '-' ? `<span class="font-mono text-xs text-cyan-400 font-semibold">${r.pn}</span>` : ''}
-                  </div>
-                  <h4 class="font-bold text-white text-sm mt-1 leading-snug">${r.partsName || '-'}</h4>
-                </div>
-                <div class="text-right shrink-0">
-                  <div class="font-mono text-2xl font-extrabold ${qtyColor} leading-none">${qty}</div>
-                  <div class="mt-1">${statusBadge}</div>
-                </div>
-              </div>
-
-              <div class="flex flex-wrap items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-700/60 gap-2">
-                <div class="space-x-3">
-                  <span>Min 水位: <b class="text-slate-200 font-mono underline decoration-amber-500/60" onclick="quickEditThreshold('${safeKey}')">${threshold}</b></span>
-                  ${r.model ? `<span>Model: <b class="text-slate-300">${r.model}</b></span>` : ''}
-                </div>
-                ${r.remark ? `<div class="w-full text-[11px] text-slate-400 truncate"><i class="fa-regular fa-comment-dots mr-1"></i>${r.remark}</div>` : ''}
-              </div>
-
-              <div class="grid grid-cols-3 gap-2 pt-1">
-                <button onclick='openQrLabelModal(${JSON.stringify(r)})' class="py-1.5 bg-cyan-950/90 active:bg-cyan-700 text-cyan-300 rounded-lg text-xs font-semibold border border-cyan-700/60 flex items-center justify-center gap-1">
-                  <i class="fa-solid fa-qrcode"></i> QR
-                </button>
-                <button onclick='openEditStockModal(${JSON.stringify(r)})' class="py-1.5 bg-slate-700/80 active:bg-indigo-600 text-slate-200 rounded-lg text-xs font-semibold border border-slate-600 flex items-center justify-center gap-1">
-                  <i class="fa-solid fa-pen"></i> Edit
-                </button>
-                <button onclick='deleteStockRecord(${JSON.stringify(r)})' class="py-1.5 bg-slate-700/80 active:bg-rose-600 text-rose-300 rounded-lg text-xs font-semibold border border-slate-600 flex items-center justify-center gap-1">
-                  <i class="fa-solid fa-trash"></i> Del
-                </button>
-              </div>
-            </div>
-          `;
-        }).join('');
-
+        mobile.innerHTML = data.map(r => `<div class="bg-slate-800/60 border border-slate-700 rounded-xl p-3 space-y-2"><div class="flex justify-between"><div><span class="text-xs font-bold text-cyan-300">${r.location}</span> <span class="font-mono text-xs text-slate-400">${r.pn||''}</span><h4 class="font-bold text-white text-sm">${r.partsName}</h4></div><div class="font-mono text-xl font-bold text-emerald-400">${r.qty}</div></div><div class="grid grid-cols-3 gap-2"><button onclick='openQrLabelModal(${JSON.stringify(r)})' class="py-1 bg-cyan-950 text-cyan-300 rounded text-xs">QR</button><button onclick='openEditStockModal(${JSON.stringify(r)})' class="py-1 bg-slate-700 text-white rounded text-xs">Edit</button><button onclick='deleteStockRecord(${JSON.stringify(r)})' class="py-1 bg-slate-700 text-rose-300 rounded text-xs">Del</button></div></div>`).join('');
       } else if (currentTab === "Repair & Exchange") {
-        thead.innerHTML = `
-          <tr>
-            <th class="px-4 py-3">Date Sent 寄出日</th>
-            <th class="px-4 py-3">Days / Status 狀態</th>
-            <th class="px-4 py-3">Type 類別</th>
-            <th class="px-4 py-3">Destination 去向</th>
-            <th class="px-4 py-3">From 庫房</th>
-            <th class="px-4 py-3">P/N 料號</th>
-            <th class="px-4 py-3">Parts Name 品名</th>
-            <th class="px-4 py-3">Qty</th>
-            <th class="px-4 py-3">Remark 備註</th>
-            <th class="px-4 py-3 text-right">Actions 操作</th>
-          </tr>
-        `;
-        if (data.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="10" class="text-center py-12 text-slate-500">No Repair / Exchange tracking records / 尚無符合條件的送修或交換品追蹤紀錄</td></tr>`;
-          mobileList.innerHTML = `<div class="text-center py-12 text-slate-500 text-xs bg-slate-800/30 rounded-xl border border-slate-800">No tracking records / 尚無追蹤紀錄</div>`;
-          return;
-        }
+        thead.innerHTML = `<tr><th class="px-4 py-3">Date Sent</th><th class="px-4 py-3">Status / Days</th><th class="px-4 py-3">Type</th><th class="px-4 py-3">Destination</th><th class="px-4 py-3">From</th><th class="px-4 py-3">P/N</th><th class="px-4 py-3">Parts Name</th><th class="px-4 py-3">Qty</th><th class="px-4 py-3">Remark</th><th class="px-4 py-3 text-right">Actions</th></tr>`;
+        tbody.innerHTML = data.map(r => {
+          const days = calcDaysElapsed(r.dateSent), isRet = r.status === 'Returned', isOver = !isRet && days > outOfDateDaysLimit;
+          const st = isRet ? `<span class="px-2 py-0.5 rounded-full text-xs bg-emerald-500/10 text-emerald-400">Returned (${r.returnDate})</span>` : (isOver ? `<span class="px-2 py-0.5 rounded-full text-xs font-bold bg-rose-500/20 text-rose-300">Out of Date (${days}d)</span>` : `<span class="px-2 py-0.5 rounded-full text-xs bg-amber-500/10 text-amber-300">Pending (${days}d)</span>`);
+          return `<tr class="hover:bg-slate-800/60 ${isOver?'bg-rose-950/20':''}"><td class="px-4 py-3 font-mono">${r.dateSent}</td><td class="px-4 py-3">${st}</td><td class="px-4 py-3 text-cyan-300 font-semibold">${r.trackType}</td><td class="px-4 py-3 text-indigo-300 font-semibold">${r.destination}</td><td class="px-4 py-3">${r.location}</td><td class="px-4 py-3 font-mono text-cyan-400">${r.pn||'-'}</td><td class="px-4 py-3 font-bold text-white">${r.partsName}</td><td class="px-4 py-3 font-mono font-bold">${r.qty}</td><td class="px-4 py-3 text-xs text-slate-300">${r.remark}</td><td class="px-4 py-3 text-right space-x-1 whitespace-nowrap">${!isRet?`<button onclick='markTrackingAsReturned(${JSON.stringify(r)})' class="px-2.5 py-1 bg-emerald-600 text-white rounded text-xs font-semibold">Return 歸還</button>`:''}<button onclick="deleteTrackingItem(${r.rowId})" class="px-2 py-1 bg-slate-800 text-rose-300 rounded text-xs">Del</button></td></tr>`;
+        }).join('');
+        mobile.innerHTML = data.map(r => {
+          const days = calcDaysElapsed(r.dateSent), isRet = r.status === 'Returned', isOver = !isRet && days > outOfDateDaysLimit;
+          return `<div class="bg-slate-800/60 border ${isOver?'border-rose-500':'border-slate-700'} rounded-xl p-3 space-y-2"><div class="flex justify-between"><div><span class="text-xs text-slate-400">${r.dateSent}</span> <span class="text-xs text-cyan-300 font-bold">${r.trackType} -> ${r.destination}</span><h4 class="font-bold text-white text-sm">${r.partsName} (Qty: ${r.qty})</h4></div><span class="text-xs font-bold ${isOver?'text-rose-400':'text-amber-300'}">${isRet?'Returned':(isOver?`Out of Date (${days}d)`:`Pending (${days}d)`)}</span></div><p class="text-xs text-slate-400">${r.remark}</p>${!isRet?`<button onclick='markTrackingAsReturned(${JSON.stringify(r)})' class="w-full py-1.5 bg-emerald-600 text-white rounded text-xs font-bold">Return 歸還入庫</button>`:''}</div>`;
+        }).join('');
+      } else {
+        thead.innerHTML = `<tr><th class="px-4 py-3">Date</th><th class="px-4 py-3">P/N</th><th class="px-4 py-3">Parts Name</th><th class="px-4 py-3">Model</th><th class="px-4 py-3 text-emerald-400">IN</th><th class="px-4 py-3 text-rose-400">OUT</th><th class="px-4 py-3">Remark</th><th class="px-4 py-3 text-right">Actions</th></tr>`;
+        tbody.innerHTML = data.map(r => `<tr class="hover:bg-slate-800/60"><td class="px-4 py-3 font-mono text-slate-400">${cleanDateStr(r.date)}</td><td class="px-4 py-3 font-mono text-cyan-400">${r.pn||'-'}</td><td class="px-4 py-3 font-semibold text-white">${r.partsName}</td><td class="px-4 py-3 text-slate-400">${r.model||'-'}</td><td class="px-4 py-3 font-mono text-emerald-400 font-bold">${r.inQty}</td><td class="px-4 py-3 font-mono text-rose-400 font-bold">${r.outQty}</td><td class="px-4 py-3 text-slate-300">${r.remark||'-'}</td><td class="px-4 py-3 text-right space-x-1"><button onclick='openEditModal(${JSON.stringify(r)})' class="px-2 py-1 bg-slate-800 text-slate-300 rounded text-xs">Edit</button><button onclick="deleteRecord(${r.rowId})" class="px-2 py-1 bg-slate-800 text-rose-300 rounded text-xs">Del</button></td></tr>`).join('');
+        mobile.innerHTML = data.map(r => `<div class="bg-slate-800/60 border border-slate-700 rounded-xl p-3 space-y-1.5"><div class="flex justify-between"><span class="text-xs font-mono text-slate-400">${cleanDateStr(r.date)}</span><span class="font-mono text-xs font-bold">${r.inQty>0?`+${r.inQty}`:`-${r.outQty}`}</span></div><h4 class="font-bold text-white text-sm">${r.partsName}</h4><p class="text-xs text-slate-400">${r.remark||''}</p></div>`).join('');
+      }
+    }
 
-        tbody.innerHTML = data
+    function updateStatistics(data) {
+      document.getElementById("statTotalItems").innerText = data.length;
+      if (currentTab === "Stock in TW") {
+        document.getElementById("statLabel2").innerText = "In Stock 充足品項"; document.getElementById("statLabel3").innerText = "Low / Out 低水位與缺料";
+        let low = 0, safe = 0;
+        data.forEach(d => { const q = Number(d.qty) || 0, th = getPartThreshold(d.pn, d.partsName); if (q <= 0 || q < th) low++; else safe++; });
+        document.getElementById("statInStock").innerText = safe; document.getElementById("statLowStock").innerText = low;
+      } else if (currentTab === "Repair & Exchange") {
+        document.getElementById("statLabel2").innerText = "Returned 已歸還"; document.getElementById("statLabel3").innerText = "Pending 未歸還";
+        document.getElementById("statInStock").innerText = data.filter(d => d.status === 'Returned').length;
+        document.getElementById("statLowStock").innerText = data.filter(d => d.status !== 'Returned').length;
+      } else {
+        document.getElementById("statLabel2").innerText = "Total IN 累計入庫"; document.getElementById("statLabel3").innerText = "Total OUT 累計出庫";
+        document.getElementById("statInStock").innerText = data.reduce((a, c) => a + (Number(c.inQty) || 0), 0);
+        document.getElementById("statLowStock").innerText = data.reduce((a, c) => a + (Number(c.outQty) || 0), 0);
+      }
+    }
+
+    function openThresholdModal() { document.getElementById("globalThresholdInput").value = globalThreshold; renderCustomThresholdList(); document.getElementById("thresholdModal").classList.remove("hidden"); }
+    function closeThresholdModal() { document.getElementById("thresholdModal").classList.add("hidden"); }
+    function renderCustomThresholdList() {
+      const box = document.getElementById("customThresholdList"), keys = Object.keys(customThresholds);
+      box.innerHTML = keys.length ? keys.map(k => `<div class="flex justify-between bg-slate-900 px-3 py-1.5 rounded text-xs"><span class="font-mono text-cyan-400">${k}</span><span>Min: ${customThresholds[k]} <button onclick="removeCustomThreshold('${encodeURIComponent(k)}')" class="text-rose-400 ml-2">Del</button></span></div>`).join('') : `<div class="text-xs text-slate-500 text-center py-2">Default only</div>`;
+    }
+    function addCustomThreshold() {
+      const k = document.getElementById("customPnInput").value.trim(), v = parseInt(document.getElementById("customThresholdInput").value, 10);
+      if (!k || isNaN(v)) return;
+      customThresholds[k] = v; localStorage.setItem('CUSTOM_PARTS_THRESHOLDS', JSON.stringify(customThresholds));
+      renderCustomThresholdList(); applyFilter(); updateStatistics(rawDataList);
+    }
+    function removeCustomThreshold(ek) { delete customThresholds[decodeURIComponent(ek)]; localStorage.setItem('CUSTOM_PARTS_THRESHOLDS', JSON.stringify(customThresholds)); renderCustomThresholdList(); applyFilter(); }
+    function quickEditThreshold(ek) {
+      const k = decodeURIComponent(ek), v = prompt(`Threshold for [${k}]:`, customThresholds[k] ?? globalThreshold);
+      if (v !== null && !isNaN(parseInt(v, 10))) { customThresholds[k] = parseInt(v, 10); localStorage.setItem('CUSTOM_PARTS_THRESHOLDS', JSON.stringify(customThresholds)); applyFilter(); }
+    }
+    function saveGlobalThreshold() { globalThreshold = parseInt(document.getElementById("globalThresholdInput").value, 10) || 5; localStorage.setItem('GLOBAL_PARTS_THRESHOLD', globalThreshold); applyFilter(); alert("Saved!"); }
+
+    function openAddModal() {
+      document.getElementById("addDate").value = new Date().toISOString().split("T")[0];
+      document.getElementById("stockOnlyFields").classList.toggle("hidden", currentTab !== "Stock in TW");
+      document.getElementById("logOnlyFields").classList.toggle("hidden", currentTab === "Stock in TW");
+      document.getElementById("addModal").classList.remove("hidden");
+    }
+    function closeAddModal() { document.getElementById("addModal").classList.add("hidden"); }
+
+    async function handleAddSubmit() {
+      const pName = document.getElementById("addPartsName").value.trim();
+      const rawRem = document.getElementById("addRemark").value.trim();
+      if (!pName || !rawRem) return alert("Parts Name and Remark are required / 品名與理由必填");
+      const rem = formatRemarkWithUser(rawRem);
+      let payload = {};
+      if (currentTab === "Stock in TW") {
+        payload = { action: "addRecord", sheet: "Stock in TW", location: document.getElementById("addLocation").value, pn: document.getElementById("addPn").value.trim(), partsName: pName, qty: Number(document.getElementById("addStockQty").value) || 0, model: document.getElementById("addModel").value.trim(), remark: rem };
+      } else {
+        const outQ = Number(document.getElementById("addOutQty").value) || 0, pnVal = document.getElementById("addPn").value.trim();
+        if (outQ > 0 && getAvailableStockInLocation(pnVal, pName, currentTab) < outQ) return alert("Insufficient stock / 庫存不足無法出貨");
+        payload = { action: "addRecord", sheet: currentTab, date: cleanDateStr(document.getElementById("addDate").value), pn: pnVal, partsName: pName, model: document.getElementById("addModel").value.trim(), inQty: Number(document.getElementById("addInQty").value) || 0, outQty: outQ, trackType: document.getElementById("addTrackType").value, destination: document.getElementById("addDestination").value, remark: rem };
+      }
+      await fetch(GAS_API_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      closeAddModal(); alert("Saved! / 新增成功！"); setTimeout(() => { fetchCurrentTab(true); fetchTrackingSilent(); }, 1200);
+    }
+
+    function openEditStockModal(r) {
+      document.getElementById("editStockOldPn").value = r.pn || ''; document.getElementById("editStockOldPartsName").value = r.partsName || '';
+      document.getElementById("editStockLocation").value = String(r.location || '').split(/[（(，,]/)[0].trim() || "S2";
+      document.getElementById("editStockQty").value = Number(r.qty) || 0; document.getElementById("editStockPn").value = r.pn || '';
+      document.getElementById("editStockPartsName").value = r.partsName || ''; document.getElementById("editStockModel").value = r.model || '';
+      document.getElementById("editStockRemark").value = r.remark || ''; document.getElementById("editStockModal").classList.remove("hidden");
+    }
+    function closeEditStockModal() { document.getElementById("editStockModal").classList.add("hidden"); }
+    async function handleEditStockSubmit() {
+      const payload = { action: "updateRecord", sheet: "Stock in TW", oldPn: document.getElementById("editStockOldPn").value, oldPartsName: document.getElementById("editStockOldPartsName").value, location: document.getElementById("editStockLocation").value, qty: Number(document.getElementById("editStockQty").value) || 0, pn: document.getElementById("editStockPn").value.trim(), partsName: document.getElementById("editStockPartsName").value.trim(), model: document.getElementById("editStockModel").value.trim(), remark: document.getElementById("editStockRemark").value.trim() };
+      await fetch(GAS_API_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      closeEditStockModal(); alert("Updated!"); setTimeout(() => fetchCurrentTab(true), 1200);
+    }
+    async function deleteStockRecord(r) {
+      if (!confirm(`Delete [${r.partsName}]?`)) return;
+      await fetch(GAS_API_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "deleteRow", sheet: "Stock in TW", pn: r.pn || '', partsName: r.partsName || '' }) });
+      setTimeout(() => fetchCurrentTab(true), 1200);
+    }
+
+    function openEditModal(r) {
+      document.getElementById("editRowId").value = r.rowId; document.getElementById("editDate").value = cleanDateStr(r.date);
+      document.getElementById("editPn").value = r.pn || ''; document.getElementById("editPartsName").value = r.partsName || '';
+      document.getElementById("editModel").value = r.model || ''; document.getElementById("editInQty").value = r.inQty || 0;
+      document.getElementById("editOutQty").value = r.outQty || 0; document.getElementById("editRemark").value = r.remark || '';
+      document.getElementById("editModal").classList.remove("hidden");
+    }
+    function closeEditModal() { document.getElementById("editModal").classList.add("hidden"); }
+    async function handleEditSubmit() {
+      const payload = { action: "updateRecord", sheet: currentTab, rowId: document.getElementById("editRowId").value, date: cleanDateStr(document.getElementById("editDate").value), pn: document.getElementById("editPn").value.trim(), partsName: document.getElementById("editPartsName").value.trim(), model: document.getElementById("editModel").value.trim(), inQty: Number(document.getElementById("editInQty").value) || 0, outQty: Number(document.getElementById("editOutQty").value) || 0, remark: document.getElementById("editRemark").value.trim() };
+      await fetch(GAS_API_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      closeEditModal(); alert("Updated!"); setTimeout(() => fetchCurrentTab(true), 1200);
+    }
+    async function deleteRecord(rowId) {
+      if (!confirm("Delete record?")) return;
+      await fetch(GAS_API_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "deleteRow", sheet: currentTab, rowId: rowId }) });
+      setTimeout(() => fetchCurrentTab(true), 1200);
+    }
+
+    function handleCSVFile(e) {
+      const file = e.target.files[0];
+      if (!file || !confirm(`Overwrite [${currentTab}]?`)) { e.target.value = ""; return; }
+      Papa.parse(file, {
+        header: true, skipEmptyLines: true,
+        complete: async function(results) {
+          const records = currentTab === "Stock in TW"
+            ? results.data.map(r => ({ location: r["Location"] || "", pn: r["P/N"] || "", partsName: r["parts name"] || r["Parts Name"] || "", qty: Number(r["QTY"] || 0), model: r["model"] || "", remark: r["remark"] || "" })).filter(r => r.partsName)
+            : results.data.map(r => ({ date: cleanDateStr(r["Date"] || ""), pn: r["P/N (If any)"] || r["P/N"] || "", partsName: r["Parts Name"] || "", model: r["Model"] || "", inQty: Number(r["IN"] || 0), outQty: Number(r["OUT"] || 0), remark: r["Remark"] || "" })).filter(r => r.partsName);
+          await fetch(GAS_API_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "batchImportOverwrite", sheet: currentTab, records: records }) });
+          alert(`Imported ${records.length} records!`); e.target.value = ""; setTimeout(() => fetchCurrentTab(true), 1500);
+        }
+      });
+    }
+
+    function exportToExcel() {
+      if (typeof XLSX === 'undefined') return alert("Loading Excel module...");
+      if (!currentFilteredList.length) return alert("No data to export");
+      let rows = [];
+      if (currentTab === "Stock in TW") {
+        rows = currentFilteredList.map(r => ({ "Location": r.location, "P/N": r.pn, "Parts Name": r.partsName, "QTY": Number(r.qty) || 0, "Model": r.model, "Remark": r.remark }));
+      } else if (currentTab === "Repair & Exchange") {
+        rows = currentFilteredList.map(r => {
+          const d = calcDaysElapsed(r.dateSent), ret = r.status === 'Returned';
+          return { "Date Sent": r.dateSent, "Days Elapsed": ret ? "-" : d, "Status": ret ? `Returned (${r.returnDate})` : (d > outOfDateDaysLimit ? `Out of Date (${d}d)` : `Pending (${d}d)`), "Type": r.trackType, "Destination": r.destination, "From Location": r.location, "P/N": r.pn, "Parts Name": r.partsName, "Qty": r.qty, "Return Date": r.returnDate, "Remark": r.remark };
+        });
+      } else {
+        rows = currentFilteredList.map(r => ({ "Date": cleanDateStr(r.date), "P/N": r.pn, "Parts Name": r.partsName, "Model": r.model, "IN": r.inQty, "OUT": r.outQty, "Remark": r.remark }));
+      }
+      const ws = XLSX.utils.json_to_sheet(rows), wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, currentTab.substring(0, 30));
+      XLSX.writeFile(wb, `${currentTab.replace(/\s+/g, '_')}_${new Date().toISOString().split("T")[0]}.xlsx`);
+    }
+  </script>
+</body>
+</html>
