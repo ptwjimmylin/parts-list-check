@@ -192,7 +192,7 @@
           <p class="text-[11px] sm:text-xs font-medium text-slate-400" id="statLabel3">Low / Out 低水位與缺料</p>
           <p class="text-lg sm:text-2xl font-extrabold text-amber-400 mt-0.5" id="statLowStock">0</p>
         </div>
-        <!-- 新增第 4 張：Out of Date 逾期未歸還監控卡片（支援自訂天數） -->
+        <!-- 第 4 張：Out of Date 逾期未歸還監控卡片（支援自訂天數） -->
         <div onclick="switchTab('Repair & Exchange')" class="cursor-pointer bg-rose-950/30 hover:bg-rose-950/50 border border-rose-500/40 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-xl backdrop-blur relative overflow-hidden transition group" title="Click to trace unreturned items / 點擊檢視逾期未歸還明細">
           <div class="flex items-center justify-between gap-1">
             <p class="text-[11px] sm:text-xs font-bold text-rose-300 truncate">Out of Date 逾期未歸還</p>
@@ -249,7 +249,6 @@
             <input type="text" id="searchKeyword" oninput="applyFilter()" placeholder="Search Loc, P/N, Name, Singapore, User..." class="w-full pl-8 pr-3 py-2 sm:py-1.5 text-xs sm:text-sm bg-slate-800/80 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500 transition">
           </div>
 
-          <!-- 總庫存分頁專用：庫房篩選 -->
           <div id="locFilterContainer" class="col-span-1 sm:w-auto">
             <select id="locFilterSelect" onchange="applyFilter()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 sm:py-1.5 text-xs sm:text-sm text-cyan-300 focus:outline-none focus:border-indigo-500 font-semibold">
               <option value="ALL">📍 All Loc 全部庫房</option>
@@ -263,7 +262,6 @@
             </select>
           </div>
 
-          <!-- 總庫存分頁專用：QTY 狀態篩選 -->
           <div id="qtyFilterContainer" class="col-span-1 sm:w-auto flex items-center gap-1.5">
             <select id="qtyFilterSelect" onchange="applyFilter()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 sm:py-1.5 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-indigo-500 font-medium">
               <option value="ALL">Status 全部狀態</option>
@@ -273,7 +271,6 @@
             </select>
           </div>
           
-          <!-- 總庫存分頁專用：一鍵在庫 -->
           <button id="btnQuickInStock" onclick="toggleQuickInStock()" class="col-span-2 sm:w-auto px-3.5 py-2 sm:py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-1.5">
             <i class="fa-solid fa-boxes-packing text-emerald-400"></i> 
             <span id="quickInStockText">In-Stock Only 僅看在庫 (QTY > 0)</span>
@@ -397,7 +394,7 @@
     </div>
   </div>
 
-  <!-- 彈窗 2：手機相機 QR Code 掃碼進出庫（含新增 2 欄：Repair/Exchange 與 To Singapore/To Customer） -->
+  <!-- 彈窗 2：手機相機 QR Code 掃碼進出庫（含 2 欄：Repair/Exchange 與 To Singapore/To Customer） -->
   <div id="scannerModal" class="fixed inset-0 bg-black/85 backdrop-blur-md hidden z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
     <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-4 sm:p-5 shadow-2xl space-y-2.5 my-auto">
       <div class="flex justify-between items-center pb-2 border-b border-slate-800">
@@ -438,7 +435,7 @@
         </div>
       </div>
 
-      <!-- 新增 2 欄：(1) Repair & Exchange  (2) To Singapore / To Customer -->
+      <!-- 雙欄位：Repair/Exchange 與 To Singapore/To Customer -->
       <div id="scanTrackingFields" class="grid grid-cols-2 gap-2 text-xs">
         <div>
           <label class="block text-cyan-300 font-semibold mb-1">Type 類別 (Repair/Exch)</label>
@@ -549,7 +546,7 @@
     </div>
   </div>
 
-  <!-- 彈窗：新增項目（含新增 2 欄：Repair/Exchange 與 To Singapore/To Customer） -->
+  <!-- 彈窗：新增項目 -->
   <div id="addModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 overflow-y-auto">
     <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-3.5 my-auto">
       <div class="flex justify-between items-center pb-3 border-b border-slate-800">
@@ -597,7 +594,6 @@
             </div>
           </div>
 
-          <!-- 新增 2 欄：(1) Repair & Exchange  (2) To Singapore / To Customer -->
           <div class="grid grid-cols-2 gap-3 bg-slate-800/50 p-2.5 rounded-xl border border-slate-700/70">
             <div>
               <label class="block text-cyan-300 font-semibold mb-1">Type 類別 (Repair/Exch)</label>
@@ -805,7 +801,6 @@
       const d = new Date(dateStr);
       if (isNaN(d.getTime())) return 0;
       const now = new Date();
-      // 歸零時分秒只比較日曆天數
       const d1 = new Date(d.getFullYear(), d.getMonth(), d.getDate());
       const d2 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const diffMs = d2 - d1;
@@ -861,7 +856,6 @@
       }
     }
 
-    // 從總庫存資料自動萃取零件字典
     function rebuildPartsCatalogFromStock(stockList) {
       const map = {};
       (stockList || []).forEach(r => {
@@ -1938,7 +1932,6 @@
       renderTableAndCards(filtered);
     }
 
-    // 歸還送修/交換品並自動加回庫存
     async function markTrackingAsReturned(record) {
       const msg = `Confirm Return for [${record.partsName}] (Qty: ${record.qty})?\n確認【${record.partsName}】已取回並自動加回原庫房 (${record.location}) 庫存嗎？`;
       if (!confirm(msg)) return;
@@ -1993,7 +1986,6 @@
           : `Export 匯出`;
       }
 
-      // 1. 總庫存分頁
       if (currentTab === "Stock in TW") {
         thead.innerHTML = `
           <tr>
@@ -2119,7 +2111,6 @@
           `;
         }).join('');
 
-      // 2. Repair & Exchange 追蹤分頁（顯示逾期天數 Out of Date 與一鍵歸還入庫）
       } else if (currentTab === "Repair & Exchange") {
         thead.innerHTML = `
           <tr>
@@ -2141,369 +2132,4 @@
           return;
         }
 
-        tbody.innerHTML = data.map(r => {
-          const daysOut = calcDaysElapsed(r.dateSent);
-          const isReturned = r.status === 'Returned';
-          const isOverdue = !isReturned && daysOut > outOfDateDaysLimit;
-
-          let statusHtml = '';
-          if (isReturned) {
-            statusHtml = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><i class="fa-solid fa-check mr-1"></i>Returned (${r.returnDate})</span>`;
-          } else if (isOverdue) {
-            statusHtml = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse"><i class="fa-solid fa-clock mr-1"></i>Out of Date (${daysOut}d)</span>`;
-          } else {
-            statusHtml = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-300 border border-amber-500/20"><i class="fa-solid fa-hourglass-half mr-1"></i>Pending (${daysOut}d)</span>`;
-          }
-
-          return `
-            <tr class="hover:bg-slate-800/60 transition ${isOverdue ? 'bg-rose-950/15' : ''}">
-              <td class="px-4 py-3 font-mono text-slate-300 whitespace-nowrap">${r.dateSent || '-'}</td>
-              <td class="px-4 py-3 whitespace-nowrap">${statusHtml}</td>
-              <td class="px-4 py-3 font-semibold text-cyan-300">${r.trackType || '-'}</td>
-              <td class="px-4 py-3 font-semibold text-indigo-300">${r.destination || '-'}</td>
-              <td class="px-4 py-3 text-slate-300">${r.location || '-'}</td>
-              <td class="px-4 py-3 font-mono text-cyan-400">${r.pn || '-'}</td>
-              <td class="px-4 py-3 font-semibold text-white">${r.partsName || '-'}</td>
-              <td class="px-4 py-3 font-mono font-bold text-white">${r.qty}</td>
-              <td class="px-4 py-3 text-slate-300 text-xs">${r.remark || '-'}</td>
-              <td class="px-4 py-3 text-right space-x-1 whitespace-nowrap">
-                ${!isReturned ? `
-                  <button onclick='markTrackingAsReturned(${JSON.stringify(r)})' class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition text-xs font-semibold shadow-sm" title="Mark as Returned & Restock / 歸還入庫">
-                    <i class="fa-solid fa-rotate-left mr-1"></i>Return 歸還
-                  </button>
-                ` : ''}
-                <button onclick="deleteTrackingItem(${r.rowId})" class="px-2 py-1 bg-slate-800 hover:bg-rose-600 text-slate-400 hover:text-white rounded-lg transition text-xs font-semibold border border-slate-700" title="Delete">
-                  <i class="fa-solid fa-trash"></i>
-                </button>
-              </td>
-            </tr>
-          `;
-        }).join('');
-
-        mobileList.innerHTML = data.map(r => {
-          const daysOut = calcDaysElapsed(r.dateSent);
-          const isReturned = r.status === 'Returned';
-          const isOverdue = !isReturned && daysOut > outOfDateDaysLimit;
-
-          let badge = isReturned
-            ? `<span class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">Returned (${r.returnDate})</span>`
-            : isOverdue
-              ? `<span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40">🚨 Out of Date (${daysOut}d)</span>`
-              : `<span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30">⏳ Pending (${daysOut}d)</span>`;
-
-          return `
-            <div class="bg-slate-800/60 border ${isOverdue ? 'border-rose-500/50' : 'border-slate-700/80'} rounded-xl p-3.5 space-y-2 shadow">
-              <div class="flex justify-between items-start gap-2">
-                <div class="min-w-0">
-                  <div class="flex items-center gap-1.5 flex-wrap text-xs">
-                    <span class="font-mono text-slate-400">${r.dateSent || '-'}</span>
-                    <span class="px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 font-semibold">${r.trackType}</span>
-                    <span class="px-1.5 py-0.5 rounded bg-indigo-950 text-indigo-300 font-semibold">${r.destination}</span>
-                  </div>
-                  <h4 class="font-bold text-white text-sm mt-1">${r.partsName || '-'} <span class="font-mono text-xs text-cyan-400">${r.pn ? '('+r.pn+')' : ''}</span></h4>
-                </div>
-                <div class="text-right shrink-0">
-                  <div class="font-mono text-lg font-extrabold text-white">Qty: ${r.qty}</div>
-                  <div class="mt-1">${badge}</div>
-                </div>
-              </div>
-              <div class="text-xs text-slate-400 pt-1.5 border-t border-slate-700/60">
-                <div>From: <b class="text-slate-300">${r.location}</b> ｜ ${r.remark || '-'}</div>
-              </div>
-              <div class="flex gap-2 pt-1">
-                ${!isReturned ? `
-                  <button onclick='markTrackingAsReturned(${JSON.stringify(r)})' class="flex-1 py-1.5 bg-emerald-600 active:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-1">
-                    <i class="fa-solid fa-rotate-left"></i> Return 歸還入庫
-                  </button>
-                ` : ''}
-                <button onclick="deleteTrackingItem(${r.rowId})" class="px-3 py-1.5 bg-slate-700/80 text-rose-300 rounded-lg text-xs font-semibold border border-slate-600">
-                  <i class="fa-solid fa-trash"></i>
-                </button>
-              </div>
-            </div>
-          `;
-        }).join('');
-
-      // 3. 一般庫房流水帳分頁 (S2 ~ clean room)
-      } else {
-        thead.innerHTML = `
-          <tr>
-            <th class="px-5 py-3">Date 日期</th>
-            <th class="px-5 py-3">P/N 料號</th>
-            <th class="px-5 py-3">Parts Name 品名</th>
-            <th class="px-5 py-3">Model 型號</th>
-            <th class="px-5 py-3 text-emerald-400">IN 入庫</th>
-            <th class="px-5 py-3 text-rose-400">OUT 出庫</th>
-            <th class="px-5 py-3">Remark (Operator & Reason)</th>
-            <th class="px-5 py-3 text-right">Actions 操作</th>
-          </tr>
-        `;
-        if (data.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="8" class="text-center py-12 text-slate-500">No log records found / 此分頁尚無進出明細紀錄</td></tr>`;
-          mobileList.innerHTML = `<div class="text-center py-12 text-slate-500 text-xs bg-slate-800/30 rounded-xl border border-slate-800">No log records / 尚無明細紀錄</div>`;
-          return;
-        }
-
-        tbody.innerHTML = data.map(r => `
-          <tr class="hover:bg-slate-800/60 transition group">
-            <td class="px-5 py-3 font-mono text-slate-400">${cleanDateStr(r.date) || '-'}</td>
-            <td class="px-5 py-3 font-mono text-cyan-400">${r.pn || '-'}</td>
-            <td class="px-5 py-3 font-semibold text-white">${r.partsName || '-'}</td>
-            <td class="px-5 py-3 text-slate-400">${r.model || '-'}</td>
-            <td class="px-5 py-3 font-mono font-bold text-emerald-400">${r.inQty}</td>
-            <td class="px-5 py-3 font-mono font-bold text-rose-400">${r.outQty}</td>
-            <td class="px-5 py-3 text-slate-300 font-medium">${r.remark || '-'}</td>
-            <td class="px-5 py-3 text-right space-x-1.5 whitespace-nowrap">
-              <button onclick='openEditModal(${JSON.stringify(r)})' class="px-2.5 py-1 bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white rounded-lg transition text-xs font-semibold border border-slate-700">
-                <i class="fa-solid fa-pen mr-1"></i>Edit
-              </button>
-              <button onclick="deleteRecord(${r.rowId})" class="px-2.5 py-1 bg-slate-800 hover:bg-rose-600 text-slate-300 hover:text-white rounded-lg transition text-xs font-semibold border border-slate-700">
-                <i class="fa-solid fa-trash mr-1"></i>Del
-              </button>
-            </td>
-          </tr>
-        `).join('');
-
-        mobileList.innerHTML = data.map(r => `
-          <div class="bg-slate-800/60 border border-slate-700/80 rounded-xl p-3.5 space-y-2 shadow">
-            <div class="flex justify-between items-start gap-2">
-              <div class="min-w-0">
-                <div class="flex items-center gap-2 text-xs">
-                  <span class="font-mono text-slate-400">${cleanDateStr(r.date) || '-'}</span>
-                  ${r.pn && r.pn !== '-' ? `<span class="font-mono text-cyan-400 font-semibold">${r.pn}</span>` : ''}
-                </div>
-                <h4 class="font-bold text-white text-sm mt-0.5">${r.partsName || '-'}</h4>
-              </div>
-              <div class="flex items-center gap-2 shrink-0 font-mono text-sm font-bold">
-                ${Number(r.inQty) > 0 ? `<span class="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">+${r.inQty}</span>` : ''}
-                ${Number(r.outQty) > 0 ? `<span class="px-2 py-0.5 rounded bg-rose-500/15 text-rose-400 border border-rose-500/30">-${r.outQty}</span>` : ''}
-              </div>
-            </div>
-
-            ${(r.model || r.remark) ? `
-              <div class="text-xs text-slate-400 pt-1.5 border-t border-slate-700/60 flex flex-wrap gap-x-3 gap-y-1">
-                ${r.model ? `<span>Model: <b class="text-slate-300">${r.model}</b></span>` : ''}
-                ${r.remark ? `<span class="text-slate-200 font-medium">Remark: ${r.remark}</span>` : ''}
-              </div>
-            ` : ''}
-
-            <div class="grid grid-cols-2 gap-2 pt-1">
-              <button onclick='openEditModal(${JSON.stringify(r)})' class="py-1.5 bg-slate-700/80 active:bg-indigo-600 text-slate-200 rounded-lg text-xs font-semibold border border-slate-600 flex items-center justify-center gap-1">
-                <i class="fa-solid fa-pen"></i> Edit 編輯
-              </button>
-              <button onclick="deleteRecord(${r.rowId})" class="py-1.5 bg-slate-700/80 active:bg-rose-600 text-rose-300 rounded-lg text-xs font-semibold border border-slate-600 flex items-center justify-center gap-1">
-                <i class="fa-solid fa-trash"></i> Del 刪除
-              </button>
-            </div>
-          </div>
-        `).join('');
-      }
-    }
-
-    function updateStatistics(data) {
-      document.getElementById("statTotalItems").innerText = data.length;
-      if (currentTab === "Stock in TW") {
-        document.getElementById("statLabel2").innerText = "In Stock 充足品項";
-        document.getElementById("statLabel3").innerText = "Low / Out 低水位與缺料";
-
-        let lowStockCount = 0;
-        let safeCount = 0;
-
-        data.forEach(d => {
-          const qty = Number(d.qty) || 0;
-          const th = getPartThreshold(d.pn, d.partsName);
-          if (qty <= 0 || qty < th) {
-            lowStockCount++;
-          } else {
-            safeCount++;
-          }
-        });
-
-        document.getElementById("statInStock").innerText = safeCount;
-        document.getElementById("statLowStock").innerText = lowStockCount;
-      } else if (currentTab === "Repair & Exchange") {
-        document.getElementById("statLabel2").innerText = "Returned 已歸還";
-        document.getElementById("statLabel3").innerText = "Pending 未歸還總數";
-        const ret = data.filter(d => d.status === 'Returned').length;
-        const pend = data.filter(d => d.status !== 'Returned').length;
-        document.getElementById("statInStock").innerText = ret;
-        document.getElementById("statLowStock").innerText = pend;
-      } else {
-        document.getElementById("statLabel2").innerText = "Total IN 累計入庫";
-        document.getElementById("statLabel3").innerText = "Total OUT 累計出庫";
-        const totalIn = data.reduce((acc, cur) => acc + (Number(cur.inQty) || 0), 0);
-        const totalOut = data.reduce((acc, cur) => acc + (Number(cur.outQty) || 0), 0);
-        document.getElementById("statInStock").innerText = totalIn;
-        document.getElementById("statLowStock").innerText = totalOut;
-      }
-    }
-
-    // ====== 水位設定邏輯 ======
-    function openThresholdModal() {
-      const modal = document.getElementById("thresholdModal");
-      if (!modal) return;
-      document.getElementById("globalThresholdInput").value = globalThreshold;
-      renderCustomThresholdList();
-      modal.classList.remove("hidden");
-    }
-
-    function closeThresholdModal() {
-      const modal = document.getElementById("thresholdModal");
-      if (modal) modal.classList.add("hidden");
-    }
-
-    function renderCustomThresholdList() {
-      const container = document.getElementById("customThresholdList");
-      const keys = Object.keys(customThresholds);
-      if (keys.length === 0) {
-        container.innerHTML = `<div class="text-xs text-slate-500 text-center py-3">No custom thresholds (Using default) / 尚無個別水位設定</div>`;
-        return;
-      }
-      container.innerHTML = keys.map(k => `
-        <div class="flex items-center justify-between bg-slate-900 px-3 py-2 rounded-lg border border-slate-800 text-xs">
-          <span class="font-mono text-cyan-400 font-bold truncate mr-2">${k}</span>
-          <div class="flex items-center gap-2 shrink-0">
-            <span class="text-slate-300 font-mono">Min: <b class="text-amber-400">${customThresholds[k]}</b></span>
-            <button onclick="removeCustomThreshold('${encodeURIComponent(k)}')" class="text-rose-400 hover:text-rose-300 text-xs ml-2 p-1"><i class="fa-solid fa-trash"></i></button>
-          </div>
-        </div>
-      `).join('');
-    }
-
-    function addCustomThreshold() {
-      const key = document.getElementById("customPnInput").value.trim();
-      const val = parseInt(document.getElementById("customThresholdInput").value, 10);
-      if (!key) {
-        alert("Please enter P/N or Parts Name / 請輸入料號或品名");
-        return;
-      }
-      if (isNaN(val) || val < 0) {
-        alert("Please enter a valid number / 請輸入有效的水位數值");
-        return;
-      }
-      customThresholds[key] = val;
-      localStorage.setItem('CUSTOM_PARTS_THRESHOLDS', JSON.stringify(customThresholds));
-      document.getElementById("customPnInput").value = '';
-      document.getElementById("customThresholdInput").value = '';
-      renderCustomThresholdList();
-      applyFilter();
-      updateStatistics(rawDataList);
-    }
-
-    function removeCustomThreshold(encodedKey) {
-      const key = decodeURIComponent(encodedKey);
-      delete customThresholds[key];
-      localStorage.setItem('CUSTOM_PARTS_THRESHOLDS', JSON.stringify(customThresholds));
-      renderCustomThresholdList();
-      applyFilter();
-      updateStatistics(rawDataList);
-    }
-
-    function quickEditThreshold(encodedKey) {
-      const key = decodeURIComponent(encodedKey);
-      if (!key) return;
-      const current = customThresholds[key] !== undefined ? customThresholds[key] : globalThreshold;
-      const val = prompt(`Set safety threshold for [${key}] / 請輸入安全水位數量：`, current);
-      if (val !== null) {
-        const num = parseInt(val.trim(), 10);
-        if (!isNaN(num) && num >= 0) {
-          customThresholds[key] = num;
-          localStorage.setItem('CUSTOM_PARTS_THRESHOLDS', JSON.stringify(customThresholds));
-          applyFilter();
-          updateStatistics(rawDataList);
-        }
-      }
-    }
-
-    function saveGlobalThreshold() {
-      const val = parseInt(document.getElementById("globalThresholdInput").value, 10);
-      if (isNaN(val) || val < 0) {
-        alert("Please enter a valid integer / 請輸入有效的整數水位數值");
-        return;
-      }
-      globalThreshold = val;
-      localStorage.setItem('GLOBAL_PARTS_THRESHOLD', globalThreshold);
-      applyFilter();
-      updateStatistics(rawDataList);
-      alert("Default threshold updated! / 通用安全水位已更新！");
-    }
-
-    // ====== 新增項目邏輯 ======
-    function openAddModal() {
-      document.getElementById("addForm").reset();
-      document.getElementById("addDate").value = new Date().toISOString().split("T")[0];
-      document.getElementById("addPnSuggestions").classList.add("hidden");
-      document.getElementById("addNameSuggestions").classList.add("hidden");
-
-      if (currentTab === "Stock in TW") {
-        document.getElementById("addModalTitle").innerText = "Add Stock Item 新增庫存品項";
-        document.getElementById("stockOnlyFields").classList.remove("hidden");
-        document.getElementById("logOnlyFields").classList.add("hidden");
-      } else {
-        document.getElementById("addModalTitle").innerText = `Add Log Record 新增明細 (${currentTab})`;
-        document.getElementById("stockOnlyFields").classList.add("hidden");
-        document.getElementById("logOnlyFields").classList.remove("hidden");
-      }
-      document.getElementById("addModal").classList.remove("hidden");
-    }
-
-    function closeAddModal() {
-      document.getElementById("addModal").classList.add("hidden");
-    }
-
-    async function handleAddSubmit(e) {
-      e.preventDefault();
-      const btn = document.getElementById("btnSaveAdd");
-      btn.disabled = true;
-      btn.innerText = "Saving... 儲存中...";
-
-      const taggedRemark = formatRemarkWithUser(document.getElementById("addRemark").value);
-
-      let payload = {};
-      if (currentTab === "Stock in TW") {
-        payload = {
-          action: "addRecord",
-          sheet: "Stock in TW",
-          location: document.getElementById("addLocation").value,
-          pn: document.getElementById("addPn").value.trim(),
-          partsName: document.getElementById("addPartsName").value.trim(),
-          qty: Number(document.getElementById("addStockQty").value) || 0,
-          model: document.getElementById("addModel").value.trim(),
-          remark: taggedRemark
-        };
-      } else {
-        const outQ = Number(document.getElementById("addOutQty").value) || 0;
-        const pName = document.getElementById("addPartsName").value.trim();
-        const pnVal = document.getElementById("addPn").value.trim();
-
-        if (outQ > 0) {
-          const curQty = getAvailableStockInLocation(pnVal, pName, currentTab);
-          if (curQty < outQ) {
-            alert(`Insufficient stock in ${currentTab} (Current: ${curQty})! Cannot Stock Out.\n庫存不足無法出貨（${currentTab} 目前庫存: ${curQty}）！`);
-            btn.disabled = false;
-            btn.innerText = "Save 確認儲存";
-            return;
-          }
-        }
-
-        payload = {
-          action: "addRecord",
-          sheet: currentTab,
-          date: cleanDateStr(document.getElementById("addDate").value),
-          pn: pnVal,
-          partsName: pName,
-          model: document.getElementById("addModel").value.trim(),
-          inQty: Number(document.getElementById("addInQty").value) || 0,
-          outQty: outQ,
-          trackType: document.getElementById("addTrackType").value,
-          destination: document.getElementById("addDestination").value,
-          remark: taggedRemark
-        };
-      }
-
-      try {
-        await fetch(GAS_API_URL, {
-          method: "POST",
-          mode: "no-cors",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
+        tbody.innerHTML = data
