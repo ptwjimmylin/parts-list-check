@@ -185,13 +185,15 @@
         </div>
       </div>
 
-      <!-- 搜尋與篩選列 -->
+      <!-- 搜尋與篩選列（新增：各庫房分頁日期排序選單） -->
       <div class="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-2">
         <div class="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 flex-1">
           <div class="relative col-span-2 sm:w-72">
             <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
             <input type="text" id="searchKeyword" oninput="applyFilter()" placeholder="Search Loc, P/N, Name, Singapore, User..." class="w-full pl-8 pr-3 py-2 sm:py-1.5 text-xs sm:text-sm bg-slate-800/80 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500">
           </div>
+
+          <!-- 總庫存專用篩選 -->
           <div id="locFilterContainer" class="col-span-1 sm:w-auto">
             <select id="locFilterSelect" onchange="applyFilter()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 sm:py-1.5 text-xs sm:text-sm text-cyan-300 font-semibold">
               <option value="ALL">📍 All Loc 全部庫房</option>
@@ -215,6 +217,17 @@
           <button id="btnQuickInStock" onclick="toggleQuickInStock()" class="col-span-2 sm:w-auto px-3.5 py-2 sm:py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded-lg text-xs sm:text-sm font-semibold transition flex items-center justify-center gap-1.5">
             <i class="fa-solid fa-boxes-packing text-emerald-400"></i> <span id="quickInStockText">In-Stock Only 僅看在庫 (QTY > 0)</span>
           </button>
+
+          <!-- 各庫房分頁 (S2 ~ clean room) 專用：日期最新/最舊排序選單 -->
+          <div id="dateSortContainer" class="hidden col-span-2 sm:w-auto flex items-center gap-1.5">
+            <select id="dateSortSelect" onchange="applyFilter()" class="w-full sm:w-auto bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 sm:py-1.5 text-xs sm:text-sm text-cyan-300 font-semibold focus:outline-none focus:border-cyan-500">
+              <option value="DESC">📅 Date: Newest First (最新在最上面)</option>
+              <option value="ASC">📅 Date: Oldest First (最舊在最上面)</option>
+              <option value="SHEET">📋 Sheet Order (試算表原始順序)</option>
+            </select>
+          </div>
+
+          <!-- Repair & Exchange 追蹤專用篩選 -->
           <div id="trackFilterContainer" class="hidden col-span-2 sm:w-auto flex items-center gap-2">
             <select id="trackStatusSelect" onchange="applyFilter()" class="w-full sm:w-auto bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 sm:py-1.5 text-xs sm:text-sm text-rose-300 font-semibold">
               <option value="UNRETURNED">⏳ Unreturned 所有未歸還 (Pending + Out of Date)</option>
@@ -246,6 +259,55 @@
     <i class="fa-solid fa-qrcode text-lg"></i> Scan 掃碼進出庫
   </button>
 
+  <!-- 新增彈窗：歸還銷帳選擇貨架視窗 (Return & Restock Modal) -->
+  <div id="returnModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 my-auto">
+      <div class="flex justify-between items-center pb-3 border-b border-slate-800">
+        <h3 class="font-bold text-base text-white flex items-center gap-2">
+          <i class="fa-solid fa-rotate-left text-emerald-400"></i> Return & Restock 歸還入庫銷帳
+        </h3>
+        <button onclick="closeReturnModal()" class="text-slate-400 hover:text-white text-2xl leading-none p-1">&times;</button>
+      </div>
+
+      <div class="space-y-3.5 text-xs sm:text-sm">
+        <input type="hidden" id="returnRowId">
+        <div class="bg-slate-800/70 border border-slate-700 rounded-xl p-3 space-y-1">
+          <p class="text-xs text-slate-400">Returning Item / 歸還零件資訊：</p>
+          <p class="text-sm font-bold text-white" id="returnPartTitle"></p>
+          <p class="text-xs text-cyan-300 font-mono" id="returnPartSub"></p>
+        </div>
+
+        <div>
+          <label class="block text-emerald-300 font-bold mb-1.5">
+            Return To Shelf / 選擇放回哪一個貨架 (Location) *
+          </label>
+          <select id="returnTargetLocation" class="w-full bg-slate-800 border border-emerald-500/50 rounded-xl p-2.5 text-white font-bold text-sm focus:outline-none focus:border-emerald-400">
+            <option value="S2">S2</option>
+            <option value="S3">S3</option>
+            <option value="S4">S4</option>
+            <option value="S5">S5</option>
+            <option value="S6">S6</option>
+            <option value="DRY BOX">DRY BOX</option>
+            <option value="clean room">clean room</option>
+          </select>
+          <p class="text-[11px] text-slate-400 mt-1" id="returnOrigLocHint"></p>
+        </div>
+
+        <div>
+          <label class="block text-slate-300 font-semibold mb-1">Return Note / 歸還備註 (選填)</label>
+          <input type="text" id="returnNoteInput" placeholder="e.g., Repaired OK, Tested pass / 已修好測試正常..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-400">
+        </div>
+
+        <div class="flex justify-end gap-2.5 pt-3 border-t border-slate-800">
+          <button type="button" onclick="closeReturnModal()" class="px-4 py-2 border border-slate-700 rounded-xl text-slate-300 hover:bg-slate-800 font-medium">Cancel 取消</button>
+          <button type="button" id="btnConfirmReturn" onclick="confirmReturnSubmit()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-lg shadow-emerald-600/30 transition flex items-center gap-1.5">
+            <i class="fa-solid fa-check"></i> Confirm Return 確認歸還入庫
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- 彈窗：帳號管理 -->
   <div id="usersModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 overflow-y-auto">
     <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-4 my-auto">
@@ -257,7 +319,7 @@
         <div class="bg-slate-800/60 p-3.5 rounded-xl border border-slate-700/50 space-y-2.5">
           <p class="font-bold text-slate-200">Add New User / 新增人員帳號</p>
           <div class="grid grid-cols-2 gap-2">
-            <input type="text" id="newUsername" placeholder="Username 帳號" class="bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono">
+            <input type="text" id="newUsername" placeholder="Username 帳號 (e.g. jimmy)" class="bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono">
             <input type="text" id="newPassword" placeholder="Password 密碼" class="bg-slate-800 border border-slate-700 rounded-lg p-2 text-white font-mono">
           </div>
           <div class="grid grid-cols-3 gap-2">
@@ -566,7 +628,7 @@
   <div id="batchQrTempContainer" class="hidden"></div>
 
   <script>
-    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbw_VVXuxH1xqznn2ZGhLR6DAY_tO6460ui7iKtJJtxqJvkhA7q1eleDBlEz1K2dK5LbKw/exec";
+    const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzOo9vzDRGMVsf1aivn6ZBlW-ecfea-Rud1izva7TFxlxX2oYmE5G6nE6hLYn-pyZyelQ/exec";
     const IDLE_TIMEOUT_MINUTES = 15;
     let idleTimer = null;
 
@@ -583,7 +645,6 @@
     let partsCatalog = [];
     let isOnlyInStockActive = false;
 
-    const KNOWN_LOCATIONS = ['s2', 's3', 's4', 's5', 's6', 'dry box', 'clean room'];
     let globalThreshold = Number(localStorage.getItem('GLOBAL_PARTS_THRESHOLD')) || 5;
     let customThresholds = safeJsonParse(localStorage.getItem('CUSTOM_PARTS_THRESHOLDS'), {});
     let outOfDateDaysLimit = Number(localStorage.getItem('PTW_OUT_OF_DATE_DAYS')) || 14;
@@ -1036,11 +1097,12 @@
       document.getElementById("statCurrentTab").innerText = currentTab;
       document.getElementById("bannerTabName").innerText = currentTab;
 
-      const isStock = currentTab === "Stock in TW", isTrack = currentTab === "Repair & Exchange";
+      const isStock = currentTab === "Stock in TW", isTrack = currentTab === "Repair & Exchange", isLog = !isStock && !isTrack;
       document.getElementById("locFilterContainer").classList.toggle("hidden", !isStock);
       document.getElementById("qtyFilterContainer").classList.toggle("hidden", !isStock);
       document.getElementById("btnThresholdSetting").classList.toggle("hidden", !isStock);
       document.getElementById("btnQuickInStock").classList.toggle("hidden", !isStock);
+      document.getElementById("dateSortContainer").classList.toggle("hidden", !isLog);
       document.getElementById("trackFilterContainer").classList.toggle("hidden", !isTrack);
       document.getElementById("btnCsvImportLabel").classList.toggle("hidden", isTrack);
       document.getElementById("btnOpenAddModal").classList.toggle("hidden", isTrack);
@@ -1094,12 +1156,20 @@
       applyFilter();
     }
 
+    function toggleDateSortOrder() {
+      const sel = document.getElementById("dateSortSelect");
+      if (!sel) return;
+      sel.value = sel.value === 'DESC' ? 'ASC' : 'DESC';
+      applyFilter();
+    }
+
     function applyFilter() {
       const kw = document.getElementById("searchKeyword").value.trim().toLowerCase();
       const locF = document.getElementById("locFilterSelect").value;
       const qtyF = document.getElementById("qtyFilterSelect").value;
       const trkF = document.getElementById("trackStatusSelect").value;
-      let list = rawDataList;
+      const dateSort = document.getElementById("dateSortSelect") ? document.getElementById("dateSortSelect").value : 'DESC';
+      let list = [...rawDataList];
 
       if (currentTab === "Stock in TW" && locF !== 'ALL') list = list.filter(i => String(i.location || '').toLowerCase().includes(locF.toLowerCase()));
       if (currentTab === "Repair & Exchange") {
@@ -1120,16 +1190,73 @@
           return true;
         });
       }
+
+      // 各庫房分頁 (S2 ~ clean room) 依日期進行最新或最舊排序
+      if (currentTab !== "Stock in TW" && currentTab !== "Repair & Exchange") {
+        if (dateSort === 'DESC') {
+          list.sort((a, b) => cleanDateStr(b.date).localeCompare(cleanDateStr(a.date)) || (b.rowId - a.rowId));
+        } else if (dateSort === 'ASC') {
+          list.sort((a, b) => cleanDateStr(a.date).localeCompare(cleanDateStr(b.date)) || (a.rowId - b.rowId));
+        }
+      }
+
       currentFilteredList = list;
       renderTableAndCards(list);
     }
 
-    async function markTrackingAsReturned(r) {
-      if (!confirm(`Confirm Return for [${r.partsName}] (Qty: ${r.qty}) and restock to ${r.location}?\n確認已取回並自動加回原庫房庫存嗎？`)) return;
+    // 開啟「歸還銷帳選擇貨架」視窗
+    function openReturnModal(r) {
+      document.getElementById("returnRowId").value = r.rowId;
+      document.getElementById("returnPartTitle").innerText = `${r.partsName} (Qty: ${r.qty})`;
+      document.getElementById("returnPartSub").innerText = `${r.pn ? 'P/N: ' + r.pn + ' | ' : ''}${r.trackType} -> ${r.destination}`;
+      document.getElementById("returnNoteInput").value = "";
+
+      const sel = document.getElementById("returnTargetLocation");
+      const orig = String(r.location || '').trim();
+      const opts = Array.from(sel.options).map(o => o.value);
+      const matchedOpt = opts.find(o => o.toLowerCase() === orig.toLowerCase());
+      sel.value = matchedOpt || "S2";
+
+      document.getElementById("returnOrigLocHint").innerText = orig ? `Original Location 原寄出貨架: ${orig}` : "";
+      document.getElementById("returnModal").classList.remove("hidden");
+    }
+
+    function closeReturnModal() {
+      document.getElementById("returnModal").classList.add("hidden");
+    }
+
+    async function confirmReturnSubmit() {
+      const rowId = Number(document.getElementById("returnRowId").value);
+      const targetLoc = document.getElementById("returnTargetLocation").value;
+      const returnNote = document.getElementById("returnNoteInput").value.trim();
+      const btn = document.getElementById("btnConfirmReturn");
       const op = currentUser ? (currentUser.name || currentUser.username) : 'Unknown';
-      await fetch(GAS_API_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "markTrackingReturned", rowId: r.rowId, operator: op, restockToLocation: true }) });
-      alert("Marked as Returned & Restocked! / 已歸還並加回庫存！");
-      setTimeout(() => { fetchCurrentTab(true); fetchTrackingSilent(); }, 1200);
+
+      btn.disabled = true;
+      btn.innerText = "Processing... 寫入中...";
+
+      try {
+        await fetch(GAS_API_URL, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "markTrackingReturned",
+            rowId: rowId,
+            targetLocation: targetLoc,
+            returnNote: returnNote,
+            operator: op
+          })
+        });
+        closeReturnModal();
+        alert(`Returned & Restocked to [${targetLoc}]! / 已完成歸還銷帳並入庫至 ${targetLoc}！`);
+        setTimeout(() => { fetchCurrentTab(true); fetchTrackingSilent(); }, 1200);
+      } catch (e) {
+        alert("Failed / 操作失敗：" + e.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fa-solid fa-check"></i> Confirm Return 確認歸還入庫`;
+      }
     }
 
     async function deleteTrackingItem(rowId) {
@@ -1155,15 +1282,17 @@
         tbody.innerHTML = data.map(r => {
           const days = calcDaysElapsed(r.dateSent), isRet = r.status === 'Returned', isOver = !isRet && days > outOfDateDaysLimit;
           const st = isRet ? `<span class="px-2 py-0.5 rounded-full text-xs bg-emerald-500/10 text-emerald-400">Returned (${r.returnDate})</span>` : (isOver ? `<span class="px-2 py-0.5 rounded-full text-xs font-bold bg-rose-500/20 text-rose-300">Out of Date (${days}d)</span>` : `<span class="px-2 py-0.5 rounded-full text-xs bg-amber-500/10 text-amber-300">Pending (${days}d)</span>`);
-          return `<tr class="hover:bg-slate-800/60 ${isOver?'bg-rose-950/20':''}"><td class="px-4 py-3 font-mono">${r.dateSent}</td><td class="px-4 py-3">${st}</td><td class="px-4 py-3 text-cyan-300 font-semibold">${r.trackType}</td><td class="px-4 py-3 text-indigo-300 font-semibold">${r.destination}</td><td class="px-4 py-3">${r.location}</td><td class="px-4 py-3 font-mono text-cyan-400">${r.pn||'-'}</td><td class="px-4 py-3 font-bold text-white">${r.partsName}</td><td class="px-4 py-3 font-mono font-bold">${r.qty}</td><td class="px-4 py-3 text-xs text-slate-300">${r.remark}</td><td class="px-4 py-3 text-right space-x-1 whitespace-nowrap">${!isRet?`<button onclick='markTrackingAsReturned(${JSON.stringify(r)})' class="px-2.5 py-1 bg-emerald-600 text-white rounded text-xs font-semibold">Return 歸還</button>`:''}<button onclick="deleteTrackingItem(${r.rowId})" class="px-2 py-1 bg-slate-800 text-rose-300 rounded text-xs">Del</button></td></tr>`;
+          return `<tr class="hover:bg-slate-800/60 ${isOver?'bg-rose-950/20':''}"><td class="px-4 py-3 font-mono">${r.dateSent}</td><td class="px-4 py-3">${st}</td><td class="px-4 py-3 text-cyan-300 font-semibold">${r.trackType}</td><td class="px-4 py-3 text-indigo-300 font-semibold">${r.destination}</td><td class="px-4 py-3">${r.location}</td><td class="px-4 py-3 font-mono text-cyan-400">${r.pn||'-'}</td><td class="px-4 py-3 font-bold text-white">${r.partsName}</td><td class="px-4 py-3 font-mono font-bold">${r.qty}</td><td class="px-4 py-3 text-xs text-slate-300">${r.remark}</td><td class="px-4 py-3 text-right space-x-1 whitespace-nowrap">${!isRet?`<button onclick='openReturnModal(${JSON.stringify(r)})' class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-semibold">Return 歸還</button>`:''}<button onclick="deleteTrackingItem(${r.rowId})" class="px-2 py-1 bg-slate-800 text-rose-300 rounded text-xs">Del</button></td></tr>`;
         }).join('');
         mobile.innerHTML = data.map(r => {
           const days = calcDaysElapsed(r.dateSent), isRet = r.status === 'Returned', isOver = !isRet && days > outOfDateDaysLimit;
-          return `<div class="bg-slate-800/60 border ${isOver?'border-rose-500':'border-slate-700'} rounded-xl p-3 space-y-2"><div class="flex justify-between"><div><span class="text-xs text-slate-400">${r.dateSent}</span> <span class="text-xs text-cyan-300 font-bold">${r.trackType} -> ${r.destination}</span><h4 class="font-bold text-white text-sm">${r.partsName} (Qty: ${r.qty})</h4></div><span class="text-xs font-bold ${isOver?'text-rose-400':'text-amber-300'}">${isRet?'Returned':(isOver?`Out of Date (${days}d)`:`Pending (${days}d)`)}</span></div><p class="text-xs text-slate-400">${r.remark}</p>${!isRet?`<button onclick='markTrackingAsReturned(${JSON.stringify(r)})' class="w-full py-1.5 bg-emerald-600 text-white rounded text-xs font-bold">Return 歸還入庫</button>`:''}</div>`;
+          return `<div class="bg-slate-800/60 border ${isOver?'border-rose-500':'border-slate-700'} rounded-xl p-3 space-y-2"><div class="flex justify-between"><div><span class="text-xs text-slate-400">${r.dateSent}</span> <span class="text-xs text-cyan-300 font-bold">${r.trackType} -> ${r.destination}</span><h4 class="font-bold text-white text-sm">${r.partsName} (Qty: ${r.qty})</h4></div><span class="text-xs font-bold ${isOver?'text-rose-400':'text-amber-300'}">${isRet?'Returned':(isOver?`Out of Date (${days}d)`:`Pending (${days}d)`)}</span></div><p class="text-xs text-slate-400">${r.remark}</p>${!isRet?`<button onclick='openReturnModal(${JSON.stringify(r)})' class="w-full py-1.5 bg-emerald-600 text-white rounded text-xs font-bold">Return 選擇貨架歸還</button>`:''}</div>`;
         }).join('');
       } else {
-        thead.innerHTML = `<tr><th class="px-4 py-3">Date</th><th class="px-4 py-3">P/N</th><th class="px-4 py-3">Parts Name</th><th class="px-4 py-3">Model</th><th class="px-4 py-3 text-emerald-400">IN</th><th class="px-4 py-3 text-rose-400">OUT</th><th class="px-4 py-3">Remark</th><th class="px-4 py-3 text-right">Actions</th></tr>`;
-        tbody.innerHTML = data.map(r => `<tr class="hover:bg-slate-800/60"><td class="px-4 py-3 font-mono text-slate-400">${cleanDateStr(r.date)}</td><td class="px-4 py-3 font-mono text-cyan-400">${r.pn||'-'}</td><td class="px-4 py-3 font-semibold text-white">${r.partsName}</td><td class="px-4 py-3 text-slate-400">${r.model||'-'}</td><td class="px-4 py-3 font-mono text-emerald-400 font-bold">${r.inQty}</td><td class="px-4 py-3 font-mono text-rose-400 font-bold">${r.outQty}</td><td class="px-4 py-3 text-slate-300">${r.remark||'-'}</td><td class="px-4 py-3 text-right space-x-1"><button onclick='openEditModal(${JSON.stringify(r)})' class="px-2 py-1 bg-slate-800 text-slate-300 rounded text-xs">Edit</button><button onclick="deleteRecord(${r.rowId})" class="px-2 py-1 bg-slate-800 text-rose-300 rounded text-xs">Del</button></td></tr>`).join('');
+        const sortOrder = document.getElementById("dateSortSelect") ? document.getElementById("dateSortSelect").value : 'DESC';
+        const sortArrow = sortOrder === 'DESC' ? '↓' : (sortOrder === 'ASC' ? '↑' : '↕');
+        thead.innerHTML = `<tr><th onclick="toggleDateSortOrder()" class="px-4 py-3 cursor-pointer hover:text-cyan-300 select-none" title="Click to toggle Newest/Oldest / 點擊切換最新或最舊排序">Date <span class="text-cyan-400 ml-1">${sortArrow}</span></th><th class="px-4 py-3">P/N</th><th class="px-4 py-3">Parts Name</th><th class="px-4 py-3">Model</th><th class="px-4 py-3 text-emerald-400">IN</th><th class="px-4 py-3 text-rose-400">OUT</th><th class="px-4 py-3">Remark</th><th class="px-4 py-3 text-right">Actions</th></tr>`;
+        tbody.innerHTML = data.map(r => `<tr class="hover:bg-slate-800/60"><td class="px-4 py-3 font-mono text-slate-300">${cleanDateStr(r.date)}</td><td class="px-4 py-3 font-mono text-cyan-400">${r.pn||'-'}</td><td class="px-4 py-3 font-semibold text-white">${r.partsName}</td><td class="px-4 py-3 text-slate-400">${r.model||'-'}</td><td class="px-4 py-3 font-mono text-emerald-400 font-bold">${r.inQty}</td><td class="px-4 py-3 font-mono text-rose-400 font-bold">${r.outQty}</td><td class="px-4 py-3 text-slate-300">${r.remark||'-'}</td><td class="px-4 py-3 text-right space-x-1"><button onclick='openEditModal(${JSON.stringify(r)})' class="px-2 py-1 bg-slate-800 text-slate-300 rounded text-xs">Edit</button><button onclick="deleteRecord(${r.rowId})" class="px-2 py-1 bg-slate-800 text-rose-300 rounded text-xs">Del</button></td></tr>`).join('');
         mobile.innerHTML = data.map(r => `<div class="bg-slate-800/60 border border-slate-700 rounded-xl p-3 space-y-1.5"><div class="flex justify-between"><span class="text-xs font-mono text-slate-400">${cleanDateStr(r.date)}</span><span class="font-mono text-xs font-bold">${r.inQty>0?`+${r.inQty}`:`-${r.outQty}`}</span></div><h4 class="font-bold text-white text-sm">${r.partsName}</h4><p class="text-xs text-slate-400">${r.remark||''}</p></div>`).join('');
       }
     }
