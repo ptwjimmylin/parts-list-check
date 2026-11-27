@@ -29,7 +29,6 @@
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen md:h-screen md:overflow-hidden antialiased flex flex-col font-md pb-20 md:pb-0" id="appBody">
 
-  <!-- 登入畫面 -->
   <div id="loginOverlay" class="fixed inset-0 bg-slate-950/95 backdrop-blur-md z-50 flex items-center justify-center p-4">
     <div class="bg-slate-900 border border-slate-700/90 rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl space-y-6">
       <div class="text-center space-y-2">
@@ -60,7 +59,6 @@
     </div>
   </div>
 
-  <!-- 頂部導航列 -->
   <header class="bg-slate-900/95 backdrop-blur border-b border-slate-800 sticky top-0 shrink-0 z-40">
     <div class="w-full px-3 sm:px-8 py-2.5 sm:py-3 flex justify-between items-center gap-2">
       <div class="flex items-center space-x-2.5 sm:space-x-3.5 min-w-0">
@@ -110,10 +108,8 @@
     </div>
   </header>
 
-  <!-- 主體區域 -->
   <main class="w-full px-3 sm:px-8 pt-3 pb-4 flex-1 flex flex-col md:min-h-0 space-y-3">
     <div class="shrink-0 space-y-2.5 sm:space-y-3">
-      <!-- 9 大分頁 -->
       <div class="bg-slate-800/60 p-1 rounded-xl border border-slate-800 overflow-x-auto no-scrollbar flex gap-1.5" id="tabGroup">
         <button onclick="switchTab('Stock in TW')" id="tab-Stock-in-TW" class="tab-btn px-3 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition bg-indigo-600 text-white shadow-md flex items-center gap-1.5 whitespace-nowrap">
           <i class="fa-solid fa-warehouse"></i> Stock in TW (總庫存)
@@ -130,7 +126,6 @@
         <button onclick="switchTab('clean room')" id="tab-clean-room" class="tab-btn px-3 sm:px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition whitespace-nowrap">clean room</button>
       </div>
 
-      <!-- 5 張摘要卡片 -->
       <div class="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-3">
         <div class="bg-slate-800/50 border border-slate-700/60 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-xl">
           <p class="text-[11px] sm:text-xs font-medium text-slate-400">Total Items 項目總數</p>
@@ -162,7 +157,6 @@
         </div>
       </div>
 
-      <!-- 操作工具列 -->
       <div class="bg-slate-800/50 border border-slate-700/80 rounded-xl px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2.5">
         <div class="flex items-center gap-2">
           <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse"></span>
@@ -185,7 +179,6 @@
         </div>
       </div>
 
-      <!-- 搜尋與篩選列（新增：各庫房分頁日期排序選單） -->
       <div class="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-2">
         <div class="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 flex-1">
           <div class="relative col-span-2 sm:w-72">
@@ -193,7 +186,6 @@
             <input type="text" id="searchKeyword" oninput="applyFilter()" placeholder="Search Loc, P/N, Name, Singapore, User..." class="w-full pl-8 pr-3 py-2 sm:py-1.5 text-xs sm:text-sm bg-slate-800/80 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-indigo-500">
           </div>
 
-          <!-- 總庫存專用篩選 -->
           <div id="locFilterContainer" class="col-span-1 sm:w-auto">
             <select id="locFilterSelect" onchange="applyFilter()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-2 sm:py-1.5 text-xs sm:text-sm text-cyan-300 font-semibold">
               <option value="ALL">📍 All Loc 全部庫房</option>
@@ -218,7 +210,6 @@
             <i class="fa-solid fa-boxes-packing text-emerald-400"></i> <span id="quickInStockText">In-Stock Only 僅看在庫 (QTY > 0)</span>
           </button>
 
-          <!-- 各庫房分頁 (S2 ~ clean room) 專用：日期最新/最舊排序選單 -->
           <div id="dateSortContainer" class="hidden col-span-2 sm:w-auto flex items-center gap-1.5">
             <select id="dateSortSelect" onchange="applyFilter()" class="w-full sm:w-auto bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 sm:py-1.5 text-xs sm:text-sm text-cyan-300 font-semibold focus:outline-none focus:border-cyan-500">
               <option value="DESC">📅 Date: Newest First (最新在最上面)</option>
@@ -227,7 +218,6 @@
             </select>
           </div>
 
-          <!-- Repair & Exchange 追蹤專用篩選 -->
           <div id="trackFilterContainer" class="hidden col-span-2 sm:w-auto flex items-center gap-2">
             <select id="trackStatusSelect" onchange="applyFilter()" class="w-full sm:w-auto bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 sm:py-1.5 text-xs sm:text-sm text-rose-300 font-semibold">
               <option value="UNRETURNED">⏳ Unreturned 所有未歸還 (Pending + Out of Date)</option>
@@ -259,7 +249,7 @@
     <i class="fa-solid fa-qrcode text-lg"></i> Scan 掃碼進出庫
   </button>
 
-  <!-- 新增彈窗：歸還銷帳選擇貨架視窗 (Return & Restock Modal) -->
+  <!-- 歸還銷帳選擇貨架視窗 -->
   <div id="returnModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 overflow-y-auto">
     <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 my-auto">
       <div class="flex justify-between items-center pb-3 border-b border-slate-800">
@@ -268,7 +258,6 @@
         </h3>
         <button onclick="closeReturnModal()" class="text-slate-400 hover:text-white text-2xl leading-none p-1">&times;</button>
       </div>
-
       <div class="space-y-3.5 text-xs sm:text-sm">
         <input type="hidden" id="returnRowId">
         <div class="bg-slate-800/70 border border-slate-700 rounded-xl p-3 space-y-1">
@@ -276,11 +265,8 @@
           <p class="text-sm font-bold text-white" id="returnPartTitle"></p>
           <p class="text-xs text-cyan-300 font-mono" id="returnPartSub"></p>
         </div>
-
         <div>
-          <label class="block text-emerald-300 font-bold mb-1.5">
-            Return To Shelf / 選擇放回哪一個貨架 (Location) *
-          </label>
+          <label class="block text-emerald-300 font-bold mb-1.5">Return To Shelf / 選擇放回哪一個貨架 (Location) *</label>
           <select id="returnTargetLocation" class="w-full bg-slate-800 border border-emerald-500/50 rounded-xl p-2.5 text-white font-bold text-sm focus:outline-none focus:border-emerald-400">
             <option value="S2">S2</option>
             <option value="S3">S3</option>
@@ -292,12 +278,10 @@
           </select>
           <p class="text-[11px] text-slate-400 mt-1" id="returnOrigLocHint"></p>
         </div>
-
         <div>
           <label class="block text-slate-300 font-semibold mb-1">Return Note / 歸還備註 (選填)</label>
           <input type="text" id="returnNoteInput" placeholder="e.g., Repaired OK, Tested pass / 已修好測試正常..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-emerald-400">
         </div>
-
         <div class="flex justify-end gap-2.5 pt-3 border-t border-slate-800">
           <button type="button" onclick="closeReturnModal()" class="px-4 py-2 border border-slate-700 rounded-xl text-slate-300 hover:bg-slate-800 font-medium">Cancel 取消</button>
           <button type="button" id="btnConfirmReturn" onclick="confirmReturnSubmit()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold shadow-lg shadow-emerald-600/30 transition flex items-center gap-1.5">
@@ -308,7 +292,7 @@
     </div>
   </div>
 
-  <!-- 彈窗：帳號管理 -->
+  <!-- 帳號管理視窗 -->
   <div id="usersModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 overflow-y-auto">
     <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-4 my-auto">
       <div class="flex justify-between items-center pb-3 border-b border-slate-800">
@@ -336,7 +320,7 @@
     </div>
   </div>
 
-  <!-- 彈窗：QR 標籤 -->
+  <!-- QR 標籤視窗 -->
   <div id="qrLabelModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
     <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-xs w-full p-5 shadow-2xl space-y-4 text-center">
       <div class="flex justify-between items-center pb-2.5 border-b border-slate-800">
@@ -358,7 +342,7 @@
     </div>
   </div>
 
-  <!-- 彈窗：掃碼進出庫 -->
+  <!-- 掃碼進出庫視窗 -->
   <div id="scannerModal" class="fixed inset-0 bg-black/85 backdrop-blur-md hidden z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
     <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-4 sm:p-5 shadow-2xl space-y-2.5 my-auto">
       <div class="flex justify-between items-center pb-2 border-b border-slate-800">
@@ -442,7 +426,7 @@
     </div>
   </div>
 
-  <!-- 彈窗：安全水位設定 -->
+  <!-- 安全水位設定視窗 -->
   <div id="thresholdModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 overflow-y-auto">
     <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-4 my-auto">
       <div class="flex justify-between items-center pb-3 border-b border-slate-800">
@@ -471,7 +455,7 @@
     </div>
   </div>
 
-  <!-- 彈窗：新增項目 -->
+  <!-- 新增項目視窗 -->
   <div id="addModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 overflow-y-auto">
     <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-3.5 my-auto">
       <div class="flex justify-between items-center pb-3 border-b border-slate-800">
@@ -557,7 +541,7 @@
     </div>
   </div>
 
-  <!-- 彈窗：編輯總庫存 -->
+  <!-- 編輯總庫存視窗 -->
   <div id="editStockModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 overflow-y-auto">
     <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-3.5 my-auto">
       <div class="flex justify-between items-center pb-3 border-b border-slate-800">
@@ -597,7 +581,7 @@
     </div>
   </div>
 
-  <!-- 彈窗：編輯流水帳 -->
+  <!-- 編輯流水帳視窗 -->
   <div id="editModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 overflow-y-auto">
     <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-3.5 my-auto">
       <div class="flex justify-between items-center pb-3 border-b border-slate-800">
@@ -1191,7 +1175,6 @@
         });
       }
 
-      // 各庫房分頁 (S2 ~ clean room) 依日期進行最新或最舊排序
       if (currentTab !== "Stock in TW" && currentTab !== "Repair & Exchange") {
         if (dateSort === 'DESC') {
           list.sort((a, b) => cleanDateStr(b.date).localeCompare(cleanDateStr(a.date)) || (b.rowId - a.rowId));
@@ -1204,7 +1187,6 @@
       renderTableAndCards(list);
     }
 
-    // 開啟「歸還銷帳選擇貨架」視窗
     function openReturnModal(r) {
       document.getElementById("returnRowId").value = r.rowId;
       document.getElementById("returnPartTitle").innerText = `${r.partsName} (Qty: ${r.qty})`;
